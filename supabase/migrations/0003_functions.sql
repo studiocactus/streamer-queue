@@ -38,9 +38,9 @@ RETURNS TABLE (
     s.updated_at,
     COUNT(DISTINCT sg.id) FILTER (WHERE sg.status NOT IN ('rejected')) AS suggestion_count,
     COUNT(DISTINCT sg.id) FILTER (WHERE sg.status = 'pending') AS pending_count,
-    MAX(sg.id) FILTER (WHERE sg.status = 'watching') AS watching_now_id,
-    MAX(sg.title) FILTER (WHERE sg.status = 'watching') AS watching_now_title,
-    MAX(sg.category) FILTER (WHERE sg.status = 'watching') AS watching_now_category
+    (SELECT w.id    FROM public.suggestions w WHERE w.streamer_id = s.id AND w.status = 'watching' ORDER BY w.started_at DESC NULLS LAST LIMIT 1) AS watching_now_id,
+    (SELECT w.title FROM public.suggestions w WHERE w.streamer_id = s.id AND w.status = 'watching' ORDER BY w.started_at DESC NULLS LAST LIMIT 1) AS watching_now_title,
+    (SELECT w.category::TEXT FROM public.suggestions w WHERE w.streamer_id = s.id AND w.status = 'watching' ORDER BY w.started_at DESC NULLS LAST LIMIT 1) AS watching_now_category
   FROM public.streamers s
   LEFT JOIN public.suggestions sg ON sg.streamer_id = s.id
   WHERE s.slug = p_slug AND s.is_public = TRUE AND s.is_active = TRUE
@@ -73,7 +73,7 @@ RETURNS TABLE (
     s.cover_url,
     s.bio,
     COUNT(DISTINCT sg.id) FILTER (WHERE sg.status NOT IN ('rejected')) AS suggestion_count,
-    MAX(sg.title) FILTER (WHERE sg.status = 'watching') AS watching_now_title
+    (SELECT w.title FROM public.suggestions w WHERE w.streamer_id = s.id AND w.status = 'watching' ORDER BY w.started_at DESC NULLS LAST LIMIT 1) AS watching_now_title
   FROM public.streamers s
   LEFT JOIN public.suggestions sg ON sg.streamer_id = s.id
   WHERE
