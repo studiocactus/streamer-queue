@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-bg-primary text-content-primary;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-bg-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border-light rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-content-muted;
+  }
+}
+
+@layer components {
+  /* Skeleton loading */
+  .skeleton {
+    @apply rounded-xl;
+    background: linear-gradient(
+      90deg,
+      #17171F 25%,
+      #2A2A36 50%,
+      #17171F 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton 1.5s ease-in-out infinite;
+  }
+
+  /* Card base */
+  .card {
+    @apply bg-bg-secondary border border-border rounded-2xl;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200 hover:border-border-light hover:shadow-lg hover:-translate-y-0.5;
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #9146FF 0%, #A970FF 50%, #C5FF00 100%);
+  }
+
+  /* Live indicator */
+  .live-dot {
+    @apply inline-block w-2 h-2 rounded-full bg-red-500;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  /* Focus ring acessível */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary;
+  }
+}
+
+@keyframes skeleton {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
