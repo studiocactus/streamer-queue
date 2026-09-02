@@ -79,23 +79,8 @@ export const useAuthStore = create<AuthState>()(
             .eq('owner_id', user.id)
             .maybeSingle()
 
-          // Se o canal ainda não existe, cria/recupera via RPC ensure_streamer_profile
-          if (!streamer) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: created } = await supabase.rpc('ensure_streamer_profile', {
-              p_user_id: user.id,
-            } as any)
-
-            if (created && created.length > 0) {
-              const { data: reloaded } = await supabase
-                .from('streamers')
-                .select('*, settings:streamer_settings(*)')
-                .eq('id', created[0].id)
-                .maybeSingle()
-              streamer = reloaded
-            }
-          }
-
+          // A existência de um canal define o papel de streamer.
+          // Novos usuários entram somente como viewers; canais são liberados por convite.
           set({ streamerProfile: streamer })
         } catch (error) {
           console.error('Erro ao carregar perfil:', error)

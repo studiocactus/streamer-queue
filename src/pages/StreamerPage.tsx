@@ -241,7 +241,7 @@ export default function StreamerPage() {
     return (
       <div className="min-h-screen">
         <div className="h-48 bg-bg-secondary animate-pulse" />
-        <div className="max-w-4xl mx-auto px-4 -mt-12">
+        <div className="app-shell -mt-12">
           <div className="flex items-end gap-4 mb-8">
             <div className="w-24 h-24 rounded-full bg-bg-tertiary animate-pulse ring-4 ring-bg-primary" />
           </div>
@@ -318,16 +318,16 @@ export default function StreamerPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/80 to-transparent" />
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+      <div className="app-shell">
         {/* Avatar e info */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-14 mb-8">
+        <div className="mt-4 mb-8 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-end gap-4">
             <Avatar
               src={streamer.avatar_url}
               alt={streamer.channel_name}
               fallback={streamer.channel_name}
               size="xl"
-              className="ring-4 ring-bg-primary"
+              className="ring-4 ring-bg-primary shadow-xl"
             />
             <div className="pb-2">
               <div className="flex items-center gap-2 flex-wrap">

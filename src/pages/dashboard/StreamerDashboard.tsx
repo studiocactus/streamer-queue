@@ -44,7 +44,7 @@ function KanbanColumn({
   onDelete,
 }: KanbanColumnProps) {
   return (
-    <div className="bg-bg-tertiary border border-border rounded-2xl min-h-[200px] w-72 shrink-0 flex flex-col">
+    <div className="bg-bg-tertiary/70 border border-border rounded-2xl min-h-[220px] w-full min-w-0 flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <div className={cn('w-2 h-2 rounded-full', color)} />
@@ -243,16 +243,18 @@ export default function StreamerDashboard() {
 
   if (!streamerProfile) {
     return (
-      <div className="min-h-screen py-16 px-4">
+      <div className="min-h-screen page-section">
         <div className="max-w-lg mx-auto">
           <EmptyState
             icon={<Zap size={28} />}
-            title="Você ainda não tem um canal"
-            description="Crie seu canal no WatchQueue para receber sugestões da sua comunidade."
+            title="Acesso de streamer não disponível"
+            description="Seu perfil está configurado como viewer. Canais administrativos são liberados por convite."
             action={
-              <Button leftIcon={<ExternalLink size={15} />}>
-                Criar meu canal
-              </Button>
+              <Link to="/dashboard">
+                <Button leftIcon={<ExternalLink size={15} />}>
+                  Voltar às minhas sugestões
+                </Button>
+              </Link>
             }
           />
         </div>
@@ -275,8 +277,8 @@ export default function StreamerDashboard() {
   ]
 
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen page-section">
+      <div className="app-shell space-y-6">
 
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -316,7 +318,7 @@ export default function StreamerDashboard() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 min-[430px]:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           {stats.map(({ label, value, icon: Icon, color }) => (
             <Card key={label}>
               <CardContent className="py-4">
@@ -333,7 +335,7 @@ export default function StreamerDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-bg-secondary border border-border rounded-xl p-1 w-fit">
+        <div className="flex max-w-full gap-1 overflow-x-auto bg-bg-secondary border border-border rounded-xl p-1 w-fit">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -353,8 +355,8 @@ export default function StreamerDashboard() {
 
         {/* Kanban */}
         {activeTab === 'kanban' && (
-          <div className="overflow-x-auto pb-4">
-            <div className="flex gap-4 w-max">
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               <KanbanColumn
                 title="Pendente"
                 status="pending"

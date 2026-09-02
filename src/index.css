@@ -17,6 +17,24 @@
   body {
     @apply bg-bg-primary text-content-primary;
     min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at 12% -10%, rgba(145, 70, 255, 0.09), transparent 28rem),
+      radial-gradient(circle at 90% 20%, rgba(197, 255, 0, 0.025), transparent 24rem);
+    background-attachment: fixed;
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
   }
 
   ::-webkit-scrollbar {
@@ -38,6 +56,26 @@
 }
 
 @layer components {
+  .app-shell {
+    width: min(calc(100% - clamp(1.25rem, 5vw, 4rem)), 1400px);
+    margin-inline: auto;
+  }
+
+  .page-section {
+    padding-block: clamp(2.5rem, 6vw, 5rem);
+  }
+
+  .section-heading {
+    @apply font-bold tracking-[-0.025em] text-content-primary;
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    line-height: 1.12;
+  }
+
+  .surface-panel {
+    @apply border border-border bg-bg-secondary/90 backdrop-blur-sm;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
+  }
+
   /* Skeleton loading */
   .skeleton {
     @apply rounded-xl;
@@ -53,7 +91,7 @@
 
   /* Card base */
   .card {
-    @apply bg-bg-secondary border border-border rounded-2xl;
+    @apply bg-bg-secondary/90 border border-border rounded-2xl backdrop-blur-sm;
   }
 
   .card-hover {

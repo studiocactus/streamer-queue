@@ -1,0 +1,3 @@
+-- Registro histórico da limpeza pré-lançamento executada em 2026-09-02.
+-- A operação foi realizada uma única vez e removida deste arquivo para que
+-- nenhum outro ambiente ou usuário futuro possa ser afetado.

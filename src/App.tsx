@@ -154,7 +154,7 @@ export default function App() {
             <Route
               path="/dashboard/streamer"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireStreamer>
                   <StreamerDashboard />
                 </ProtectedRoute>
               }

@@ -21,7 +21,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-bg-primary/80 backdrop-blur-xl border-b border-border">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="app-shell">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
@@ -52,7 +52,7 @@ export function Header() {
                   isActive('/dashboard') ? 'text-content-primary' : 'text-content-secondary'
                 )}
               >
-                Dashboard
+                Minhas sugestões
               </Link>
             )}
             {streamerProfile && (
@@ -63,7 +63,7 @@ export function Header() {
                   isActive('/dashboard/streamer') ? 'text-content-primary' : 'text-content-secondary'
                 )}
               >
-                Meu Canal
+                Painel do streamer
               </Link>
             )}
           </div>
@@ -110,17 +110,27 @@ export function Header() {
                         className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-tertiary transition-colors"
                       >
                         <LayoutDashboard size={16} />
-                        Dashboard
+                        Minhas sugestões
                       </Link>
                       {streamerProfile && (
-                        <Link
-                          to={`/streamer/${streamerProfile.slug}`}
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-tertiary transition-colors"
-                        >
-                          <Tv2 size={16} />
-                          Meu Canal
-                        </Link>
+                        <>
+                          <Link
+                            to="/dashboard/streamer"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-tertiary transition-colors"
+                          >
+                            <LayoutDashboard size={16} />
+                            Painel do streamer
+                          </Link>
+                          <Link
+                            to={`/streamer/${streamerProfile.slug}`}
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-tertiary transition-colors"
+                          >
+                            <Tv2 size={16} />
+                            Página pública
+                          </Link>
+                        </>
                       )}
                       <button
                         onClick={() => { logout(); setUserMenuOpen(false) }}
@@ -144,7 +154,8 @@ export function Header() {
                   </svg>
                 }
               >
-                Entrar com Twitch
+                <span className="hidden min-[430px]:inline">Entrar com Twitch</span>
+                <span className="min-[430px]:hidden">Entrar</span>
               </Button>
             )}
 
@@ -177,7 +188,17 @@ export function Header() {
                 className="flex items-center gap-2 px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-secondary rounded-xl transition-colors"
               >
                 <LayoutDashboard size={16} />
-                Dashboard
+                Minhas sugestões
+              </Link>
+            )}
+            {streamerProfile && (
+              <Link
+                to="/dashboard/streamer"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-secondary rounded-xl transition-colors"
+              >
+                <Tv2 size={16} />
+                Painel do streamer
               </Link>
             )}
           </div>

@@ -65,8 +65,8 @@ export default function ViewerDashboard() {
   const approved = stats.suggestions.filter((s) => ['approved', 'queued', 'watching'].includes(s.status)).length
 
   return (
-    <div className="min-h-screen py-10 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen page-section">
+      <div className="app-shell space-y-6 lg:space-y-8">
 
         {/* Perfil */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-bg-secondary border border-border p-6 rounded-2xl">
@@ -85,7 +85,7 @@ export default function ViewerDashboard() {
                   <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current">
                     <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
                   </svg>
-                  Conectado via Twitch
+                  {streamerProfile ? 'Streamer da comunidade' : 'Viewer da comunidade'}
                 </div>
               </div>
             </div>
@@ -93,13 +93,13 @@ export default function ViewerDashboard() {
 
           {streamerProfile && (
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-border">
-              <Link to={`/streamer/${streamerProfile.slug}`}>
-                <Button variant="secondary" size="sm" leftIcon={<Tv2 size={14} />}>
+              <Link to={`/streamer/${streamerProfile.slug}`} className="w-full sm:w-auto">
+                <Button className="w-full" variant="secondary" size="sm" leftIcon={<Tv2 size={14} />}>
                   Ver meu canal
                 </Button>
               </Link>
-              <Link to="/dashboard/streamer">
-                <Button variant="primary" size="sm" leftIcon={<LayoutDashboard size={14} />}>
+              <Link to="/dashboard/streamer" className="w-full sm:w-auto">
+                <Button className="w-full" variant="primary" size="sm" leftIcon={<LayoutDashboard size={14} />}>
                   Gerenciar minha fila
                 </Button>
               </Link>
@@ -107,8 +107,24 @@ export default function ViewerDashboard() {
           )}
         </div>
 
+        {!streamerProfile && (
+          <div className="rounded-2xl border border-brand-purple/20 bg-brand-purple/5 p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brand-purple/20 bg-brand-purple/10">
+                <Search size={16} className="text-brand-purple" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-content-primary">Seu espaço de viewer</h2>
+                <p className="mt-1 text-sm leading-relaxed text-content-secondary">
+                  Explore os canais da comunidade, envie sugestões e acompanhe aqui cada decisão dos streamers.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 min-[430px]:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           {[
             { label: 'Sugestões', value: stats.suggestions.length, icon: Send, color: 'text-brand-purple' },
             { label: 'Pendentes', value: pending, icon: Clock, color: 'text-status-pending' },

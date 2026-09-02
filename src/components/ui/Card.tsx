@@ -10,8 +10,8 @@ export function Card({ className, hover, glow, children, ...props }: CardProps) 
   return (
     <div
       className={cn(
-        'bg-bg-secondary border border-border rounded-2xl',
-        hover && 'transition-all duration-200 hover:border-border-light hover:shadow-lg hover:-translate-y-0.5 cursor-pointer',
+        'bg-bg-secondary/90 border border-border rounded-2xl backdrop-blur-sm shadow-[0_18px_55px_rgba(0,0,0,0.12)]',
+        hover && 'transition-all duration-300 hover:border-brand-purple/30 hover:shadow-[0_22px_70px_rgba(0,0,0,0.22)] hover:-translate-y-1 cursor-pointer',
         glow && 'shadow-lg shadow-brand-purple/10 border-brand-purple/20',
         className
       )}

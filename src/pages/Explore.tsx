@@ -73,7 +73,8 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
             <div className="flex items-center gap-3 text-xs text-content-muted">
               <span className="flex items-center gap-1">
                 <ThumbsUp size={11} />
-                {(streamer.suggestion_count ?? 0)} sugestões
+                {(streamer.suggestion_count ?? 0)}{' '}
+                {(streamer.suggestion_count ?? 0) === 1 ? 'sugestão' : 'sugestões'}
               </span>
             </div>
             <span className="text-xs text-brand-purple font-medium group-hover:underline">
@@ -98,11 +99,11 @@ export default function ExplorePage() {
   const { streamers, isLoading, error } = useStreamers(debouncedSearch || undefined)
 
   return (
-    <div className="min-h-screen py-12 px-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen page-section">
+      <div className="app-shell">
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-content-primary mb-3">
+          <h1 className="section-heading mb-3">
             Explorar Streamers
           </h1>
           <p className="text-content-secondary">
@@ -151,7 +152,7 @@ export default function ExplorePage() {
             description="Verifique sua conexão e tente novamente em alguns instantes."
           />
         ) : isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 lg:gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonStreamerCard key={i} />
             ))}
@@ -167,7 +168,7 @@ export default function ExplorePage() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 lg:gap-6">
             {streamers.map((streamer) => (
               <StreamerCard key={streamer.id} streamer={streamer} />
             ))}

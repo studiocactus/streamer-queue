@@ -37,6 +37,9 @@ export default {
           queued: '#8B5CF6',
         },
       },
+      maxWidth: {
+        app: '1400px',
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },

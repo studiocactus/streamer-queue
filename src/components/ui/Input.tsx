@@ -36,7 +36,7 @@ export function Input({
         <input
           id={inputId}
           className={cn(
-            'w-full bg-bg-tertiary border border-border rounded-xl px-3 py-2.5 text-sm text-content-primary',
+            'w-full min-h-11 bg-bg-tertiary/80 border border-border rounded-xl px-3 py-2.5 text-sm text-content-primary',
             'placeholder:text-content-muted',
             'focus:outline-none focus:ring-2 focus:ring-brand-purple/50 focus:border-brand-purple',
             'transition-colors duration-200',
@@ -85,7 +85,7 @@ export function Textarea({
       <textarea
         id={textareaId}
         className={cn(
-          'w-full bg-bg-tertiary border border-border rounded-xl px-3 py-2.5 text-sm text-content-primary',
+          'w-full bg-bg-tertiary/80 border border-border rounded-xl px-3 py-2.5 text-sm text-content-primary',
           'placeholder:text-content-muted resize-none',
           'focus:outline-none focus:ring-2 focus:ring-brand-purple/50 focus:border-brand-purple',
           'transition-colors duration-200',
@@ -120,7 +120,7 @@ export function Select({ className, label, error, options, id, ...props }: Selec
       <select
         id={selectId}
         className={cn(
-          'w-full bg-bg-tertiary border border-border rounded-xl px-3 py-2.5 text-sm text-content-primary',
+          'w-full min-h-11 bg-bg-tertiary/80 border border-border rounded-xl px-3 py-2.5 text-sm text-content-primary',
           'focus:outline-none focus:ring-2 focus:ring-brand-purple/50 focus:border-brand-purple',
           'transition-colors duration-200 cursor-pointer',
           error && 'border-status-rejected',

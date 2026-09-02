@@ -9,8 +9,8 @@ import { getTwitchAuthUrl } from '@/lib/supabase'
 const HOW_IT_WORKS = [
   {
     step: '01',
-    title: 'Streamer cria seu canal',
-    description: 'Configure sua página personalizada com slug único, regras e aparência.',
+    title: 'Streamer convidado configura o canal',
+    description: 'Cada streamer da comunidade recebe uma página própria, com regras e aparência.',
     icon: Tv2,
   },
   {
@@ -37,7 +37,7 @@ const STREAMER_FEATURES = [
   { icon: Shield, title: 'Moderação completa', description: 'Aprove, rejeite e organize sugestões com moderadores.' },
   { icon: Zap, title: 'Integração Twitch', description: 'Anúncios automáticos no chat quando iniciar assistir.' },
   { icon: Star, title: 'Fila inteligente', description: 'Organize por votos, recentes ou manualmente.' },
-  { icon: Gift, title: 'Monetização futura', description: 'Destaque pago para sugestões em breve.' },
+  { icon: Gift, title: 'Comunidade privada', description: 'Canais liberados para streamers convidados pelo administrador.' },
 ]
 
 const VIEWER_FEATURES = [
@@ -57,8 +57,8 @@ const FAQ = [
     a: 'Sim. Tanto streamers quanto viewers precisam autenticar com Twitch para garantir a segurança e identidade real da comunidade.',
   },
   {
-    q: 'O streamer precisa ser Twitch Partner ou Affiliate?',
-    a: 'Não! Qualquer streamer da Twitch pode criar seu canal no WatchQueue.',
+    q: 'Como um streamer entra na comunidade?',
+    a: 'Os canais de streamer são liberados por convite. Todo novo usuário entra primeiro como viewer e recebe acesso administrativo somente após aprovação.',
   },
   {
     q: 'Quantas sugestões posso enviar?',
@@ -87,9 +87,9 @@ export default function LandingPage() {
           role="status"
           className="border-b border-brand-purple/30 bg-brand-purple/10 px-4 py-3"
         >
-          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 sm:flex-row">
+          <div className="app-shell flex flex-col items-center justify-between gap-3 sm:flex-row">
             <p className="text-center text-sm text-content-secondary sm:text-left">
-              Entre com sua conta Twitch para acessar o Dashboard e gerenciar suas sugestões.
+              Entre com sua conta Twitch para acessar suas sugestões. Contas convidadas também recebem o painel de streamer.
             </p>
             <Button size="sm" onClick={handleLoginWithTwitch}>
               Entrar com Twitch
@@ -101,18 +101,18 @@ export default function LandingPage() {
       {/* ============================================================
           HERO
       ============================================================ */}
-      <section className="relative overflow-hidden bg-bg-hero-gradient pt-20 pb-28 px-4">
+      <section className="relative overflow-hidden bg-bg-hero-gradient py-20 sm:py-24 lg:py-32">
         {/* Background glow */}
         <div className="absolute inset-0 bg-hero-gradient pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-brand-purple/8 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative max-w-4xl mx-auto text-center">
+        <div className="app-shell relative text-center">
           <div className="inline-flex items-center gap-2 bg-brand-purple/10 border border-brand-purple/20 rounded-full px-4 py-1.5 mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse-slow" />
             <span className="text-xs font-medium text-brand-purple">Plataforma multi-streamer</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-content-primary leading-tight mb-6">
+          <h1 className="mx-auto max-w-5xl text-[clamp(2.35rem,6vw,5rem)] font-bold tracking-[-0.045em] text-content-primary leading-[1.02] mb-6">
             Sua comunidade escolhe.{' '}
             <span className="text-gradient">Você decide</span>{' '}
             o que assistir.
@@ -133,7 +133,7 @@ export default function LandingPage() {
                 </svg>
               }
             >
-              Criar página para meu canal
+              Entrar com Twitch
             </Button>
             <Link
               to="/explore"
@@ -146,7 +146,7 @@ export default function LandingPage() {
 
           {/* Social proof */}
           <p className="mt-8 text-xs text-content-muted">
-            Grátis para sempre · Sem cartão de crédito · Login com Twitch
+            Gratuito para viewers · Streamers por convite · Login seguro com Twitch
           </p>
         </div>
       </section>
@@ -154,8 +154,8 @@ export default function LandingPage() {
       {/* ============================================================
           COMO FUNCIONA
       ============================================================ */}
-      <section className="py-20 px-4" id="como-funciona">
-        <div className="max-w-6xl mx-auto">
+      <section className="page-section" id="como-funciona">
+        <div className="app-shell">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-content-primary mb-3">Como funciona</h2>
             <p className="text-content-secondary max-w-xl mx-auto">
@@ -182,8 +182,8 @@ export default function LandingPage() {
       {/* ============================================================
           RECURSOS — STREAMERS
       ============================================================ */}
-      <section className="py-20 px-4 bg-bg-secondary" id="recursos-streamer">
-        <div className="max-w-6xl mx-auto">
+      <section className="page-section bg-bg-secondary/60" id="recursos-streamer">
+        <div className="app-shell">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="inline-flex items-center gap-2 bg-brand-purple/10 border border-brand-purple/20 rounded-full px-3 py-1 mb-5">
@@ -214,7 +214,7 @@ export default function LandingPage() {
                 onClick={handleLoginWithTwitch}
                 leftIcon={<ArrowRight size={16} />}
               >
-                Criar meu canal
+                Acessar meu painel
               </Button>
             </div>
 
@@ -259,8 +259,8 @@ export default function LandingPage() {
       {/* ============================================================
           RECURSOS — VIEWERS
       ============================================================ */}
-      <section className="py-20 px-4" id="recursos-viewer">
-        <div className="max-w-6xl mx-auto">
+      <section className="page-section" id="recursos-viewer">
+        <div className="app-shell">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-brand-green/10 border border-brand-green/20 rounded-full px-3 py-1 mb-5">
               <Users size={13} className="text-brand-green" />
@@ -290,7 +290,7 @@ export default function LandingPage() {
       {/* ============================================================
           INTEGRAÇÃO TWITCH
       ============================================================ */}
-      <section className="py-20 px-4 bg-bg-secondary" id="twitch">
+      <section className="page-section bg-bg-secondary/60" id="twitch">
         <div className="max-w-3xl mx-auto text-center">
           <div className="w-16 h-16 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center mx-auto mb-6">
             <svg viewBox="0 0 24 24" className="w-8 h-8 fill-brand-purple">
@@ -322,7 +322,7 @@ export default function LandingPage() {
       {/* ============================================================
           FAQ
       ============================================================ */}
-      <section className="py-20 px-4" id="faq">
+      <section className="page-section" id="faq">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-content-primary mb-3">Perguntas frequentes</h2>
@@ -346,7 +346,7 @@ export default function LandingPage() {
       {/* ============================================================
           CTA FINAL
       ============================================================ */}
-      <section className="py-20 px-4 bg-bg-secondary">
+      <section className="page-section bg-bg-secondary/60">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-content-primary mb-4">
             Pronto para começar?
@@ -364,7 +364,7 @@ export default function LandingPage() {
                 </svg>
               }
             >
-              Criar página para meu canal
+              Entrar com Twitch
             </Button>
             <Link
               to="/explore"
