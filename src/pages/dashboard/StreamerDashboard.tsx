@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -344,6 +344,7 @@ export default function StreamerDashboard() {
   const [newContentDescription, setNewContentDescription] = useState('')
   const [newContentSaving, setNewContentSaving] = useState(false)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
+  const [platformAccessLoading, setPlatformAccessLoading] = useState(true)
   const [platformViewers, setPlatformViewers] = useState<PlatformViewer[]>([])
   const [platformStreamers, setPlatformStreamers] = useState<PlatformStreamer[]>([])
   const [promotingViewerId, setPromotingViewerId] = useState<string | null>(null)
@@ -433,14 +434,25 @@ export default function StreamerDashboard() {
   }
 
   useEffect(() => {
-    if (!profile?.id) return
+    if (!profile?.id) {
+      setPlatformAccessLoading(false)
+      return
+    }
+    let active = true
     const loadPlatformAccess = async () => {
-      const { data } = await supabase.from('platform_admins').select('user_id').eq('user_id', profile.id).maybeSingle()
-      const allowed = !!data
-      setIsPlatformAdmin(allowed)
-      if (allowed) await loadPlatformViewers()
+      setPlatformAccessLoading(true)
+      try {
+        const { data } = await supabase.from('platform_admins').select('user_id').eq('user_id', profile.id).maybeSingle()
+        if (!active) return
+        const allowed = !!data
+        setIsPlatformAdmin(allowed)
+        if (allowed) await loadPlatformViewers()
+      } finally {
+        if (active) setPlatformAccessLoading(false)
+      }
     }
     loadPlatformAccess()
+    return () => { active = false }
   }, [profile?.id])
 
   const handlePromoteViewer = async (viewer: PlatformViewer) => {
@@ -929,7 +941,12 @@ export default function StreamerDashboard() {
 
         {/* Tabs */}
         <div className="flex max-w-full gap-1 overflow-x-auto bg-bg-secondary border border-border rounded-xl p-1 w-fit">
-          {tabs.map(({ id, label, icon: Icon }) => (
+          {platformAccessLoading ? (
+            <div className="flex min-h-10 min-w-64 items-center justify-center gap-2 px-4 text-sm text-content-muted">
+              <Loader2 size={15} className="animate-spin text-brand-purple" />
+              Carregando menu...
+            </div>
+          ) : tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}

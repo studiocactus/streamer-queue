@@ -1,81 +1,104 @@
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Tv2, Heart } from 'lucide-react'
+import { Activity, ArrowUpRight, Coffee, Gauge, Heart, LayoutDashboard, Radio, Search, Sparkles, Tv2, Users } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+
+interface PlatformStats {
+  usersCount: number | null
+  streamersCount: number | null
+  operational: boolean | null
+}
+
+const supportUrl = import.meta.env.VITE_SUPPORT_URL || 'https://www.twitch.tv/subs/thenees'
 
 export function Footer() {
+  const [stats, setStats] = useState<PlatformStats>({ usersCount: null, streamersCount: null, operational: null })
+
+  useEffect(() => {
+    let active = true
+    const loadStats = async () => {
+      const { data, error } = await supabase.rpc('get_platform_stats')
+      if (!active) return
+      const totals = data?.[0]
+      setStats({
+        usersCount: error ? null : Number(totals?.users_count ?? 0),
+        streamersCount: error ? null : Number(totals?.streamers_count ?? 0),
+        operational: !error,
+      })
+    }
+    loadStats()
+    return () => { active = false }
+  }, [])
+
+  const formatTotal = (value: number | null) => value === null ? '—' : new Intl.NumberFormat('pt-BR').format(value)
+
   return (
-    <footer className="border-t border-border bg-bg-secondary mt-auto">
+    <footer className="mt-auto border-t border-border bg-bg-secondary">
       <div className="app-shell py-10 lg:py-14">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Brand */}
-          <div className="col-span-1 md:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-brand-purple rounded-lg flex items-center justify-center">
-                <Tv2 size={15} className="text-white" />
-              </div>
-              <span className="font-bold text-base text-content-primary">
-                Watch<span className="text-brand-purple">Queue</span>
-              </span>
+        <div className="mb-10 grid gap-4 sm:grid-cols-3">
+          <FooterMetric icon={<Activity size={18} />} label="Status da plataforma">
+            <span className={`h-2 w-2 rounded-full ${stats.operational === null ? 'animate-pulse bg-content-muted' : stats.operational ? 'bg-status-approved' : 'bg-status-rejected'}`} />
+            {stats.operational === null ? 'Verificando sistemas...' : stats.operational ? 'Todos os sistemas operacionais' : 'Instabilidade detectada'}
+          </FooterMetric>
+          <FooterMetric icon={<Users size={18} />} label="Pessoas na comunidade" value={formatTotal(stats.usersCount)} />
+          <FooterMetric icon={<Tv2 size={18} />} label="Streamers ativos" value={formatTotal(stats.streamersCount)} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">
+          <div className="lg:col-span-2">
+            <Link to="/" className="mb-4 flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-purple"><Tv2 size={16} className="text-white" /></span>
+              <span className="text-lg font-bold text-content-primary">Watch<span className="text-brand-purple">Queue</span></span>
             </Link>
-            <p className="text-sm text-content-secondary max-w-xs">
-              Plataforma onde a comunidade escolhe o que o streamer assiste.
-              Organize sua fila, receba sugestões e engaje sua audiência.
+            <p className="max-w-md text-sm leading-relaxed text-content-secondary">
+              A comunidade escolhe o que o streamer assiste. Organize filas, receba sugestões e transforme cada transmissão em uma experiência compartilhada.
             </p>
+            <a href={supportUrl} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex items-center gap-2 rounded-xl border border-brand-purple/30 bg-brand-purple/10 px-4 py-2.5 text-sm font-semibold text-brand-purple transition-colors hover:bg-brand-purple/20">
+              <Coffee size={16} /> Apoiar o projeto <ArrowUpRight size={14} />
+            </a>
+            <p className="mt-2 text-xs text-content-muted">Apoio financeiro é bem-vindo, mas totalmente opcional.</p>
           </div>
 
-          {/* Produto */}
-          <div>
-            <h3 className="text-sm font-semibold text-content-primary mb-3">Produto</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/explore" className="text-sm text-content-secondary hover:text-content-primary transition-colors">
-                  Explorar Streamers
-                </Link>
-              </li>
-              <li>
-                <Link to="/dashboard" className="text-sm text-content-secondary hover:text-content-primary transition-colors">
-                  Dashboard
-                </Link>
-              </li>
-            </ul>
-          </div>
+          <FooterLinks title="Produto" links={[
+            { to: '/explore', icon: <Search size={14} />, label: 'Buscar Streamers' },
+            { to: '/dashboard', icon: <LayoutDashboard size={14} />, label: 'Dashboard' },
+            { to: '/', icon: <Sparkles size={14} />, label: 'Conhecer a plataforma' },
+          ]} />
 
-          {/* Recursos */}
           <div>
-            <h3 className="text-sm font-semibold text-content-primary mb-3">Recursos</h3>
-            <ul className="space-y-2">
-              <li>
-                <a
-                  href="https://twitch.tv"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-content-secondary hover:text-content-primary transition-colors"
-                >
-                  Twitch
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://supabase.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-content-secondary hover:text-content-primary transition-colors"
-                >
-                  Supabase
-                </a>
-              </li>
+            <h3 className="mb-4 text-sm font-semibold text-content-primary">Recursos</h3>
+            <ul className="space-y-3">
+              <li><a href="https://twitch.tv" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-content-secondary transition-colors hover:text-content-primary"><Radio size={14} /> Twitch <ArrowUpRight size={12} /></a></li>
+              <li><span className="flex items-center gap-2 text-sm text-content-secondary"><Gauge size={14} /> Status em tempo real</span></li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-border mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-content-muted flex items-center gap-1">
-            Feito com <Heart size={12} className="text-brand-purple fill-brand-purple" /> para a comunidade de streamers
-          </p>
-          <p className="text-xs text-content-muted">
-            © {new Date().getFullYear()} WatchQueue. Todos os direitos reservados.
-          </p>
+        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 sm:flex-row">
+          <p className="flex items-center gap-1 text-xs text-content-muted">Feito com <Heart size={12} className="fill-brand-purple text-brand-purple" /> para a comunidade de streamers</p>
+          <p className="text-xs text-content-muted">© {new Date().getFullYear()} WatchQueue. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>
+  )
+}
+
+function FooterMetric({ icon, label, value, children }: { icon: ReactNode; label: string; value?: string; children?: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border bg-bg-primary/45 p-4">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-purple/10 text-brand-purple">{icon}</span>
+        <div><p className="text-xs text-content-muted">{label}</p><p className="mt-0.5 flex items-center gap-2 text-sm font-semibold text-content-primary">{value ?? children}</p></div>
+      </div>
+    </div>
+  )
+}
+
+function FooterLinks({ title, links }: { title: string; links: { to: string; icon: ReactNode; label: string }[] }) {
+  return (
+    <div>
+      <h3 className="mb-4 text-sm font-semibold text-content-primary">{title}</h3>
+      <ul className="space-y-3">{links.map((link) => <li key={link.to + link.label}><Link to={link.to} className="flex items-center gap-2 text-sm text-content-secondary transition-colors hover:text-content-primary">{link.icon}{link.label}</Link></li>)}</ul>
+    </div>
   )
 }
