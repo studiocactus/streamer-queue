@@ -73,11 +73,28 @@ export const useAuthStore = create<AuthState>()(
           }
 
           // Buscar perfil de streamer (se for dono de algum canal)
-          const { data: streamer } = await supabase
+          let { data: streamer } = await supabase
             .from('streamers')
             .select('*, settings:streamer_settings(*)')
             .eq('owner_id', user.id)
             .maybeSingle()
+
+          // Se o canal ainda não existe, cria/recupera via RPC ensure_streamer_profile
+          if (!streamer) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data: created } = await supabase.rpc('ensure_streamer_profile', {
+              p_user_id: user.id,
+            } as any)
+
+            if (created && created.length > 0) {
+              const { data: reloaded } = await supabase
+                .from('streamers')
+                .select('*, settings:streamer_settings(*)')
+                .eq('id', created[0].id)
+                .maybeSingle()
+              streamer = reloaded
+            }
+          }
 
           set({ streamerProfile: streamer })
         } catch (error) {
