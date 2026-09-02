@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
@@ -206,11 +206,58 @@ export default function StreamerDashboard() {
   )
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
+  const [chatConnected, setChatConnected] = useState(false)
+  const [chatStatusLoading, setChatStatusLoading] = useState(true)
+  const [chatDisconnecting, setChatDisconnecting] = useState(false)
 
   const {
     suggestions, watching, queued, pending, approved,
     completed, rejected, isLoading, updateStatus, remove
   } = useSuggestions(streamerProfile?.id)
+
+  useEffect(() => {
+    if (!streamerProfile?.id) return
+    let active = true
+    const loadChatStatus = async () => {
+      setChatStatusLoading(true)
+      const { data } = await supabase
+        .from('twitch_connections')
+        .select('token_status')
+        .eq('streamer_id', streamerProfile.id)
+        .maybeSingle()
+      if (active) {
+        setChatConnected(data?.token_status === 'active')
+        setChatStatusLoading(false)
+      }
+    }
+    loadChatStatus()
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('chat') === 'connected') {
+      setActiveTab('twitch')
+      toast.success('Mensagens da Twitch conectadas.')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+    return () => { active = false }
+  }, [streamerProfile?.id])
+
+  const handleDisconnectChat = async () => {
+    if (!streamerProfile) return
+    setChatDisconnecting(true)
+    try {
+      const { error } = await supabase.functions.invoke('twitch-auth', {
+        body: { action: 'disconnect_chat', streamer_id: streamerProfile.id },
+      })
+      if (error) throw error
+      setChatConnected(false)
+      toast.success('Mensagens da Twitch desconectadas.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível desconectar as mensagens da Twitch.')
+    } finally {
+      setChatDisconnecting(false)
+    }
+  }
 
   const handleAction = async (id: string, status: SuggestionStatus) => {
     try {
@@ -514,18 +561,26 @@ export default function StreamerDashboard() {
               </h2>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-brand-purple/10 border border-brand-purple/20 rounded-xl p-4 flex gap-3">
-                <CheckCircle size={18} className="text-brand-purple shrink-0 mt-0.5" />
+              <div className={cn('rounded-xl border p-4 flex gap-3', chatConnected ? 'border-green-500/25 bg-green-500/10' : 'border-brand-purple/20 bg-brand-purple/10')}>
+                <CheckCircle size={18} className={cn('shrink-0 mt-0.5', chatConnected ? 'text-green-400' : 'text-brand-purple')} />
                 <div>
                   <p className="text-sm font-medium text-content-primary mb-1">
-                    Conecte o chat da Twitch
+                    {chatConnected ? 'Mensagens conectadas' : 'Conecte o chat da Twitch'}
                   </p>
                   <p className="text-xs text-content-secondary">
-                    Autorize separadamente o envio de mensagens. Viewers continuam usando apenas o login básico.
+                    {chatConnected
+                      ? 'O WatchQueue está autorizado a enviar as mensagens configuradas no chat do seu canal.'
+                      : 'Autorize separadamente o envio de mensagens. Viewers continuam usando apenas o login básico.'}
                   </p>
-                  <Button className="mt-3" size="sm" onClick={() => { window.location.href = getTwitchChatConnectUrl(streamerProfile.id) }}>
-                    Autorizar mensagens no chat
-                  </Button>
+                  {!chatStatusLoading && (chatConnected ? (
+                    <Button className="mt-3" size="sm" variant="danger" loading={chatDisconnecting} onClick={handleDisconnectChat}>
+                      Desconectar mensagens
+                    </Button>
+                  ) : (
+                    <Button className="mt-3" size="sm" onClick={() => { window.location.href = getTwitchChatConnectUrl(streamerProfile.id) }}>
+                      Autorizar mensagens no chat
+                    </Button>
+                  ))}
                 </div>
               </div>
 

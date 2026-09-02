@@ -46,6 +46,59 @@ Deno.serve(async (req) => {
     })
   }
 
+  if (req.method === 'POST') {
+    const corsHeaders = { 'Access-Control-Allow-Origin': APP_URL, 'Content-Type': 'application/json' }
+    try {
+      const { action, streamer_id: streamerId } = await req.json()
+      const authHeader = req.headers.get('Authorization')
+      if (action !== 'disconnect_chat' || !streamerId || !authHeader?.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400, headers: corsHeaders })
+      }
+
+      const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const { data: authData, error: authError } = await adminClient.auth.getUser(authHeader.slice(7))
+      if (authError || !authData.user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
+      }
+
+      const { data: owner } = await adminClient
+        .from('streamer_members')
+        .select('id')
+        .eq('streamer_id', streamerId)
+        .eq('user_id', authData.user.id)
+        .eq('role', 'owner')
+        .maybeSingle()
+      if (!owner) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders })
+      }
+
+      const { data: credential } = await adminClient
+        .from('twitch_chat_credentials')
+        .select('access_token')
+        .eq('streamer_id', streamerId)
+        .maybeSingle()
+
+      if (credential?.access_token && TWITCH_CLIENT_ID) {
+        await fetch('https://id.twitch.tv/oauth2/revoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ client_id: TWITCH_CLIENT_ID, token: credential.access_token }),
+        }).catch((error) => console.error('Falha ao revogar token Twitch:', error))
+      }
+
+      await adminClient.from('twitch_chat_credentials').delete().eq('streamer_id', streamerId)
+      await adminClient.from('twitch_connections').update({ token_status: 'revoked' }).eq('streamer_id', streamerId)
+      await adminClient.from('streamer_settings').update({ chat_notifications_enabled: false }).eq('streamer_id', streamerId)
+
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders })
+    } catch (error) {
+      console.error('Erro ao desconectar chat:', error)
+      return new Response(JSON.stringify({ error: 'Disconnect failed' }), { status: 500, headers: corsHeaders })
+    }
+  }
+
   // ============================================================
   // GET /twitch-auth/login — Inicia o fluxo OAuth
   // ============================================================
