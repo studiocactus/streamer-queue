@@ -181,6 +181,7 @@ Deno.serve(async (req) => {
             type: 'magiclink',
             email: twitchUser.email || `${twitchUser.id}@twitch.watchqueue.app`,
             options: {
+              redirectTo: `${APP_URL}/auth/callback`,
               data: {
                 provider: 'twitch',
                 provider_id: twitchUser.id,
@@ -220,6 +221,9 @@ Deno.serve(async (req) => {
           await adminClient.auth.admin.generateLink({
             type: 'magiclink',
             email: twitchUser.email || `${twitchUser.id}@twitch.watchqueue.app`,
+            options: {
+              redirectTo: `${APP_URL}/auth/callback`,
+            },
           })
 
         if (linkError) throw linkError
