@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -116,13 +116,15 @@ export default function LandingPage() {
       gsap.utils.toArray<HTMLElement>('[data-gsap-section]').forEach((section) => {
         const heading = section.querySelector('[data-gsap-heading]')
         const cards = section.querySelectorAll('[data-gsap-card]')
-        const timeline = gsap.timeline({
-          scrollTrigger: { trigger: section, start: 'top 82%', once: true },
-          defaults: { ease: 'power2.out' },
+        ScrollTrigger.create({
+          trigger: section,
+          start: 'top 88%',
+          once: true,
+          onEnter: () => {
+            if (heading) gsap.fromTo(heading, { autoAlpha: 0, y: 22 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out', clearProps: 'all' })
+            if (cards.length) gsap.fromTo(cards, { autoAlpha: 0, y: 24, scale: 0.99 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.48, stagger: 0.07, ease: 'power2.out', clearProps: 'all' })
+          },
         })
-
-        if (heading) timeline.from(heading, { autoAlpha: 0, y: 26, duration: 0.55 })
-        if (cards.length) timeline.from(cards, { autoAlpha: 0, y: 28, scale: 0.985, duration: 0.5, stagger: 0.08 }, heading ? '-=0.2' : 0)
       })
     })
 
@@ -293,7 +295,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <Button
-                className="mt-8"
+                className="landing-primary-cta mt-8 rounded-full px-6"
                 onClick={handleLoginWithTwitch}
                 leftIcon={<ArrowRight size={16} />}
               >
@@ -373,9 +375,10 @@ export default function LandingPage() {
       {/* ============================================================
           INTEGRAÇÃO TWITCH
       ============================================================ */}
-      <section data-gsap-section className="page-section bg-bg-secondary/60" id="twitch">
-        <div className="max-w-3xl mx-auto text-center">
-          <div data-gsap-heading className="w-16 h-16 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center mx-auto mb-6">
+      <section data-gsap-section className="twitch-spotlight page-section" id="twitch">
+        <div className="app-shell relative">
+          <div data-gsap-heading className="mx-auto max-w-3xl text-center">
+          <div className="twitch-icon-glow w-16 h-16 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center mx-auto mb-6">
             <svg viewBox="0 0 24 24" className="w-8 h-8 fill-brand-purple">
               <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
             </svg>
@@ -387,13 +390,14 @@ export default function LandingPage() {
             Conecte seu canal Twitch e receba anúncios automáticos no chat quando uma sugestão é recebida
             ou quando você começa a assistir. Mensagens personalizáveis e logs completos de envio.
           </p>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
             {[
               { title: '🎬 Nova sugestão', msg: '{viewer} adicionou "{titulo}" à lista!' },
               { title: '✅ Aprovação', msg: 'A sugestão "{titulo}" foi aprovada!' },
               { title: '🍿 Assistindo agora', msg: 'Começamos a assistir "{titulo}"!' },
             ].map((item) => (
-              <div data-gsap-card key={item.title} className="bg-bg-primary border border-border rounded-xl p-4">
+              <div data-gsap-card key={item.title} className="twitch-message-card rounded-2xl p-5">
                 <p className="text-xs font-semibold text-content-primary mb-2">{item.title}</p>
                 <p className="text-xs text-content-muted">{item.msg}</p>
               </div>
@@ -412,15 +416,7 @@ export default function LandingPage() {
           </div>
           <div className="space-y-3">
             {FAQ.map((item) => (
-              <details data-gsap-card key={item.q} className="group bg-bg-secondary border border-border rounded-2xl">
-                <summary className="flex items-center justify-between p-5 cursor-pointer list-none">
-                  <span className="text-sm font-medium text-content-primary">{item.q}</span>
-                  <ChevronRight size={16} className="text-content-muted group-open:rotate-90 transition-transform shrink-0 ml-3" />
-                </summary>
-                <div className="px-5 pb-5">
-                  <p className="text-sm text-content-secondary">{item.a}</p>
-                </div>
-              </details>
+              <FaqItem key={item.q} question={item.q} answer={item.a} />
             ))}
           </div>
         </div>
@@ -429,9 +425,11 @@ export default function LandingPage() {
       {/* ============================================================
           CTA FINAL
       ============================================================ */}
-      <section data-gsap-section className="page-section bg-bg-secondary/60">
-        <div data-gsap-heading className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-content-primary mb-4">
+      <section data-gsap-section className="page-section">
+        <div data-gsap-heading className="final-cta relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] px-6 py-14 text-center sm:px-12 sm:py-20">
+          <div className="relative z-10 mx-auto max-w-2xl">
+          <p className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-brand-green">Sua próxima live começa aqui</p>
+          <h2 className="mb-4 text-3xl font-bold text-content-primary sm:text-5xl">
             Pronto para começar?
           </h2>
           <p className="text-content-secondary mb-8">
@@ -440,6 +438,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
               size="lg"
+              className="landing-primary-cta rounded-full px-7"
               onClick={handleLoginWithTwitch}
               leftIcon={
                 <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
@@ -451,13 +450,30 @@ export default function LandingPage() {
             </Button>
             <Link
               to="/explore"
-              className="focus-ring inline-flex h-12 items-center justify-center rounded-xl border border-transparent px-6 text-base font-medium text-content-secondary transition-all duration-200 hover:bg-bg-secondary hover:text-content-primary"
+              className="landing-secondary-cta focus-ring inline-flex h-12 items-center justify-center rounded-full px-6 text-base font-medium text-content-primary transition-all duration-300"
             >
               Explorar streamers →
             </Link>
           </div>
+          </div>
         </div>
       </section>
+    </div>
+  )
+}
+
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div data-gsap-card className={`faq-item rounded-2xl border transition-colors duration-300 ${open ? 'border-brand-purple/35 bg-brand-purple/[0.06]' : 'border-border bg-bg-secondary'}`}>
+      <button type="button" aria-expanded={open} onClick={() => setOpen((current) => !current)} className="flex w-full items-center justify-between p-5 text-left">
+        <span className="text-sm font-medium text-content-primary">{question}</span>
+        <ChevronRight size={16} className={`ml-3 shrink-0 text-content-muted transition-transform duration-300 ${open ? 'rotate-90 text-brand-purple-light' : ''}`} />
+      </button>
+      <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+        <div className="overflow-hidden"><p className="px-5 pb-5 text-sm leading-relaxed text-content-secondary">{answer}</p></div>
+      </div>
     </div>
   )
 }

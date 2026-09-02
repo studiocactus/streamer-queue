@@ -19,11 +19,28 @@ export function Footer() {
     const loadStats = async () => {
       const { data, error } = await supabase.rpc('get_platform_stats')
       if (!active) return
-      const totals = data?.[0]
+      let usersCount: number | null = null
+      let streamersCount: number | null = null
+
+      if (!error) {
+        const totals = data?.[0]
+        usersCount = Number(totals?.users_count ?? 0)
+        streamersCount = Number(totals?.streamers_count ?? 0)
+      } else {
+        // Backward-compatible fallback while the aggregate RPC migration propagates.
+        const [profilesResult, streamersResult] = await Promise.all([
+          supabase.from('profiles').select('id', { count: 'exact', head: true }),
+          supabase.from('streamers').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        ])
+        if (!active) return
+        usersCount = profilesResult.error ? null : profilesResult.count
+        streamersCount = streamersResult.error ? null : streamersResult.count
+      }
+
       setStats({
-        usersCount: error ? null : Number(totals?.users_count ?? 0),
-        streamersCount: error ? null : Number(totals?.streamers_count ?? 0),
-        operational: !error,
+        usersCount,
+        streamersCount,
+        operational: usersCount !== null && streamersCount !== null,
       })
     }
     loadStats()
@@ -33,7 +50,7 @@ export function Footer() {
   const formatTotal = (value: number | null) => value === null ? '—' : new Intl.NumberFormat('pt-BR').format(value)
 
   return (
-    <footer className="mt-auto border-t border-border bg-bg-secondary">
+    <footer className="landing-footer relative mt-auto overflow-hidden border-t border-border bg-bg-secondary">
       <div className="app-shell py-10 lg:py-14">
         <div className="mb-10 grid gap-4 sm:grid-cols-3">
           <FooterMetric icon={<Activity size={18} />} label="Status da plataforma">
@@ -53,7 +70,7 @@ export function Footer() {
             <p className="max-w-md text-sm leading-relaxed text-content-secondary">
               A comunidade escolhe o que o streamer assiste. Organize filas, receba sugestões e transforme cada transmissão em uma experiência compartilhada.
             </p>
-            <a href={supportUrl} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex items-center gap-2 rounded-xl border border-brand-purple/30 bg-brand-purple/10 px-4 py-2.5 text-sm font-semibold text-brand-purple transition-colors hover:bg-brand-purple/20">
+            <a href={supportUrl} target="_blank" rel="noopener noreferrer" className="support-cta mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white transition-all duration-300">
               <Coffee size={16} /> Apoiar o projeto <ArrowUpRight size={14} />
             </a>
             <p className="mt-2 text-xs text-content-muted">Apoio financeiro é bem-vindo, mas totalmente opcional.</p>

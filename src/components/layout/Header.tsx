@@ -75,8 +75,8 @@ export function Header() {
 
   return (
     <header className={cn(
-      'sticky top-0 z-40 transition-all',
-      isLanding ? 'border-b border-transparent bg-bg-primary/60 py-2 backdrop-blur-2xl' : 'border-b border-border bg-bg-primary/80 backdrop-blur-xl'
+      'top-0 z-40 transition-all',
+      isLanding ? 'fixed inset-x-0 border-b border-transparent bg-transparent py-3' : 'sticky border-b border-border bg-bg-primary/80 backdrop-blur-xl'
     )}>
       <nav className={cn(
         'app-shell',
