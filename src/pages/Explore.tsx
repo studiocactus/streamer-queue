@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Tv2, ThumbsUp, Play, X, RefreshCw } from 'lucide-react'
+import { Search, Tv2, Play, X, RefreshCw, ArrowUpRight, ListVideo, Radio } from 'lucide-react'
 import { useStreamers } from '@/hooks/useStreamer'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -13,27 +13,41 @@ import type { Streamer } from '@/types'
 
 function StreamerCard({ streamer }: { streamer: Streamer }) {
   return (
-    <Link to={`/streamer/${streamer.slug.toLowerCase()}`} className="block group">
+    <Link to={`/streamer/${streamer.slug.toLowerCase()}`} className="group block h-full focus-ring rounded-3xl">
       <Card
-        hover
-        className="overflow-hidden h-full flex flex-col"
+        className="relative flex h-full flex-col overflow-hidden rounded-3xl border-border/80 bg-bg-secondary/95 shadow-[0_18px_55px_rgba(0,0,0,0.24)] transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-brand-purple/50 group-hover:shadow-[0_24px_70px_rgba(145,70,255,0.2)]"
       >
+        <div className="pointer-events-none absolute inset-x-8 top-0 z-20 h-px bg-gradient-to-r from-transparent via-brand-purple/80 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
         {/* Cover */}
-        <div className="relative h-28 bg-bg-tertiary overflow-hidden">
+        <div className="relative h-36 overflow-hidden bg-bg-tertiary">
           {streamer.cover_url ? (
             <img
               src={streamer.cover_url}
               alt={`Capa de ${streamer.channel_name}`}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-brand-purple/20 to-bg-tertiary flex items-center justify-center">
-              <Tv2 size={32} className="text-brand-purple/30" />
+            <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_25%_20%,rgba(145,70,255,0.4),transparent_42%),linear-gradient(135deg,#211735,#12121a)]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-purple/25 bg-brand-purple/10 shadow-[0_12px_35px_rgba(145,70,255,0.18)] transition-transform duration-300 group-hover:rotate-3 group-hover:scale-105">
+                <Tv2 size={27} className="text-brand-purple" />
+              </div>
             </div>
           )}
+          <div className="absolute inset-0 bg-gradient-to-t from-bg-secondary via-bg-secondary/5 to-transparent" />
+          <div className="absolute left-3 top-3">
+            <span className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide backdrop-blur-md',
+              streamer.is_live
+                ? 'border-red-400/30 bg-red-500/85 text-white shadow-[0_6px_20px_rgba(239,68,68,0.28)]'
+                : 'border-white/10 bg-black/45 text-white/70'
+            )}>
+              {streamer.is_live ? <Radio size={10} /> : <span className="h-1.5 w-1.5 rounded-full bg-white/45" />}
+              {streamer.is_live ? 'Ao vivo' : 'Offline'}
+            </span>
+          </div>
           {streamer.watching_now_title && (
             <div className="absolute top-3 right-3">
-              <Badge variant="purple" size="sm" className="text-xs">
+              <Badge variant="purple" size="sm" className="border-brand-purple/30 bg-brand-purple/90 text-[10px] text-white shadow-lg backdrop-blur-md">
                 <Play size={10} className="mr-1 fill-current" />
                 Assistindo agora
               </Badge>
@@ -41,17 +55,17 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
           )}
         </div>
 
-        <div className="p-4 flex flex-col gap-3 flex-1">
+        <div className="relative flex flex-1 flex-col gap-4 p-5 pt-3">
           <div className="flex items-center gap-3">
             <Avatar
               src={streamer.avatar_url}
               alt={streamer.channel_name}
               fallback={streamer.channel_name}
               size="md"
-              className="-mt-8 ring-2 ring-bg-secondary"
+              className="-mt-10 ring-4 ring-bg-secondary shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-transform duration-300 group-hover:scale-105"
             />
             <div className="min-w-0">
-              <h3 className="font-semibold text-content-primary truncate">
+              <h3 className="truncate text-base font-bold text-content-primary transition-colors group-hover:text-white">
                 {streamer.channel_name}
               </h3>
               <p className="text-xs text-content-muted">@{streamer.slug}</p>
@@ -59,26 +73,27 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
           </div>
 
           {streamer.bio && (
-            <p className="text-xs text-content-secondary line-clamp-2">{streamer.bio}</p>
+            <p className="min-h-10 text-xs leading-relaxed text-content-secondary line-clamp-2">{streamer.bio}</p>
           )}
 
           {streamer.watching_now_title && (
-            <p className="truncate rounded-lg border border-brand-purple/20 bg-brand-purple/10 px-2.5 py-2 text-xs text-content-secondary">
-              <span className="text-content-muted">Agora:</span>{' '}
-              <span className="font-medium text-content-primary">{streamer.watching_now_title}</span>
-            </p>
+            <div className="relative overflow-hidden rounded-xl border border-brand-purple/30 bg-gradient-to-r from-brand-purple/15 to-brand-purple/5 px-3 py-2.5">
+              <div className="absolute inset-y-0 left-0 w-0.5 bg-brand-purple" />
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-purple">Em destaque agora</p>
+              <p className="mt-0.5 truncate text-xs font-semibold text-content-primary">{streamer.watching_now_title}</p>
+            </div>
           )}
 
-          <div className="flex items-center justify-between mt-auto pt-2 border-t border-border">
+          <div className="mt-auto flex items-center justify-between border-t border-border/80 pt-3">
             <div className="flex items-center gap-3 text-xs text-content-muted">
-              <span className="flex items-center gap-1">
-                <ThumbsUp size={11} />
+              <span className="flex items-center gap-1.5 rounded-full bg-bg-tertiary px-2.5 py-1.5">
+                <ListVideo size={12} className="text-brand-purple" />
                 {(streamer.suggestion_count ?? 0)}{' '}
                 {(streamer.suggestion_count ?? 0) === 1 ? 'sugestão' : 'sugestões'}
               </span>
             </div>
-            <span className="text-xs text-brand-purple font-medium group-hover:underline">
-              Ver canal →
+            <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-purple px-3.5 text-xs font-semibold text-white shadow-[0_8px_22px_rgba(145,70,255,0.25)] transition-all duration-300 group-hover:bg-brand-purple-light group-hover:shadow-[0_10px_28px_rgba(145,70,255,0.4)]">
+              Ver canal <ArrowUpRight size={13} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </span>
           </div>
         </div>
