@@ -124,6 +124,151 @@
   .focus-ring {
     @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary;
   }
+
+  .landing-page {
+    background:
+      radial-gradient(circle at 12% 26%, rgba(53, 214, 255, 0.045), transparent 28rem),
+      radial-gradient(circle at 86% 58%, rgba(145, 70, 255, 0.055), transparent 30rem),
+      #0a0910;
+  }
+
+  .landing-hero {
+    min-height: min(960px, calc(100vh + 14rem));
+    background: linear-gradient(180deg, #09070e 0%, #0d0918 58%, #0a0910 100%);
+    isolation: isolate;
+  }
+
+  .landing-grid {
+    z-index: -1;
+    opacity: 0.26;
+    background-image:
+      linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: linear-gradient(to bottom, black 0%, transparent 80%);
+  }
+
+  .landing-aurora {
+    z-index: -1;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(154, 86, 255, .64), rgba(73, 36, 158, .3) 38%, transparent 68%);
+    filter: blur(54px);
+  }
+
+  .landing-orb {
+    z-index: -1;
+    width: 24rem;
+    height: 24rem;
+    border-radius: 9999px;
+    filter: blur(90px);
+    opacity: .23;
+    will-change: transform;
+  }
+
+  .landing-orb-left {
+    left: -12rem;
+    top: 24rem;
+    background: #20d9ff;
+  }
+
+  .landing-orb-right {
+    right: -10rem;
+    top: 13rem;
+    background: #c5ff00;
+    opacity: .12;
+  }
+
+  .landing-pill {
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: linear-gradient(135deg, rgba(255,255,255,.1), rgba(255,255,255,.035));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 14px 50px rgba(80,35,180,.2);
+    backdrop-filter: blur(18px);
+  }
+
+  .landing-gradient-text {
+    color: transparent;
+    background: linear-gradient(100deg, #ffffff 4%, #bfb0ff 35%, #9b65ff 61%, #c5ff00 108%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    filter: drop-shadow(0 0 30px rgba(145,70,255,.24));
+  }
+
+  .landing-gradient-text::after {
+    content: '';
+    position: absolute;
+    inset: -8% -3% -12%;
+    z-index: -1;
+    border: 3px solid rgba(169,112,255,.6);
+    border-radius: 50%;
+    transform: rotate(-2deg) scaleX(1.02);
+    clip-path: polygon(0 0, 100% 8%, 98% 100%, 2% 92%);
+  }
+
+  .landing-primary-cta {
+    box-shadow: 0 12px 38px rgba(145,70,255,.38), inset 0 1px 0 rgba(255,255,255,.28);
+  }
+
+  .landing-secondary-cta {
+    border: 1px solid rgba(255,255,255,.13);
+    background: rgba(255,255,255,.055);
+    backdrop-filter: blur(14px);
+  }
+
+  .landing-secondary-cta:hover {
+    border-color: rgba(197,255,0,.3);
+    background: rgba(255,255,255,.09);
+    box-shadow: 0 10px 34px rgba(197,255,0,.06);
+  }
+
+  .landing-product {
+    perspective: 1200px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 1.5rem;
+    background: linear-gradient(145deg, rgba(28,22,46,.94), rgba(11,10,17,.96));
+    box-shadow: 0 50px 120px rgba(0,0,0,.6), 0 0 90px rgba(115,52,255,.2), inset 0 1px 0 rgba(255,255,255,.12);
+    backdrop-filter: blur(24px);
+    will-change: transform;
+  }
+
+  .landing-product-bar {
+    background: rgba(255,255,255,.025);
+  }
+
+  .landing-queue-row,
+  .landing-mini-card {
+    transition: border-color .25s ease, background-color .25s ease, transform .25s ease;
+  }
+
+  .landing-queue-row:hover {
+    transform: translateX(4px);
+    border-color: rgba(169,112,255,.32);
+    background: rgba(145,70,255,.07);
+  }
+
+  .landing-mini-card {
+    border: 1px solid rgba(255,255,255,.09);
+    background: linear-gradient(145deg, rgba(145,70,255,.1), rgba(255,255,255,.025));
+  }
+
+  .landing-page [data-gsap-section] {
+    position: relative;
+    border-top: 1px solid rgba(255,255,255,.045);
+  }
+
+  .landing-page [data-gsap-card] {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 18px 60px rgba(0,0,0,.13);
+  }
+
+  @media (max-width: 640px) {
+    .landing-gradient-text::after {
+      border-width: 2px;
+    }
+
+    .landing-product {
+      border-radius: 1.1rem;
+    }
+  }
 }
 
 @keyframes skeleton {

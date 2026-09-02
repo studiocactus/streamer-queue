@@ -17,6 +17,7 @@ export function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null)
   const notificationRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
+  const isLanding = location.pathname === '/'
   const { notifications, unreadCount, markAllRead, removeOne, removeAll } = useStreamerNotifications(streamerProfile?.id)
 
   const isActive = (path: string) => location.pathname === path
@@ -73,8 +74,14 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-bg-primary/80 backdrop-blur-xl border-b border-border">
-      <nav className="app-shell">
+    <header className={cn(
+      'sticky top-0 z-40 transition-all',
+      isLanding ? 'border-b border-transparent bg-bg-primary/60 py-2 backdrop-blur-2xl' : 'border-b border-border bg-bg-primary/80 backdrop-blur-xl'
+    )}>
+      <nav className={cn(
+        'app-shell',
+        isLanding && 'rounded-2xl border border-white/10 bg-white/[0.045] px-4 shadow-[0_12px_45px_rgba(0,0,0,.24)] backdrop-blur-2xl sm:rounded-full sm:px-5'
+      )}>
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">

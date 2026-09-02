@@ -5,7 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import {
   Tv2, Users, ThumbsUp, Zap, Shield, Gift,
-  ChevronRight, Play, Star, CheckCircle, ArrowRight
+  ChevronRight, Play, Star, CheckCircle, ArrowRight, MessageCircle, Radio, Sparkles
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { getTwitchAuthUrl } from '@/lib/supabase'
@@ -94,11 +94,12 @@ export default function LandingPage() {
       const hero = gsap.timeline({ defaults: { ease: 'power3.out' } })
       hero
         .from('[data-hero-glow]', { autoAlpha: 0, scale: 0.72, duration: 1.2 })
+        .from('[data-hero-orb]', { autoAlpha: 0, scale: 0.5, stagger: 0.12, duration: 1 }, 0)
         .from('[data-hero-badge]', { autoAlpha: 0, y: 18, duration: 0.45 }, 0.1)
-        .from('[data-hero-title]', { autoAlpha: 0, y: 34, duration: 0.75 }, 0.18)
+        .from('[data-hero-line]', { autoAlpha: 0, yPercent: 115, stagger: 0.11, duration: 0.72 }, 0.18)
         .from('[data-hero-copy]', { autoAlpha: 0, y: 22, duration: 0.55 }, 0.38)
-        .from('[data-hero-actions] > *', { autoAlpha: 0, y: 16, stagger: 0.09, duration: 0.42 }, 0.52)
         .from('[data-hero-proof]', { autoAlpha: 0, duration: 0.45 }, 0.7)
+        .from('[data-hero-product]', { autoAlpha: 0, y: 60, rotationX: 8, duration: 0.9 }, 0.62)
 
       gsap.to('[data-hero-glow]', {
         scale: 1.08,
@@ -107,6 +108,10 @@ export default function LandingPage() {
         yoyo: true,
         ease: 'sine.inOut',
       })
+
+      gsap.to('[data-hero-orb="left"]', { y: 70, x: 20, ease: 'none', scrollTrigger: { trigger: '[data-hero]', start: 'top top', end: 'bottom top', scrub: 1 } })
+      gsap.to('[data-hero-orb="right"]', { y: 110, x: -30, ease: 'none', scrollTrigger: { trigger: '[data-hero]', start: 'top top', end: 'bottom top', scrub: 1 } })
+      gsap.to('[data-hero-product]', { y: 44, ease: 'none', scrollTrigger: { trigger: '[data-hero]', start: 'top top', end: 'bottom top', scrub: 1 } })
 
       gsap.utils.toArray<HTMLElement>('[data-gsap-section]').forEach((section) => {
         const heading = section.querySelector('[data-gsap-heading]')
@@ -122,7 +127,7 @@ export default function LandingPage() {
     })
 
     media.add('(prefers-reduced-motion: reduce)', () => {
-      gsap.set('[data-hero-glow], [data-hero-badge], [data-hero-title], [data-hero-copy], [data-hero-actions] > *, [data-hero-proof], [data-gsap-heading], [data-gsap-card]', {
+      gsap.set('[data-hero-glow], [data-hero-orb], [data-hero-badge], [data-hero-line], [data-hero-copy], [data-hero-proof], [data-hero-product], [data-gsap-heading], [data-gsap-card]', {
         clearProps: 'all',
       })
     })
@@ -131,7 +136,7 @@ export default function LandingPage() {
   }, { scope: pageRef })
 
   return (
-    <div ref={pageRef} className="min-h-screen">
+    <div ref={pageRef} className="landing-page min-h-screen">
       {authRequired && (
         <div
           role="status"
@@ -151,31 +156,31 @@ export default function LandingPage() {
       {/* ============================================================
           HERO
       ============================================================ */}
-      <section className="relative overflow-hidden bg-bg-hero-gradient py-20 sm:py-24 lg:py-32">
-        {/* Background glow */}
-        <div className="absolute inset-0 bg-hero-gradient pointer-events-none" />
-        <div data-hero-glow className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-brand-purple/8 rounded-full blur-3xl pointer-events-none" />
+      <section data-hero className="landing-hero relative overflow-hidden pb-20 pt-20 sm:pt-24 lg:pt-28">
+        <div className="landing-grid absolute inset-0 pointer-events-none" />
+        <div data-hero-glow className="landing-aurora pointer-events-none absolute left-1/2 top-[-20rem] h-[42rem] w-[72rem] -translate-x-1/2 rounded-full" />
+        <div data-hero-orb="left" className="landing-orb landing-orb-left pointer-events-none absolute" />
+        <div data-hero-orb="right" className="landing-orb landing-orb-right pointer-events-none absolute" />
 
         <div className="app-shell relative text-center">
-          <div data-hero-badge className="inline-flex items-center gap-2 bg-brand-purple/10 border border-brand-purple/20 rounded-full px-4 py-1.5 mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse-slow" />
-            <span className="text-xs font-medium text-brand-purple">Plataforma multi-streamer</span>
+          <div data-hero-badge className="landing-pill mb-8 inline-flex items-center gap-2 rounded-full px-4 py-2">
+            <Sparkles size={13} className="text-brand-green" />
+            <span className="text-xs font-semibold text-content-primary">A fila da sua live, movida pela comunidade</span>
           </div>
 
-          <h1 data-hero-title className="mx-auto max-w-5xl text-[clamp(2.35rem,6vw,5rem)] font-bold tracking-[-0.045em] text-content-primary leading-[1.02] mb-6">
-            Sua comunidade escolhe.{' '}
-            <span className="text-gradient">Você decide</span>{' '}
-            o que assistir.
+          <h1 data-hero-title className="mx-auto mb-7 max-w-6xl text-[clamp(2.65rem,7.2vw,6.5rem)] font-semibold leading-[0.94] tracking-[-0.065em] text-content-primary">
+            <span className="block overflow-hidden pb-2"><span data-hero-line className="block">Sua comunidade escolhe.</span></span>
+            <span className="block overflow-hidden pb-3"><span data-hero-line className="landing-gradient-text relative inline-block">Você decide o que assistir.</span></span>
           </h1>
 
-          <p data-hero-copy className="text-lg text-content-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-            Receba sugestões de filmes, séries, animes e muito mais, organize sua fila e
-            transforme as escolhas da comunidade em momentos de live.
+          <p data-hero-copy className="mx-auto mb-9 max-w-2xl text-base leading-relaxed text-content-secondary sm:text-lg">
+            Sugestões, votos e decisões em tempo real. Uma experiência mais viva para o streamer e para todo mundo que participa do chat.
           </p>
 
           <div data-hero-actions className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
               size="lg"
+              className="landing-primary-cta rounded-full px-7"
               onClick={handleLoginWithTwitch}
               leftIcon={
                 <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
@@ -187,7 +192,7 @@ export default function LandingPage() {
             </Button>
             <Link
               to="/explore"
-              className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border bg-bg-tertiary px-6 text-base font-medium text-content-primary transition-all duration-200 hover:border-border-light hover:bg-border"
+              className="landing-secondary-cta focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-base font-medium text-content-primary transition-all duration-300"
             >
               Encontrar um streamer
               <ChevronRight size={18} />
@@ -195,9 +200,37 @@ export default function LandingPage() {
           </div>
 
           {/* Social proof */}
-          <p data-hero-proof className="mt-8 text-xs text-content-muted">
-            Gratuito para viewers · Streamers por convite · Login seguro com Twitch
+          <p data-hero-proof className="mt-7 text-xs text-content-muted">
+            <span className="text-brand-green">●</span> Gratuito para viewers &nbsp;·&nbsp; Streamers por convite &nbsp;·&nbsp; Login seguro com Twitch
           </p>
+
+          <div data-hero-product className="landing-product mx-auto mt-14 max-w-5xl text-left sm:mt-16">
+            <div className="landing-product-bar flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5">
+              <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-400" /><span className="h-2.5 w-2.5 rounded-full bg-amber-300" /><span className="h-2.5 w-2.5 rounded-full bg-brand-green" /></div>
+              <div className="flex items-center gap-2 text-[10px] font-medium text-content-muted"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-status-completed" /> AO VIVO</div>
+            </div>
+            <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[1.25fr_.75fr]">
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4 sm:p-5">
+                <div className="mb-4 flex items-center justify-between"><div><p className="text-xs text-content-muted">Fila da comunidade</p><p className="font-semibold text-content-primary">Próximos conteúdos</p></div><span className="rounded-full bg-brand-purple/15 px-3 py-1 text-[10px] font-semibold text-brand-purple-light">12 sugestões</span></div>
+                {[
+                  { title: 'Arcane', type: 'Série', votes: 128, color: 'from-violet-500 to-fuchsia-500' },
+                  { title: 'Interestelar', type: 'Filme', votes: 96, color: 'from-cyan-400 to-blue-600' },
+                  { title: 'One Piece', type: 'Anime', votes: 74, color: 'from-orange-400 to-red-500' },
+                ].map((item, index) => (
+                  <div key={item.title} className="landing-queue-row mb-2 flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.035] p-3 last:mb-0">
+                    <div className={`h-10 w-10 rounded-lg bg-gradient-to-br ${item.color}`} />
+                    <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-content-primary">{item.title}</p><p className="text-[11px] text-content-muted">{item.type}</p></div>
+                    <div className="flex items-center gap-1.5 text-xs text-content-secondary"><ThumbsUp size={12} /> {item.votes}</div>
+                    <span className="text-xs font-bold text-content-muted">0{index + 1}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                <div className="landing-mini-card rounded-2xl p-5"><Radio size={18} className="mb-5 text-brand-green" /><p className="text-3xl font-bold text-content-primary">2.4k</p><p className="text-xs text-content-muted">votos da comunidade</p></div>
+                <div className="landing-mini-card rounded-2xl p-5"><MessageCircle size={18} className="mb-5 text-cyan-300" /><p className="text-3xl font-bold text-content-primary">Ao vivo</p><p className="text-xs text-content-muted">sincronizado com o chat</p></div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
