@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Tv2, ThumbsUp, Send, Filter, Clock,
@@ -241,6 +241,7 @@ export default function StreamerPage() {
   const [tab, setTab] = useState<TabType>('all')
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [suggestOpen, setSuggestOpen] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(8)
   const { user } = useAuthStore()
 
   // Hook busca TODAS as sugestões; filtragem é feita localmente para evitar loop infinito
@@ -248,6 +249,10 @@ export default function StreamerPage() {
     suggestions, watching, queued, pending: _pending,
     completed, isLoading: suggestionsLoading, vote, submit, checkDuplicates,
   } = useSuggestions(streamer?.id)
+
+  useEffect(() => {
+    setVisibleCount(8)
+  }, [tab, categoryFilter])
 
   const handleSuggest = () => {
     if (!user) {
@@ -326,6 +331,9 @@ export default function StreamerPage() {
       default: return []
     }
   }
+
+  const tabItems = getTabItems()
+  const visibleItems = tabItems.slice(0, visibleCount)
 
   return (
     <div className="min-h-screen">
@@ -482,10 +490,10 @@ export default function StreamerPage() {
         </div>
 
         {/* Lista de sugestões */}
-        <div className="space-y-3 mb-12">
+        <div className="mb-16 space-y-3 pb-4">
           {suggestionsLoading ? (
             Array.from({ length: 3 }).map((_, i) => <SkeletonSuggestion key={i} />)
-          ) : getTabItems().length === 0 ? (
+          ) : tabItems.length === 0 ? (
             <div className="bg-bg-secondary border border-border rounded-2xl p-8 text-center space-y-4 my-4">
               <div className="w-14 h-14 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center mx-auto">
                 <Tv2 size={28} className="text-brand-purple" />
@@ -511,14 +519,24 @@ export default function StreamerPage() {
               )}
             </div>
           ) : (
-            getTabItems().map((suggestion) => (
-              <SuggestionCard
-                key={suggestion.id}
-                suggestion={suggestion}
-                onVote={vote}
-                canVote={!!user && suggestion.submitted_by !== user.id}
-              />
-            ))
+            <>
+              {visibleItems.map((suggestion) => (
+                <SuggestionCard
+                  key={suggestion.id}
+                  suggestion={suggestion}
+                  onVote={vote}
+                  canVote={!!user && suggestion.submitted_by !== user.id}
+                />
+              ))}
+              {visibleCount < tabItems.length && (
+                <div className="flex flex-col items-center gap-2 pt-5">
+                  <Button variant="secondary" onClick={() => setVisibleCount((count) => count + 8)}>
+                    Carregar mais sugestões
+                  </Button>
+                  <p className="text-xs text-content-muted">Exibindo {visibleItems.length} de {tabItems.length}</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
