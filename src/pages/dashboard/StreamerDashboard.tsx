@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
 import { useSuggestions } from '@/hooks/useSuggestions'
+import { useContentThumbnail } from '@/hooks/useContentThumbnail'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -35,6 +36,25 @@ interface KanbanColumnProps {
   onDelete?: (suggestion: Suggestion) => void
   onBan?: (suggestion: Suggestion) => void
   ownerId?: string
+}
+
+function SuggestionThumbnail({ suggestion }: { suggestion: Suggestion }) {
+  const thumbnail = useContentThumbnail(suggestion.source_url, suggestion.poster_url)
+
+  return (
+    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-bg-secondary">
+      {thumbnail ? (
+        <img
+          src={thumbnail}
+          alt={`Thumbnail de ${suggestion.title}`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <Image size={18} className="text-content-muted" />
+      )}
+    </div>
+  )
 }
 
 function KanbanColumn({
@@ -72,20 +92,23 @@ function KanbanColumn({
               key={s.id}
               className="group grid min-w-0 grid-cols-1 gap-2 border-b border-border/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-bg-secondary/70 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-4"
             >
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-content-primary" title={s.title}>
-                  {s.title}
-                </p>
-                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                  <Badge variant="category" category={s.category as never} size="sm" />
-                  <span className="inline-flex items-center gap-1 text-xs text-content-muted">
-                    <ThumbsUp size={10} />
-                    {s.vote_count ?? 0}
-                  </span>
-                  <span className="truncate text-xs text-content-muted">
-                    {s.submitter?.display_name ?? s.chat_display_name ?? 'Viewer da Twitch'} · {formatRelativeDate(s.submitted_at)}
-                  </span>
-                  {s.submission_source === 'chat' && <Badge variant="purple" size="sm">Via chat · prioridade normal</Badge>}
+              <div className="flex min-w-0 items-center gap-3">
+                <SuggestionThumbnail suggestion={s} />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-content-primary" title={s.title}>
+                    {s.title}
+                  </p>
+                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <Badge variant="category" category={s.category as never} size="sm" />
+                    <span className="inline-flex items-center gap-1 text-xs text-content-muted">
+                      <ThumbsUp size={10} />
+                      {s.vote_count ?? 0}
+                    </span>
+                    <span className="truncate text-xs text-content-muted">
+                      {s.submitter?.display_name ?? s.chat_display_name ?? 'Viewer da Twitch'} · {formatRelativeDate(s.submitted_at)}
+                    </span>
+                    {s.submission_source === 'chat' && <Badge variant="purple" size="sm">Via chat · prioridade normal</Badge>}
+                  </div>
                 </div>
               </div>
 

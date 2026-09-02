@@ -58,8 +58,8 @@ function SuggestionCard({
 
   return (
     <div className="bg-bg-secondary border border-border rounded-2xl p-4 flex gap-4 hover:border-border-light transition-colors">
-      {/* Poster placeholder */}
-      <div className="w-14 h-20 rounded-lg bg-bg-tertiary shrink-0 flex items-center justify-center overflow-hidden">
+      {/* Thumbnail sempre quadrada */}
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-bg-tertiary flex items-center justify-center">
         {thumbnail ? (
           <img src={thumbnail} alt={`Thumbnail de ${suggestion.title}`} className="w-full h-full object-cover" loading="lazy" />
         ) : (
