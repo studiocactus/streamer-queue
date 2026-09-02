@@ -7,6 +7,7 @@
 // ============================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { normalizeContentReference } from '../_shared/content-reference.ts'
 
 const TWITCH_CLIENT_ID = Deno.env.get('TWITCH_CLIENT_ID')
 const TWITCH_CLIENT_SECRET = Deno.env.get('TWITCH_CLIENT_SECRET')
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
     // viewer from the database and confirm who is allowed to trigger the event.
     const { data: suggestion } = await adminClient
       .from('suggestions')
-      .select('id, streamer_id, submitted_by, title, category, chat_display_name')
+      .select('id, streamer_id, submitted_by, title, category, chat_display_name, source_url, poster_url')
       .eq('id', suggestion_id)
       .eq('streamer_id', streamer_id)
       .maybeSingle()
@@ -108,7 +109,15 @@ Deno.serve(async (req) => {
       ? await adminClient.from('profiles').select('display_name').eq('id', suggestion.submitted_by).maybeSingle()
       : { data: null }
     viewerName = viewer?.display_name ?? suggestion.chat_display_name ?? 'Viewer da Twitch'
-    suggestionTitle = suggestion.title
+    const normalizedContent = await normalizeContentReference(suggestion.title)
+    suggestionTitle = normalizedContent.title
+    if (normalizedContent.sourceUrl) {
+      await adminClient.from('suggestions').update({
+        title: normalizedContent.title,
+        source_url: suggestion.source_url ?? normalizedContent.sourceUrl,
+        poster_url: suggestion.poster_url ?? normalizedContent.thumbnailUrl,
+      }).eq('id', suggestion.id)
+    }
 
     // Buscar template de mensagem
     const { data: template } = await adminClient

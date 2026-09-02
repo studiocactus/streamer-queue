@@ -1,5 +1,6 @@
 // Receives signed Twitch EventSub chat messages and creates pending suggestions.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { normalizeContentReference } from '../_shared/content-reference.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -98,12 +99,15 @@ Deno.serve(async (req) => {
     if (banned) return new Response(null, { status: 204 })
   }
 
+  const content = await normalizeContentReference(title)
   const { data: suggestion, error: insertError } = await admin.from('suggestions').insert({
     streamer_id: streamer.id,
     submitted_by: profile?.id ?? null,
     category: 'other',
-    title,
+    title: content.title,
     description: `Enviado pelo chat da Twitch por @${event.chatter_user_login}.`,
+    source_url: content.sourceUrl,
+    poster_url: content.thumbnailUrl,
     status: 'pending',
     submission_source: profile ? 'platform' : 'chat',
     submission_priority: profile ? 100 : 0,
@@ -113,7 +117,7 @@ Deno.serve(async (req) => {
   }).select('id').single()
   if (insertError) throw insertError
 
-  const confirmation = `@${event.chatter_user_login}, “${title}” foi enviado. O streamer irá revisar o conteúdo e visualizar quando puder. Usuários da plataforma têm prioridade.`
+  const confirmation = `@${event.chatter_user_login}, “${content.title}” foi enviado. O streamer irá revisar o conteúdo e visualizar quando puder. Usuários da plataforma têm prioridade.`
   const sendResult = await sendChatMessage(admin, streamer.id, event.broadcaster_user_id, confirmation)
   await admin.from('chat_message_logs').insert({
     streamer_id: streamer.id,
@@ -180,4 +184,3 @@ async function sendChatMessage(admin: ReturnType<typeof createClient>, streamerI
     return { sent: false, error: String(error) }
   }
 }
-
