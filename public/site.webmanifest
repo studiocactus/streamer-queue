@@ -1,0 +1,17 @@
+{
+  "name": "WatchQueue",
+  "short_name": "WatchQueue",
+  "description": "Sugestões da comunidade para streamers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f17",
+  "theme_color": "#5b00d1",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

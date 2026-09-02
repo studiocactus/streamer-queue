@@ -7,6 +7,7 @@ import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { streamerPath } from '@/lib/routes'
+import { Seo } from '@/components/Seo'
 
 // Error Boundary para capturar crashes e mostrar mensagem em vez de tela preta
 class ErrorBoundary extends Component<
@@ -122,6 +123,7 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <Seo />
       <AppInitializer>
         {/* Toast notifications */}
         <Toaster

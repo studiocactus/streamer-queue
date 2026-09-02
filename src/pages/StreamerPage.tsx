@@ -5,6 +5,7 @@ import {
   Trophy, History, Play, ExternalLink, AlertCircle, Link as LinkIcon
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { updateSeoContent } from '@/components/Seo'
 import { useStreamer } from '@/hooks/useStreamer'
 import { useSuggestions } from '@/hooks/useSuggestions'
 import { useContentThumbnail } from '@/hooks/useContentThumbnail'
@@ -291,6 +292,14 @@ export default function StreamerPage() {
   useEffect(() => {
     setVisibleCount(8)
   }, [tab, categoryFilter])
+
+  useEffect(() => {
+    if (!streamer) return
+    updateSeoContent(
+      `${streamer.channel_name} — sugestões e fila | WatchQueue`,
+      `Envie sugestões, vote nas favoritas e acompanhe a fila do canal ${streamer.channel_name} no WatchQueue.`,
+    )
+  }, [streamer])
 
   const handleSuggest = () => {
     if (!user) {
