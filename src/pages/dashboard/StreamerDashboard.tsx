@@ -283,6 +283,7 @@ export default function StreamerDashboard() {
   )
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [coverUploading, setCoverUploading] = useState(false)
+  const [socialSavingNetwork, setSocialSavingNetwork] = useState<string | null>(null)
   const [chatConnected, setChatConnected] = useState(false)
   const [chatStatusLoading, setChatStatusLoading] = useState(true)
   const [chatDisconnecting, setChatDisconnecting] = useState(false)
@@ -633,6 +634,29 @@ export default function StreamerDashboard() {
       toast.error('Não foi possível salvar as informações do canal.')
     } finally {
       setSettingsSaving(false)
+    }
+  }
+
+  const handleSaveSocialLink = async (network: string, rawValue: string) => {
+    if (!streamerProfile) return
+    const trimmed = rawValue.trim()
+    const normalized = trimmed && !/^https?:\/\//i.test(trimmed) ? `https://${trimmed}` : trimmed
+    const nextLinks = { ...socialLinks, [network]: normalized }
+    setSocialLinks(nextLinks)
+    setSocialSavingNetwork(network)
+    try {
+      const { error } = await supabase
+        .from('streamers')
+        .update({ social_links: nextLinks } as never)
+        .eq('id', streamerProfile.id)
+      if (error) throw error
+      await refreshProfile()
+      toast.success(`${network.charAt(0).toUpperCase() + network.slice(1)} atualizado no perfil.`)
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível atualizar essa rede social.')
+    } finally {
+      setSocialSavingNetwork(null)
     }
   }
 
@@ -1051,7 +1075,7 @@ export default function StreamerDashboard() {
                       onChange={(event) => handleCoverUpload(event.target.files?.[0])}
                     />
                   </label>
-                  <p className="text-xs text-content-muted">JPG, PNG ou WebP · até 5 MB · proporção recomendada 4:1</p>
+                  <p className="text-xs text-content-muted">1920 × 480 px (4:1) · WebP recomendado · máximo 5 MB · ideal até 1 MB</p>
                 </div>
               </section>
 
@@ -1075,6 +1099,8 @@ export default function StreamerDashboard() {
                       placeholder={`https://${network}.com/...`}
                       value={socialLinks[network] ?? ''}
                       onChange={(e) => setSocialLinks((current) => ({ ...current, [network]: e.target.value }))}
+                      onBlur={(e) => handleSaveSocialLink(network, e.target.value)}
+                      disabled={socialSavingNetwork === network}
                     />
                   ))}
                 </div>

@@ -50,6 +50,7 @@ export interface Database {
           avatar_url: string | null
           cover_url: string | null
           bio: string | null
+          social_links: Record<string, string>
           is_public: boolean
           is_active: boolean
           created_at: string
@@ -64,6 +65,7 @@ export interface Database {
           avatar_url?: string | null
           cover_url?: string | null
           bio?: string | null
+          social_links?: Record<string, string>
           is_public?: boolean
           is_active?: boolean
           created_at?: string
@@ -78,6 +80,7 @@ export interface Database {
           avatar_url?: string | null
           cover_url?: string | null
           bio?: string | null
+          social_links?: Record<string, string>
           is_public?: boolean
           is_active?: boolean
           updated_at?: string

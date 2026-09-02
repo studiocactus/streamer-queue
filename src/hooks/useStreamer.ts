@@ -52,6 +52,17 @@ export function useStreamer(slug: string | undefined) {
 
   useEffect(() => { fetch() }, [fetch])
 
+  useEffect(() => {
+    if (!slug) return
+    const channel = supabase
+      .channel(`public-streamer-${slug.toLowerCase()}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'streamers', filter: `slug=eq.${slug}`,
+      }, () => fetch())
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [slug, fetch])
+
   return { streamer, isLoading, error, refetch: fetch }
 }
 
