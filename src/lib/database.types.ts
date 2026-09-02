@@ -50,6 +50,7 @@ export interface Database {
           avatar_url: string | null
           cover_url: string | null
           bio: string | null
+          profile_theme: string
           social_links: Record<string, string>
           is_public: boolean
           is_active: boolean
@@ -65,6 +66,7 @@ export interface Database {
           avatar_url?: string | null
           cover_url?: string | null
           bio?: string | null
+          profile_theme?: string
           social_links?: Record<string, string>
           is_public?: boolean
           is_active?: boolean
@@ -80,6 +82,7 @@ export interface Database {
           avatar_url?: string | null
           cover_url?: string | null
           bio?: string | null
+          profile_theme?: string
           social_links?: Record<string, string>
           is_public?: boolean
           is_active?: boolean
@@ -107,6 +110,11 @@ export interface Database {
           role?: string
           permissions?: string[]
         }
+      }
+      platform_admins: {
+        Row: { user_id: string; created_at: string }
+        Insert: { user_id: string; created_at?: string }
+        Update: Record<string, never>
       }
       suggestions: {
         Row: {
@@ -346,6 +354,10 @@ export interface Database {
           slug: string
           channel_name: string
         }[]
+      }
+      promote_viewer_to_streamer: {
+        Args: { p_user_id: string }
+        Returns: string
       }
     }
     Enums: Record<string, never>

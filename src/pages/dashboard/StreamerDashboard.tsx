@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -244,7 +244,7 @@ function RejectModal({
 // ============================================================
 // Dashboard do Streamer
 // ============================================================
-type DashTab = 'kanban' | 'settings' | 'moderators' | 'twitch'
+type DashTab = 'kanban' | 'settings' | 'moderators' | 'twitch' | 'platform'
 type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
 type ModeratorMember = {
   id: string
@@ -254,6 +254,7 @@ type ModeratorMember = {
   profile?: { display_name: string; twitch_login: string; avatar_url: string | null }
 }
 type ModeratorCandidate = { id: string; display_name: string; twitch_login: string; avatar_url: string | null }
+type PlatformViewer = ModeratorCandidate
 type BannedUser = { id: string; user_id: string; reason: string | null; created_at: string; profile?: ModeratorCandidate }
 
 const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
@@ -276,6 +277,13 @@ const CHAT_TEMPLATE_LABELS: Record<ChatEventType, string> = {
   streamer_added: 'Conteúdo adicionado pelo streamer',
 }
 
+const PROFILE_THEME_OPTIONS = [
+  { id: 'neon', name: 'Neon', description: 'Roxo vibrante e tecnológico', preview: 'from-violet-600 via-purple-900 to-slate-950' },
+  { id: 'aurora', name: 'Aurora', description: 'Verde, turquesa e luminoso', preview: 'from-teal-400 via-cyan-900 to-slate-950' },
+  { id: 'sunset', name: 'Sunset', description: 'Laranja, rosa e acolhedor', preview: 'from-orange-400 via-rose-800 to-slate-950' },
+  { id: 'midnight', name: 'Midnight', description: 'Azul profundo e minimalista', preview: 'from-blue-600 via-slate-800 to-slate-950' },
+] as const
+
 export default function StreamerDashboard() {
   const { streamerProfile, profile, refreshProfile } = useAuthStore()
   const [activeTab, setActiveTab] = useState<DashTab>('kanban')
@@ -283,6 +291,7 @@ export default function StreamerDashboard() {
   const [channelName, setChannelName] = useState(streamerProfile?.channel_name ?? '')
   const [bio, setBio] = useState(streamerProfile?.bio ?? '')
   const [coverUrl, setCoverUrl] = useState(streamerProfile?.cover_url ?? '')
+  const [profileTheme, setProfileTheme] = useState<'neon' | 'aurora' | 'sunset' | 'midnight'>(streamerProfile?.profile_theme ?? 'neon')
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>(
     streamerProfile?.social_links ?? { instagram: '', youtube: '', tiktok: '', discord: '' }
   )
@@ -309,6 +318,9 @@ export default function StreamerDashboard() {
   const [newContentUrl, setNewContentUrl] = useState('')
   const [newContentDescription, setNewContentDescription] = useState('')
   const [newContentSaving, setNewContentSaving] = useState(false)
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
+  const [platformViewers, setPlatformViewers] = useState<PlatformViewer[]>([])
+  const [promotingViewerId, setPromotingViewerId] = useState<string | null>(null)
 
   const {
     suggestions, watching, queued, pending, approved,
@@ -345,35 +357,34 @@ export default function StreamerDashboard() {
 
   const loadModeratorData = async () => {
     if (!streamerProfile?.id) return
-    const [membersResult, suggestionsResult, bansResult] = await Promise.all([
+    const [membersResult, profilesResult, bansResult, streamersResult] = await Promise.all([
       supabase
         .from('streamer_members')
         .select('id, user_id, role, permissions, profile:profiles!user_id(display_name, twitch_login, avatar_url)')
         .eq('streamer_id', streamerProfile.id)
         .eq('role', 'moderator'),
-      supabase
-        .from('suggestions')
-        .select('submitted_by, submitter:profiles!submitted_by(id, display_name, twitch_login, avatar_url)')
-        .eq('streamer_id', streamerProfile.id),
+      supabase.from('profiles').select('id, display_name, twitch_login, avatar_url').order('display_name'),
       supabase
         .from('banned_users')
         .select('id, user_id, reason, created_at, profile:profiles!user_id(id, display_name, twitch_login, avatar_url)')
         .eq('streamer_id', streamerProfile.id)
         .order('created_at', { ascending: false }),
+      supabase.from('streamers').select('owner_id'),
     ])
     const nextModerators = (membersResult.data ?? []) as unknown as ModeratorMember[]
     const nextBans = (bansResult.data ?? []) as unknown as BannedUser[]
+    const streamerOwnerIds = new Set((streamersResult.data ?? []).map((row) => row.owner_id))
     setModerators(nextModerators)
 
     const candidateMap = new Map<string, ModeratorCandidate>()
-    ;(suggestionsResult.data ?? []).forEach((row) => {
-      const viewer = row.submitter as unknown as ModeratorCandidate | null
+    ;(profilesResult.data ?? []).forEach((row) => {
+      const viewer = row as ModeratorCandidate
       if (
-        viewer &&
-        row.submitted_by !== streamerProfile.owner_id &&
-        !nextBans.some((banned) => banned.user_id === row.submitted_by) &&
-        !nextModerators.some((member) => member.user_id === row.submitted_by)
-      ) candidateMap.set(row.submitted_by, viewer)
+        viewer.id !== streamerProfile.owner_id &&
+        !streamerOwnerIds.has(viewer.id) &&
+        !nextBans.some((banned) => banned.user_id === viewer.id) &&
+        !nextModerators.some((member) => member.user_id === viewer.id)
+      ) candidateMap.set(viewer.id, viewer)
     })
     setModeratorCandidates(Array.from(candidateMap.values()))
     setBannedUsers(nextBans)
@@ -384,6 +395,41 @@ export default function StreamerDashboard() {
     // streamerProfile is the stable ownership boundary for this list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streamerProfile?.id])
+
+  const loadPlatformViewers = async () => {
+    const [profilesResult, streamersResult] = await Promise.all([
+      supabase.from('profiles').select('id, display_name, twitch_login, avatar_url').order('display_name'),
+      supabase.from('streamers').select('owner_id'),
+    ])
+    const streamerOwnerIds = new Set((streamersResult.data ?? []).map((row) => row.owner_id))
+    setPlatformViewers(((profilesResult.data ?? []) as PlatformViewer[]).filter((viewer) => !streamerOwnerIds.has(viewer.id)))
+  }
+
+  useEffect(() => {
+    if (!profile?.id) return
+    const loadPlatformAccess = async () => {
+      const { data } = await supabase.from('platform_admins').select('user_id').eq('user_id', profile.id).maybeSingle()
+      const allowed = !!data
+      setIsPlatformAdmin(allowed)
+      if (allowed) await loadPlatformViewers()
+    }
+    loadPlatformAccess()
+  }, [profile?.id])
+
+  const handlePromoteViewer = async (viewer: PlatformViewer) => {
+    setPromotingViewerId(viewer.id)
+    try {
+      const { error } = await supabase.rpc('promote_viewer_to_streamer', { p_user_id: viewer.id })
+      if (error) throw error
+      await loadPlatformViewers()
+      toast.success(`${viewer.display_name} agora é streamer.`)
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível promover este viewer.')
+    } finally {
+      setPromotingViewerId(null)
+    }
+  }
 
   useEffect(() => {
     if (!streamerProfile?.id) return
@@ -662,6 +708,7 @@ export default function StreamerDashboard() {
           channel_name: channelName.trim(),
           bio: bio.trim() || null,
           cover_url: coverUrl.trim() || null,
+          profile_theme: profileTheme,
           social_links: socialLinks,
         } as never)
         .eq('id', streamerProfile.id)
@@ -787,6 +834,7 @@ export default function StreamerDashboard() {
     { id: 'moderators', label: 'Moderadores', icon: Users },
     { id: 'twitch', label: 'Twitch', icon: Zap },
     { id: 'settings', label: 'Configurações', icon: Settings },
+    ...(isPlatformAdmin ? [{ id: 'platform' as DashTab, label: 'Plataforma', icon: Crown }] : []),
   ]
 
   return (
@@ -1130,6 +1178,53 @@ export default function StreamerDashboard() {
           </Card>
         )}
 
+        {/* Administração da plataforma */}
+        {activeTab === 'platform' && isPlatformAdmin && (
+          <Card>
+            <CardHeader>
+              <div>
+                <h2 className="flex items-center gap-2 font-semibold text-content-primary">
+                  <Crown size={17} className="text-amber-400" />
+                  Streamers da plataforma
+                </h2>
+                <p className="mt-1 text-xs text-content-secondary">
+                  Somente o proprietário da plataforma pode transformar um viewer em streamer.
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {platformViewers.length === 0 ? (
+                <EmptyState
+                  icon={<Users size={22} />}
+                  title="Nenhum viewer disponível"
+                  description="Todos os usuários cadastrados já possuem um canal de streamer."
+                />
+              ) : (
+                <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
+                  {platformViewers.map((viewer) => (
+                    <div key={viewer.id} className="flex flex-col gap-3 bg-bg-tertiary/60 p-4 sm:flex-row sm:items-center">
+                      <Avatar src={viewer.avatar_url} alt={viewer.display_name} fallback={viewer.display_name} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-content-primary">{viewer.display_name}</p>
+                        <p className="truncate text-xs text-content-muted">@{viewer.twitch_login} · Viewer</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        loading={promotingViewerId === viewer.id}
+                        disabled={promotingViewerId !== null}
+                        onClick={() => handlePromoteViewer(viewer)}
+                        leftIcon={<Crown size={14} />}
+                      >
+                        Tornar streamer
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Configurações */}
         {activeTab === 'settings' && (
           <Card className="overflow-hidden">
@@ -1145,6 +1240,42 @@ export default function StreamerDashboard() {
               </div>
             </CardHeader>
             <CardContent className="space-y-8">
+              <section className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Palette size={16} className="text-brand-purple" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-content-primary">Tema do perfil</h3>
+                    <p className="text-xs text-content-muted">Escolha a identidade visual da sua página pública.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {PROFILE_THEME_OPTIONS.map((theme) => (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => setProfileTheme(theme.id)}
+                      className={cn(
+                        'overflow-hidden rounded-2xl border text-left transition-all',
+                        profileTheme === theme.id
+                          ? 'border-brand-purple ring-2 ring-brand-purple/25'
+                          : 'border-border hover:border-border-light'
+                      )}
+                    >
+                      <div className={cn('h-20 bg-gradient-to-br', theme.preview)}>
+                        <div className="flex h-full items-end gap-2 p-3">
+                          <div className="h-8 w-8 rounded-full border-2 border-white/50 bg-black/30" />
+                          <div className="mb-1 h-2 w-16 rounded-full bg-white/70" />
+                        </div>
+                      </div>
+                      <div className="bg-bg-tertiary p-3">
+                        <p className="text-xs font-semibold text-content-primary">{theme.name}</p>
+                        <p className="mt-0.5 text-[10px] text-content-muted">{theme.description}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
               <section className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Image size={16} className="text-brand-purple" />

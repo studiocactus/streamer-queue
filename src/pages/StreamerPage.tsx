@@ -19,6 +19,29 @@ import { SkeletonSuggestion } from '@/components/ui/Skeleton'
 import { formatRelativeDate, categoryLabel, cn } from '@/lib/utils'
 import type { Suggestion, SuggestionCategory } from '@/types'
 
+const PROFILE_THEME_STYLES = {
+  neon: {
+    page: 'bg-[radial-gradient(circle_at_20%_0%,rgba(145,70,255,0.12),transparent_35%)]',
+    fallback: 'bg-gradient-to-br from-brand-purple/35 via-bg-tertiary to-bg-secondary',
+    overlay: 'bg-gradient-to-t from-bg-primary via-brand-purple/5 to-transparent',
+  },
+  aurora: {
+    page: 'bg-[radial-gradient(circle_at_20%_0%,rgba(45,212,191,0.12),transparent_35%)]',
+    fallback: 'bg-gradient-to-br from-teal-500/35 via-cyan-950/40 to-bg-secondary',
+    overlay: 'bg-gradient-to-t from-bg-primary via-teal-500/5 to-transparent',
+  },
+  sunset: {
+    page: 'bg-[radial-gradient(circle_at_20%_0%,rgba(251,113,133,0.12),transparent_35%)]',
+    fallback: 'bg-gradient-to-br from-orange-500/35 via-rose-950/40 to-bg-secondary',
+    overlay: 'bg-gradient-to-t from-bg-primary via-rose-500/5 to-transparent',
+  },
+  midnight: {
+    page: 'bg-[radial-gradient(circle_at_20%_0%,rgba(59,130,246,0.12),transparent_35%)]',
+    fallback: 'bg-gradient-to-br from-blue-600/30 via-slate-900 to-bg-secondary',
+    overlay: 'bg-gradient-to-t from-bg-primary via-blue-500/5 to-transparent',
+  },
+} as const
+
 // ============================================================
 // SuggestionCard
 // ============================================================
@@ -291,6 +314,8 @@ export default function StreamerPage() {
     )
   }
 
+  const profileTheme = PROFILE_THEME_STYLES[streamer.profile_theme ?? 'neon']
+
   // Filtrar por categoria localmente
   const allSuggestions = categoryFilter === 'all'
     ? suggestions
@@ -339,7 +364,7 @@ export default function StreamerPage() {
   const visibleItems = tabItems.slice(0, visibleCount)
 
   return (
-    <div className="min-h-screen">
+    <div className={cn('min-h-screen', profileTheme.page)}>
       {/* Capa */}
       <div className="relative h-52 bg-bg-secondary overflow-hidden">
         {streamer.cover_url ? (
@@ -349,9 +374,9 @@ export default function StreamerPage() {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-brand-purple/20 via-bg-tertiary to-bg-secondary" />
+          <div className={cn('h-full w-full', profileTheme.fallback)} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/80 to-transparent" />
+        <div className={cn('absolute inset-0', profileTheme.overlay)} />
       </div>
 
       <div className="app-shell relative z-10">

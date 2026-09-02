@@ -34,6 +34,7 @@ export interface Streamer {
   avatar_url: string | null
   cover_url: string | null
   bio: string | null
+  profile_theme: 'neon' | 'aurora' | 'sunset' | 'midnight'
   social_links?: Record<string, string>
   is_public: boolean
   is_active: boolean
