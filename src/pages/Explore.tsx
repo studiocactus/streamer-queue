@@ -13,7 +13,7 @@ import type { Streamer } from '@/types'
 
 function StreamerCard({ streamer }: { streamer: Streamer }) {
   return (
-    <Link to={`/streamer/${streamer.slug.toLowerCase()}`} className="group block h-full focus-ring rounded-3xl">
+    <div className="group block h-full rounded-3xl">
       <Card
         className="relative flex h-full flex-col overflow-hidden rounded-3xl border-border/80 bg-bg-secondary/95 shadow-[0_18px_55px_rgba(0,0,0,0.24)] transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-brand-purple/50 group-hover:shadow-[0_24px_70px_rgba(145,70,255,0.2)]"
       >
@@ -64,10 +64,10 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
               size="md"
               className="-mt-10 ring-4 ring-bg-secondary shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-transform duration-300 group-hover:scale-105"
             />
-            <div className="-mt-2 min-w-0">
-              <h3 className="truncate text-base font-bold text-content-primary transition-colors group-hover:text-white">
+            <div className="-mt-5 min-w-0 pt-0.5">
+              <Link to={`/streamer/${streamer.slug.toLowerCase()}`} className="block truncate text-base font-bold text-content-primary transition-colors hover:text-brand-purple">
                 {streamer.channel_name}
-              </h3>
+              </Link>
               <p className="text-xs text-content-muted">@{streamer.slug}</p>
             </div>
           </div>
@@ -92,13 +92,19 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
                 {(streamer.suggestion_count ?? 0) === 1 ? 'sugestão' : 'sugestões'}
               </span>
             </div>
-            <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-purple px-3.5 text-xs font-semibold text-white shadow-[0_8px_22px_rgba(145,70,255,0.25)] transition-all duration-300 group-hover:bg-brand-purple-light group-hover:shadow-[0_10px_28px_rgba(145,70,255,0.4)]">
+            <a
+              href={`https://www.twitch.tv/${encodeURIComponent(streamer.slug.toLowerCase())}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Abrir canal de ${streamer.channel_name} na Twitch`}
+              className="focus-ring inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-purple px-3.5 text-xs font-semibold text-white shadow-[0_8px_22px_rgba(145,70,255,0.25)] transition-all duration-300 hover:bg-brand-purple-light hover:shadow-[0_10px_28px_rgba(145,70,255,0.4)]"
+            >
               Ver canal <ArrowUpRight size={13} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </span>
+            </a>
           </div>
         </div>
       </Card>
-    </Link>
+    </div>
   )
 }
 
