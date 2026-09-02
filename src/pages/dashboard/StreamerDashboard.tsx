@@ -696,18 +696,23 @@ export default function StreamerDashboard() {
 
   const handleCoverUpload = async (file?: File) => {
     if (!file || !streamerProfile) return
-    if (!file.type.startsWith('image/')) {
-      toast.error('Escolha um arquivo de imagem.')
+    const allowedCoverTypes: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    }
+    if (!allowedCoverTypes[file.type]) {
+      toast.error('Escolha uma imagem PNG, JPG, JPEG ou WebP.')
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('A imagem deve ter no máximo 5 MB.')
+    if (file.size > 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 1 MB.')
       return
     }
 
     setCoverUploading(true)
     try {
-      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const extension = allowedCoverTypes[file.type]
       const path = `${streamerProfile.id}/cover.${extension}`
       const { error } = await supabase.storage
         .from('streamer-assets')
@@ -1139,13 +1144,13 @@ export default function StreamerDashboard() {
                     {coverUploading ? 'Enviando...' : 'Enviar nova capa'}
                     <input
                       type="file"
-                      accept="image/png,image/jpeg,image/webp"
+                      accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
                       className="sr-only"
                       disabled={coverUploading}
                       onChange={(event) => handleCoverUpload(event.target.files?.[0])}
                     />
                   </label>
-                  <p className="text-xs text-content-muted">1920 × 480 px (4:1) · WebP recomendado · máximo 5 MB · ideal até 1 MB</p>
+                  <p className="text-xs text-content-muted">1920 × 480 px (4:1) · PNG, JPG, JPEG ou WebP · máximo 1 MB</p>
                 </div>
               </section>
 
