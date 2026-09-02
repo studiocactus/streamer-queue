@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Search, Tv2, Play, X, RefreshCw, ArrowUpRight, ArrowRight, ListVideo, Radio } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Search, Tv2, Play, X, RefreshCw, ArrowUpRight, ListVideo, Radio } from 'lucide-react'
 import { useStreamers } from '@/hooks/useStreamer'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -12,12 +12,23 @@ import { cn } from '@/lib/utils'
 import type { Streamer } from '@/types'
 
 function StreamerCard({ streamer }: { streamer: Streamer }) {
+  const navigate = useNavigate()
   const profilePath = `/streamer/${streamer.slug.toLowerCase()}`
 
   return (
     <article className="group block h-full rounded-3xl">
       <Card
-        className="relative flex h-full flex-col overflow-hidden rounded-3xl border-brand-purple/35 bg-bg-secondary/95 shadow-[0_18px_55px_rgba(145,70,255,0.12)] ring-1 ring-brand-purple/10 transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-brand-purple/70 group-hover:shadow-[0_24px_70px_rgba(145,70,255,0.24)]"
+        role="link"
+        tabIndex={0}
+        aria-label={`Abrir perfil de ${streamer.channel_name} no WatchQueue`}
+        onClick={() => navigate(profilePath)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            navigate(profilePath)
+          }
+        }}
+        className="relative flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border-brand-purple/35 bg-bg-secondary/95 shadow-[0_18px_55px_rgba(145,70,255,0.12)] ring-1 ring-brand-purple/10 transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-brand-purple/70 group-hover:shadow-[0_24px_70px_rgba(145,70,255,0.24)]"
       >
         <div className="pointer-events-none absolute -right-20 -top-20 z-10 h-48 w-48 rounded-full bg-brand-purple/15 blur-3xl transition-opacity duration-300 group-hover:opacity-90" />
         <div className="pointer-events-none absolute inset-x-8 top-0 z-20 h-px bg-gradient-to-r from-transparent via-brand-purple/80 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
@@ -58,12 +69,7 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
             />
             <div className="-mt-8 min-w-0 flex-1 pt-0.5">
               <div className="flex min-w-0 items-center gap-2">
-                <Link
-                  to={profilePath}
-                  className="focus-ring min-w-0 rounded-md text-base font-bold text-content-primary transition-colors hover:text-brand-purple-light"
-                >
-                  <h3 className="truncate">{streamer.channel_name}</h3>
-                </Link>
+                <h3 className="min-w-0 truncate text-base font-bold text-content-primary transition-colors group-hover:text-brand-purple-light">{streamer.channel_name}</h3>
                 <span className={cn(
                   'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[9px] font-semibold uppercase leading-none tracking-wide backdrop-blur-md',
                   streamer.is_live
@@ -74,12 +80,6 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
                   {streamer.is_live ? 'Ao vivo' : 'Offline'}
                 </span>
               </div>
-              <Link
-                to={profilePath}
-                className="focus-ring mt-0.5 inline-block rounded text-xs text-content-muted transition-colors hover:text-brand-purple-light"
-              >
-                @{streamer.slug}
-              </Link>
             </div>
           </div>
 
@@ -96,28 +96,23 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
           )}
 
           <div className="mt-auto border-t border-border/80 pt-3">
-            <div className="mb-3 flex items-center justify-between gap-3 text-xs text-content-muted">
+            <div className="mb-3 flex items-center gap-3 text-xs text-content-muted">
               <span className="flex items-center gap-1.5 rounded-full bg-bg-tertiary px-2.5 py-1.5">
                 <ListVideo size={12} className="text-brand-purple" />
                 {(streamer.suggestion_count ?? 0)}{' '}
                 {(streamer.suggestion_count ?? 0) === 1 ? 'sugestão' : 'sugestões'}
               </span>
-              <Link
-                to={profilePath}
-                aria-label={`Ver perfil de ${streamer.channel_name} na plataforma`}
-                className="focus-ring inline-flex items-center gap-1 rounded-md font-semibold text-content-secondary transition-colors hover:text-brand-purple-light"
-              >
-                Ver perfil <ArrowRight size={12} />
-              </Link>
             </div>
             <a
               href={`https://www.twitch.tv/${encodeURIComponent(streamer.slug.toLowerCase())}`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`Abrir canal de ${streamer.channel_name} na Twitch`}
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
               className="focus-ring inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-purple to-purple-500 px-4 text-xs font-semibold text-white shadow-[0_8px_22px_rgba(145,70,255,0.25)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_10px_28px_rgba(145,70,255,0.4)]"
             >
-              Ver canal <ArrowUpRight size={13} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              Ir para Twitch <ArrowUpRight size={13} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </a>
           </div>
         </div>
