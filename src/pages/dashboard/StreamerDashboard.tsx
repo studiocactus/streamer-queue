@@ -50,7 +50,7 @@ function KanbanColumn({
   ownerId,
 }: KanbanColumnProps) {
   return (
-    <div className="bg-bg-tertiary/70 border border-border rounded-2xl min-h-[220px] w-full min-w-0 flex flex-col">
+    <div className="bg-bg-tertiary/70 border border-border rounded-2xl w-full min-w-0 flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <div className={cn('w-2 h-2 rounded-full', color)} />
@@ -61,16 +61,16 @@ function KanbanColumn({
         </span>
       </div>
 
-      <div className="flex-1 p-3 space-y-2 overflow-y-auto max-h-96">
+      <div className="grid grid-cols-1 gap-2 p-3 md:grid-cols-2 2xl:grid-cols-3">
         {suggestions.length === 0 ? (
-          <div className="text-center py-8 text-xs text-content-muted">
+          <div className="py-4 text-center text-xs text-content-muted md:col-span-2 2xl:col-span-3">
             Nenhuma sugestão
           </div>
         ) : (
           suggestions.map((s) => (
             <div
               key={s.id}
-              className="bg-bg-secondary border border-border rounded-xl p-3 group hover:border-border-light transition-colors"
+              className="flex min-w-0 flex-col bg-bg-secondary border border-border rounded-xl p-3 group hover:border-border-light transition-colors"
             >
               <p className="text-xs font-semibold text-content-primary line-clamp-2 mb-1">{s.title}</p>
               <div className="flex items-center gap-1.5 mb-2">
@@ -85,7 +85,7 @@ function KanbanColumn({
               </p>
 
               {/* Ações por status */}
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="mt-auto flex gap-1.5 flex-wrap pt-1">
                 {status === 'pending' && (
                   <>
                     <button
@@ -776,7 +776,7 @@ export default function StreamerDashboard() {
         {/* Kanban */}
         {activeTab === 'kanban' && (
           <div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <KanbanColumn
                 title="Pendente"
                 status="pending"
