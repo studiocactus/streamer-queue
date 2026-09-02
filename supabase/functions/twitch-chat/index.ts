@@ -105,6 +105,9 @@ Deno.serve(async (req) => {
 
     // Formatar mensagem
     let message = template?.template ?? getDefaultTemplate(event_type)
+    if (!message.includes('{viewer}')) {
+      message = `${message.trim()} — sugestão de {viewer}`
+    }
     message = message
       .replaceAll('{viewer}', viewerName)
       .replaceAll('{titulo}', suggestionTitle)

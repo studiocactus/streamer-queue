@@ -193,6 +193,21 @@ function RejectModal({
 // Dashboard do Streamer
 // ============================================================
 type DashTab = 'kanban' | 'settings' | 'moderators' | 'twitch'
+type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed'
+
+const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
+  suggestion_received: '🎬 {viewer} adicionou “{titulo}” à lista do canal! Envie sua sugestão também no WatchQueue.',
+  suggestion_approved: '✅ A sugestão “{titulo}”, enviada por {viewer}, foi aprovada! Participe também pelo WatchQueue.',
+  watching_now: '🍿 Agora estamos assistindo “{titulo}”, sugestão de {viewer}! Qual deveria ser a próxima?',
+  completed: '🎉 Terminamos “{titulo}”, sugestão de {viewer}! Obrigado por participar da comunidade.',
+}
+
+const CHAT_TEMPLATE_LABELS: Record<ChatEventType, string> = {
+  suggestion_received: 'Nova sugestão',
+  suggestion_approved: 'Aprovação',
+  watching_now: 'Assistindo agora',
+  completed: 'Concluído',
+}
 
 export default function StreamerDashboard() {
   const { streamerProfile, profile, refreshProfile } = useAuthStore()
@@ -209,6 +224,8 @@ export default function StreamerDashboard() {
   const [chatConnected, setChatConnected] = useState(false)
   const [chatStatusLoading, setChatStatusLoading] = useState(true)
   const [chatDisconnecting, setChatDisconnecting] = useState(false)
+  const [chatTemplates, setChatTemplates] = useState<Record<ChatEventType, string>>(DEFAULT_CHAT_TEMPLATES)
+  const [templatesSaving, setTemplatesSaving] = useState(false)
 
   const {
     suggestions, watching, queued, pending, approved,
@@ -241,6 +258,25 @@ export default function StreamerDashboard() {
     return () => { active = false }
   }, [streamerProfile?.id])
 
+  useEffect(() => {
+    if (!streamerProfile?.id) return
+    const loadTemplates = async () => {
+      const { data } = await supabase
+        .from('chat_message_templates')
+        .select('event_type, template')
+        .eq('streamer_id', streamerProfile.id)
+      if (!data) return
+      setChatTemplates((current) => {
+        const next = { ...current }
+        data.forEach((row) => {
+          if (row.event_type in next) next[row.event_type as ChatEventType] = row.template
+        })
+        return next
+      })
+    }
+    loadTemplates()
+  }, [streamerProfile?.id])
+
   const handleDisconnectChat = async () => {
     if (!streamerProfile) return
     setChatDisconnecting(true)
@@ -256,6 +292,35 @@ export default function StreamerDashboard() {
       toast.error('Não foi possível desconectar as mensagens da Twitch.')
     } finally {
       setChatDisconnecting(false)
+    }
+  }
+
+  const handleSaveChatTemplates = async () => {
+    if (!streamerProfile) return
+    setTemplatesSaving(true)
+    try {
+      let viewerVariableAdded = false
+      const rows = (Object.keys(chatTemplates) as ChatEventType[]).map((eventType) => {
+        let template = chatTemplates[eventType].trim() || DEFAULT_CHAT_TEMPLATES[eventType]
+        if (!template.includes('{viewer}')) {
+          template += ' — sugestão de {viewer}'
+          viewerVariableAdded = true
+        }
+        return { streamer_id: streamerProfile.id, event_type: eventType, template, enabled: true }
+      })
+      const { error } = await supabase
+        .from('chat_message_templates')
+        .upsert(rows as never, { onConflict: 'streamer_id,event_type' })
+      if (error) throw error
+      setChatTemplates(Object.fromEntries(rows.map((row) => [row.event_type, row.template])) as Record<ChatEventType, string>)
+      toast.success(viewerVariableAdded
+        ? 'Mensagens salvas. A variável {viewer} foi mantida automaticamente.'
+        : 'Mensagens automáticas salvas.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível salvar as mensagens automáticas.')
+    } finally {
+      setTemplatesSaving(false)
     }
   }
 
@@ -585,19 +650,29 @@ export default function StreamerDashboard() {
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium text-content-primary">Mensagens automáticas</p>
-                {[
-                  { event: 'Nova sugestão', msg: '🎬 {viewer} adicionou "{titulo}" à lista!' },
-                  { event: 'Aprovação', msg: '✅ A sugestão "{titulo}" foi aprovada!' },
-                  { event: 'Assistindo agora', msg: '🍿 Começamos a assistir "{titulo}"!' },
-                  { event: 'Concluído', msg: '🎉 Terminamos de assistir "{titulo}"!' },
-                ].map((item) => (
-                  <div key={item.event} className="flex items-center gap-3 bg-bg-tertiary border border-border rounded-xl p-3">
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-content-primary">{item.event}</p>
-                      <p className="text-xs text-content-muted font-mono">{item.msg}</p>
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-content-primary">Mensagens automáticas</p>
+                    <p className="text-xs text-content-muted">Use {'{viewer}'} para o usuário e {'{titulo}'} para o conteúdo. O nome do viewer é obrigatório.</p>
+                  </div>
+                  <Button size="sm" loading={templatesSaving} onClick={handleSaveChatTemplates} leftIcon={<Save size={14} />}>
+                    Salvar mensagens
+                  </Button>
+                </div>
+                {(Object.keys(CHAT_TEMPLATE_LABELS) as ChatEventType[]).map((eventType) => (
+                  <div key={eventType} className="space-y-2 rounded-xl border border-border bg-bg-tertiary p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold text-content-primary">{CHAT_TEMPLATE_LABELS[eventType]}</p>
+                      <span className="text-[11px] text-content-muted">Enviada no chat da Twitch</span>
                     </div>
-                    <div className="text-xs text-content-muted">Configurável</div>
+                    <Textarea
+                      aria-label={`Mensagem de ${CHAT_TEMPLATE_LABELS[eventType]}`}
+                      value={chatTemplates[eventType]}
+                      onChange={(event) => setChatTemplates((current) => ({ ...current, [eventType]: event.target.value }))}
+                      rows={2}
+                      maxLength={450}
+                    />
+                    <p className="text-[11px] text-content-muted">Prévia: {chatTemplates[eventType].split('{viewer}').join(profile?.display_name ?? 'Viewer').split('{titulo}').join('Nome do conteúdo')}</p>
                   </div>
                 ))}
               </div>

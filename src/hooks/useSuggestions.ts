@@ -219,9 +219,29 @@ export function useSuggestions(streamerId: string | undefined) {
         toast.error('Erro ao atualizar sugestão')
         throw updateError
       }
+
+      const eventType = status === 'approved'
+        ? 'suggestion_approved'
+        : status === 'watching'
+          ? 'watching_now'
+          : status === 'completed'
+            ? 'completed'
+            : null
+      const currentSuggestion = suggestions.find((item) => item.id === suggestionId)
+      if (eventType && currentSuggestion?.status !== status) {
+        supabase.functions.invoke('twitch-chat', {
+          body: {
+            streamer_id: streamerId,
+            suggestion_id: suggestionId,
+            event_type: eventType,
+            viewer_name: currentSuggestion?.submitter?.display_name ?? 'Viewer',
+            title: currentSuggestion?.title ?? '',
+          },
+        }).catch((chatError) => console.error('Erro ao notificar chat:', chatError))
+      }
       fetchSuggestions()
     },
-    [fetchSuggestions]
+    [fetchSuggestions, streamerId, suggestions]
   )
 
   const remove = useCallback(
