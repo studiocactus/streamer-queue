@@ -61,8 +61,8 @@ export function Footer() {
           <FooterMetric icon={<Tv2 size={18} />} label="Streamers ativos" value={formatTotal(stats.streamersCount)} />
         </div>
 
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 gap-8 sm:gap-10 md:grid-cols-2 lg:grid-cols-4">
+          <div className="md:col-span-2 lg:col-span-2">
             <Link to="/" className="mb-4 flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-purple"><Tv2 size={16} className="text-white" /></span>
               <span className="text-lg font-bold text-content-primary">Watch<span className="text-brand-purple">Queue</span></span>
@@ -101,8 +101,8 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 sm:flex-row">
-          <p className="flex items-center gap-1 text-xs text-content-muted">Feito com <Heart size={12} className="fill-brand-purple text-brand-purple" /> para a comunidade de streamers</p>
+        <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-border pt-6 sm:flex-row sm:items-center">
+          <p className="flex flex-wrap items-center gap-1 text-xs text-content-muted">Feito com <Heart size={12} className="fill-brand-purple text-brand-purple" /> para a comunidade de streamers</p>
           <p className="text-xs text-content-muted">© {new Date().getFullYear()} WatchQueue. Todos os direitos reservados.</p>
         </div>
       </div>

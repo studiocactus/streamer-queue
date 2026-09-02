@@ -66,12 +66,18 @@
 
 @layer components {
   .app-shell {
-    width: min(calc(100% - clamp(1.25rem, 5vw, 4rem)), 1400px);
+    width: min(calc(100% - clamp(2rem, 5vw, 4rem)), 1400px);
     margin-inline: auto;
   }
 
   .page-section {
     padding-block: clamp(2.5rem, 6vw, 5rem);
+  }
+
+  @media (min-width: 640px) and (max-width: 1023px) {
+    .page-section {
+      padding-block: 3.5rem;
+    }
   }
 
   .section-heading {
@@ -123,6 +129,16 @@
   /* Focus ring acessível */
   .focus-ring {
     @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary;
+  }
+
+  .mobile-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior-inline: contain;
+  }
+
+  .mobile-scroll::-webkit-scrollbar {
+    display: none;
   }
 
   .landing-page {
@@ -322,9 +338,9 @@
   .landing-footer::before {
     content: '';
     position: absolute;
-    left: -10%;
+    left: 0;
     bottom: -52%;
-    width: 120%;
+    width: 100%;
     height: 115%;
     pointer-events: none;
     border-radius: 50% 50% 0 0;
@@ -354,6 +370,14 @@
     .landing-product {
       border-radius: 1.1rem;
     }
+  }
+}
+
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
   }
 }
 

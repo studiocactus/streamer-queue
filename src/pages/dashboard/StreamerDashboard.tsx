@@ -207,7 +207,7 @@ function BanModal({ suggestion, isOpen, onClose, onBan }: {
           <strong className="text-content-primary">{suggestion?.submitter?.display_name}</strong> não poderá enviar sugestões nem votar neste canal.
         </div>
         <Textarea label="Motivo do banimento" required value={reason} onChange={(event) => setReason(event.target.value)} rows={3} placeholder="Descreva a violação das regras..." />
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button variant="danger" loading={loading} disabled={!reason.trim()} onClick={submit}>Confirmar banimento</Button>
         </div>
@@ -255,7 +255,7 @@ function RejectModal({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button variant="ghost" onClick={onClose}>Cancelar</Button>
             <Button variant="danger" onClick={handleSubmit}>Rejeitar</Button>
           </div>
@@ -881,19 +881,19 @@ export default function StreamerDashboard() {
       <div className="app-shell space-y-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
             <Avatar
               src={streamerProfile.avatar_url}
               alt={streamerProfile.channel_name}
               fallback={streamerProfile.channel_name}
               size="md"
             />
-            <div>
-              <h1 className="text-xl font-bold text-content-primary">{streamerProfile.channel_name}</h1>
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-bold text-content-primary">{streamerProfile.channel_name}</h1>
               <Link
                 to={streamerPath(streamerProfile.slug)}
-                className="text-xs text-brand-purple hover:underline flex items-center gap-1"
+                className="flex max-w-[70vw] items-center gap-1 truncate text-xs text-brand-purple hover:underline sm:max-w-none"
               >
                 {window.location.host}/{streamerProfile.slug}
                 <ExternalLink size={10} />
@@ -901,16 +901,16 @@ export default function StreamerDashboard() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <Button size="sm" onClick={() => setAddContentOpen(true)} leftIcon={<Send size={15} />}>
+          <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:justify-end">
+            <Button className="w-full sm:w-auto" size="sm" onClick={() => setAddContentOpen(true)} leftIcon={<Send size={15} />}>
               Adicionar ideia
             </Button>
           {/* Assistindo agora */}
           {watching && (
-            <div className="flex items-center gap-2 bg-status-watching/10 border border-status-watching/20 rounded-xl px-4 py-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-status-watching/20 bg-status-watching/10 px-3 py-2 sm:px-4">
               <span className="live-dot" />
               <span className="text-sm text-content-primary font-medium">Assistindo:</span>
-              <span className="text-sm text-status-watching font-semibold">{watching.title}</span>
+              <span className="truncate text-sm font-semibold text-status-watching">{watching.title}</span>
               <button
                 onClick={() => handleAction(watching.id, 'completed')}
                 className="ml-2 text-xs text-content-muted hover:text-status-completed transition-colors"
@@ -940,7 +940,7 @@ export default function StreamerDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex max-w-full gap-1 overflow-x-auto bg-bg-secondary border border-border rounded-xl p-1 w-fit">
+        <div className="mobile-scroll flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-bg-secondary p-1">
           {platformAccessLoading ? (
             <div className="flex min-h-10 min-w-64 items-center justify-center gap-2 px-4 text-sm text-content-muted">
               <Loader2 size={15} className="animate-spin text-brand-purple" />
@@ -951,7 +951,7 @@ export default function StreamerDashboard() {
               key={id}
               onClick={() => setActiveTab(id)}
               className={cn(
-                'flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200',
+                'flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
                 activeTab === id
                   ? 'bg-bg-primary text-content-primary shadow'
                   : 'text-content-muted hover:text-content-secondary'
@@ -1458,7 +1458,7 @@ export default function StreamerDashboard() {
             placeholder="https://..."
           />
           <Textarea label="Descrição (opcional)" value={newContentDescription} onChange={(event) => setNewContentDescription(event.target.value)} rows={3} />
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="ghost" onClick={() => setAddContentOpen(false)}>Cancelar</Button>
             <Button type="submit" loading={newContentSaving}>Adicionar e anunciar</Button>
           </div>

@@ -47,7 +47,7 @@ export function Modal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-2 sm:items-center sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-fade-in"
@@ -61,14 +61,14 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
         className={cn(
-          'relative w-full bg-bg-secondary border border-border rounded-2xl shadow-2xl',
+          'relative flex max-h-[calc(100dvh-1rem)] w-full flex-col overflow-hidden rounded-2xl border border-border bg-bg-secondary shadow-2xl sm:max-h-[calc(100dvh-2rem)]',
           'animate-slide-up',
           sizes[size]
         )}
       >
         {/* Header */}
         {(title || description) && (
-          <div className="flex items-start justify-between p-6 border-b border-border">
+          <div className="flex items-start justify-between border-b border-border p-4 sm:p-6">
             <div>
               {title && (
                 <h2 id="modal-title" className="text-lg font-semibold text-content-primary">
@@ -81,7 +81,7 @@ export function Modal({
             </div>
             <button
               onClick={onClose}
-              className="ml-4 p-1.5 rounded-lg text-content-muted hover:text-content-primary hover:bg-bg-tertiary transition-colors"
+              className="ml-4 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary sm:h-9 sm:w-9"
               aria-label="Fechar"
             >
               <X size={18} />
@@ -90,11 +90,11 @@ export function Modal({
         )}
 
         {/* Body */}
-        <div className="p-6">{children}</div>
+        <div className="overflow-y-auto p-4 sm:p-6">{children}</div>
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 border-t border-border flex justify-end gap-3">
+          <div className="flex flex-wrap justify-end gap-3 border-t border-border px-4 py-4 sm:px-6">
             {footer}
           </div>
         )}

@@ -111,7 +111,7 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
               aria-label={`Abrir canal de ${streamer.channel_name} na Twitch`}
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
-              className="focus-ring inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-purple to-purple-500 px-4 text-xs font-semibold text-white shadow-[0_8px_22px_rgba(145,70,255,0.25)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_10px_28px_rgba(145,70,255,0.4)]"
+            className="focus-ring inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-brand-purple to-purple-500 px-4 text-xs font-semibold text-white shadow-[0_8px_22px_rgba(145,70,255,0.25)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_10px_28px_rgba(145,70,255,0.4)]"
             >
               Ir para Twitch <ArrowUpRight size={13} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </a>

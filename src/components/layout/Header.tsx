@@ -88,7 +88,7 @@ export function Header() {
             <div className="w-8 h-8 bg-brand-purple rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
               <Tv2 size={18} className="text-white" />
             </div>
-            <span className="font-bold text-lg text-content-primary">
+            <span className="hidden text-lg font-bold text-content-primary min-[350px]:inline">
               Watch<span className="text-brand-purple">Queue</span>
             </span>
           </Link>
@@ -275,7 +275,7 @@ export function Header() {
 
             {/* Mobile menu toggle */}
             <button
-              className="md:hidden p-2 rounded-lg text-content-secondary hover:text-content-primary hover:bg-bg-secondary transition-colors"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-bg-secondary hover:text-content-primary md:hidden"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label="Menu"
             >
@@ -286,11 +286,11 @@ export function Header() {
 
         {/* Mobile Nav */}
         {mobileOpen && (
-          <div className="md:hidden border-t border-border py-3 space-y-1 animate-fade-in">
+          <div className="space-y-1 border-t border-border py-3 animate-fade-in md:hidden">
             <Link
               to="/explore"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-secondary rounded-xl transition-colors"
+              className="flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-content-secondary transition-colors hover:bg-bg-secondary hover:text-content-primary"
             >
               <Search size={16} />
               Explorar Streamers
@@ -299,7 +299,7 @@ export function Header() {
               <Link
                 to="/dashboard"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-secondary rounded-xl transition-colors"
+                className="flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-content-secondary transition-colors hover:bg-bg-secondary hover:text-content-primary"
               >
                 <LayoutDashboard size={16} />
                 Minhas sugestões
@@ -309,7 +309,7 @@ export function Header() {
               <Link
                 to="/dashboard/streamer"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-secondary rounded-xl transition-colors"
+                className="flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-content-secondary transition-colors hover:bg-bg-secondary hover:text-content-primary"
               >
                 <Tv2 size={16} />
                 Painel do streamer

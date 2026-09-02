@@ -26,7 +26,7 @@ interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {}
 
 export function CardHeader({ className, children, ...props }: CardHeaderProps) {
   return (
-    <div className={cn('p-5 border-b border-border', className)} {...props}>
+    <div className={cn('border-b border-border p-4 sm:p-5', className)} {...props}>
       {children}
     </div>
   )
@@ -36,7 +36,7 @@ interface CardContentProps extends HTMLAttributes<HTMLDivElement> {}
 
 export function CardContent({ className, children, ...props }: CardContentProps) {
   return (
-    <div className={cn('p-5', className)} {...props}>
+    <div className={cn('p-4 sm:p-5', className)} {...props}>
       {children}
     </div>
   )
@@ -47,7 +47,7 @@ interface CardFooterProps extends HTMLAttributes<HTMLDivElement> {}
 export function CardFooter({ className, children, ...props }: CardFooterProps) {
   return (
     <div
-      className={cn('px-5 py-4 border-t border-border flex items-center', className)}
+      className={cn('flex items-center border-t border-border px-4 py-4 sm:px-5', className)}
       {...props}
     >
       {children}

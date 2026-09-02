@@ -69,7 +69,7 @@ function SuggestionCard({
   const thumbnail = useContentThumbnail(suggestion.source_url, suggestion.poster_url)
 
   return (
-    <div className="bg-bg-secondary border border-border rounded-2xl p-4 flex gap-4 hover:border-border-light transition-colors">
+    <div className="flex gap-3 rounded-2xl border border-border bg-bg-secondary p-3 transition-colors hover:border-border-light sm:gap-4 sm:p-4">
       {/* Thumbnail sempre quadrada */}
       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-bg-tertiary flex items-center justify-center">
         {thumbnail ? (
@@ -120,7 +120,7 @@ function SuggestionCard({
             <button
               onClick={() => onVote(suggestion.id, !!suggestion.user_voted)}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200',
+                'flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 sm:min-h-0',
                 suggestion.user_voted
                   ? 'bg-brand-purple/20 text-brand-purple border border-brand-purple/30 hover:bg-brand-purple/10'
                   : 'bg-bg-tertiary text-content-secondary border border-border hover:border-border-light hover:text-content-primary'
@@ -254,7 +254,7 @@ function SuggestModal({
           rows={3}
         />
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
@@ -384,7 +384,7 @@ export default function StreamerPage() {
   return (
     <div className={cn('min-h-screen', profileTheme.page)} style={profileThemeVariables}>
       {/* Capa */}
-      <div className="relative h-52 bg-bg-secondary overflow-hidden">
+      <div className="relative h-40 overflow-hidden bg-bg-secondary sm:h-52">
         {streamer.cover_url ? (
           <img
             src={streamer.cover_url}
@@ -400,7 +400,7 @@ export default function StreamerPage() {
       <div className="app-shell relative z-10">
         {/* Avatar e info */}
         <div className="mt-4 mb-8 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex items-end gap-4">
+          <div className="flex min-w-0 items-end gap-3 sm:gap-4">
             <Avatar
               src={streamer.avatar_url}
               alt={streamer.channel_name}
@@ -408,9 +408,9 @@ export default function StreamerPage() {
               size="xl"
               className="ring-4 ring-bg-primary shadow-xl"
             />
-            <div className="pb-2">
+            <div className="min-w-0 pb-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-bold text-content-primary">{streamer.channel_name}</h1>
+                <h1 className="truncate text-xl font-bold text-content-primary sm:text-2xl">{streamer.channel_name}</h1>
                 <span className={cn(
                   'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
                   streamer.is_live
@@ -499,7 +499,7 @@ export default function StreamerPage() {
         )}
 
         {/* Filtros de categoria */}
-        <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-1">
+        <div className="mobile-scroll mb-5 flex items-center gap-2 overflow-x-auto pb-1">
           <Filter size={14} className="text-content-muted shrink-0" />
           {categories.map((cat) => (
             <button
@@ -518,13 +518,13 @@ export default function StreamerPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-bg-secondary border border-border rounded-xl p-1">
+        <div className="mobile-scroll mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border bg-bg-secondary p-1">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
               className={cn(
-                'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200',
+                'flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200',
                 tab === id
                   ? 'bg-brand-purple/15 text-brand-purple shadow'
                   : 'text-content-muted hover:text-content-secondary'

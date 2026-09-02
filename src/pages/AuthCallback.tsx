@@ -47,7 +47,7 @@ export default function AuthCallback() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-sm w-full bg-bg-secondary border border-border rounded-2xl p-8 text-center">
+        <div className="w-full max-w-sm rounded-2xl border border-border bg-bg-secondary p-5 text-center sm:p-8">
           <div className="w-14 h-14 rounded-2xl bg-status-rejected/10 border border-status-rejected/20 flex items-center justify-center mx-auto mb-4">
             <AlertCircle size={28} className="text-status-rejected" />
           </div>
