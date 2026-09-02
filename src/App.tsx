@@ -71,7 +71,7 @@ function AppLayout() {
   )
 }
 
-// Layout sem footer (dashboard)
+// Layout dos dashboards com rodapé global
 function DashLayout() {
   return (
     <div className="flex flex-col min-h-screen">
@@ -79,6 +79,7 @@ function DashLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
+      <Footer />
     </div>
   )
 }
