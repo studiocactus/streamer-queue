@@ -240,7 +240,7 @@ function RejectModal({
 // Dashboard do Streamer
 // ============================================================
 type DashTab = 'kanban' | 'settings' | 'moderators' | 'twitch'
-type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed' | 'streamer_added'
+type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
 type ModeratorMember = {
   id: string
   user_id: string
@@ -254,16 +254,20 @@ type BannedUser = { id: string; user_id: string; reason: string | null; created_
 const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
   suggestion_received: '🎬 {viewer} adicionou “{titulo}” à lista do canal! Envie sua sugestão também no WatchQueue.',
   suggestion_approved: '✅ A sugestão “{titulo}”, enviada por {viewer}, foi aprovada! Participe também pelo WatchQueue.',
+  queued: '📋 “{titulo}”, ideia de {viewer}, entrou na fila do canal!',
   watching_now: '🍿 Agora estamos assistindo “{titulo}”, sugestão de {viewer}! Qual deveria ser a próxima?',
   completed: '🎉 Terminamos “{titulo}”, sugestão de {viewer}! Obrigado por participar da comunidade.',
+  rejected: 'ℹ️ A ideia “{titulo}”, enviada por {viewer}, não foi aprovada desta vez.',
   streamer_added: '📌 {viewer} adicionou “{titulo}” em {categoria}. Vote na sua ideia favorita pelo WatchQueue!',
 }
 
 const CHAT_TEMPLATE_LABELS: Record<ChatEventType, string> = {
   suggestion_received: 'Nova sugestão',
   suggestion_approved: 'Aprovação',
+  queued: 'Adicionado à fila',
   watching_now: 'Assistindo agora',
   completed: 'Concluído',
+  rejected: 'Rejeitado',
   streamer_added: 'Conteúdo adicionado pelo streamer',
 }
 

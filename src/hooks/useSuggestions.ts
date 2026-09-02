@@ -239,10 +239,14 @@ export function useSuggestions(streamerId: string | undefined) {
 
       const eventType = status === 'approved'
         ? 'suggestion_approved'
+        : status === 'queued'
+          ? 'queued'
         : status === 'watching'
           ? 'watching_now'
           : status === 'completed'
             ? 'completed'
+            : status === 'rejected'
+              ? 'rejected'
             : null
       const currentSuggestion = suggestions.find((item) => item.id === suggestionId)
       if (eventType && currentSuggestion?.status !== status) {

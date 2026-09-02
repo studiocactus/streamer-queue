@@ -16,7 +16,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 interface ChatEventPayload {
   streamer_id: string
   suggestion_id?: string
-  event_type: 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed' | 'streamer_added'
+  event_type: 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
   viewer_name: string
   title: string
 }
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
       },
     })
   }
@@ -217,6 +217,8 @@ function getDefaultTemplate(eventType: string): string {
     suggestion_approved: '✅ A sugestão "{titulo}" de {viewer} foi aprovada!',
     watching_now: '🍿 O streamer começou a assistir "{titulo}", sugestão de {viewer}!',
     completed: '🎉 Terminamos de assistir "{titulo}"! Obrigado, {viewer}!',
+    queued: '📋 “{titulo}”, ideia de {viewer}, entrou na fila do canal!',
+    rejected: 'ℹ️ A ideia “{titulo}”, enviada por {viewer}, não foi aprovada desta vez.',
     streamer_added: '📌 {viewer} adicionou “{titulo}” em {categoria}. Vote na sua ideia favorita pelo WatchQueue!',
   }
   return templates[eventType] ?? '📺 Nova atividade no WatchQueue!'

@@ -6,7 +6,7 @@ export type Role = 'owner' | 'moderator' | 'viewer'
 export type SuggestionStatus = 'pending' | 'approved' | 'queued' | 'watching' | 'completed' | 'rejected'
 export type SuggestionCategory = 'movie' | 'series' | 'anime' | 'react' | 'music' | 'other'
 export type MonetizationMode = 'free' | 'highlight' | 'skip_queue' | 'custom'
-export type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed' | 'streamer_added'
+export type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
 export type MessageStatus = 'sent' | 'failed' | 'simulated'
 
 // ============================================================
