@@ -434,29 +434,30 @@ export default function StreamerPage() {
           {suggestionsLoading ? (
             Array.from({ length: 3 }).map((_, i) => <SkeletonSuggestion key={i} />)
           ) : getTabItems().length === 0 ? (
-            <EmptyState
-              icon={tab === 'completed' ? <History size={22} /> : <Tv2 size={22} />}
-              title={
-                tab === 'completed'
-                  ? 'Nenhum conteúdo concluído ainda'
-                  : tab === 'queue'
-                  ? 'Fila vazia'
-                  : 'Nenhuma sugestão encontrada'
-              }
-              description={
-                tab === 'queue'
-                  ? 'Seja o primeiro a sugerir um conteúdo para o streamer!'
-                  : undefined
-              }
-              compact
-              action={
-                tab === 'queue' ? (
-                  <Button size="sm" onClick={handleSuggest} leftIcon={<Send size={13} />}>
-                    Sugerir agora
-                  </Button>
-                ) : undefined
-              }
-            />
+            <div className="bg-bg-secondary border border-border rounded-2xl p-8 text-center space-y-4 my-4">
+              <div className="w-14 h-14 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center mx-auto">
+                <Tv2 size={28} className="text-brand-purple" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-content-primary">
+                  {tab === 'completed'
+                    ? 'Nenhum conteúdo concluído ainda'
+                    : tab === 'queue'
+                    ? 'A fila deste canal está vazia!'
+                    : 'Nenhuma sugestão encontrada'}
+                </h3>
+                <p className="text-sm text-content-secondary max-w-md mx-auto mt-1">
+                  {tab === 'queue'
+                    ? `Envie a primeira sugestão de filme, série ou anime para ${streamer.channel_name} assistir na live!`
+                    : 'Ajuste os filtros acima para ver outras sugestões.'}
+                </p>
+              </div>
+              {tab === 'queue' && (
+                <Button size="md" onClick={handleSuggest} leftIcon={<Send size={16} />}>
+                  Sugerir conteúdo agora
+                </Button>
+              )}
+            </div>
           ) : (
             getTabItems().map((suggestion) => (
               <SuggestionCard
