@@ -28,7 +28,7 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
             navigate(profilePath)
           }
         }}
-        className="relative flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border-border/80 bg-bg-secondary/95 shadow-[0_18px_55px_rgba(0,0,0,0.24)] transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-brand-purple/50 group-hover:shadow-[0_24px_70px_rgba(145,70,255,0.2)]"
+        className="relative flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border-brand-purple/40 bg-bg-secondary/95 shadow-[0_18px_55px_rgba(145,70,255,0.12)] ring-1 ring-brand-purple/10 transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-brand-purple/70 group-hover:shadow-[0_24px_70px_rgba(145,70,255,0.24)]"
       >
         <div className="pointer-events-none absolute inset-x-8 top-0 z-20 h-px bg-gradient-to-r from-transparent via-brand-purple/80 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
         {/* Cover */}
@@ -77,7 +77,7 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
               size="md"
               className="-mt-10 ring-4 ring-bg-secondary shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-transform duration-300 group-hover:scale-105"
             />
-            <div className="-mt-10 min-w-0 pt-1">
+            <div className="-mt-8 min-w-0">
               <h3 className="block truncate text-base font-bold text-content-primary transition-colors group-hover:text-white">
                 {streamer.channel_name}
               </h3>
