@@ -61,31 +61,35 @@ function KanbanColumn({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 p-3 md:grid-cols-2 2xl:grid-cols-3">
+      <div className="max-h-[28rem] overflow-y-auto overscroll-contain scrollbar-thin">
         {suggestions.length === 0 ? (
-          <div className="py-4 text-center text-xs text-content-muted md:col-span-2 2xl:col-span-3">
+          <div className="px-4 py-6 text-center text-xs text-content-muted">
             Nenhuma sugestão
           </div>
         ) : (
           suggestions.map((s) => (
             <div
               key={s.id}
-              className="flex min-w-0 flex-col bg-bg-secondary border border-border rounded-xl p-3 group hover:border-border-light transition-colors"
+              className="group grid min-w-0 grid-cols-1 gap-2 border-b border-border/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-bg-secondary/70 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-4"
             >
-              <p className="text-xs font-semibold text-content-primary line-clamp-2 mb-1">{s.title}</p>
-              <div className="flex items-center gap-1.5 mb-2">
-                <Badge variant="category" category={s.category as never} size="sm" />
-                <span className="text-xs text-content-muted flex items-center gap-0.5">
-                  <ThumbsUp size={9} />
-                  {s.vote_count ?? 0}
-                </span>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-content-primary" title={s.title}>
+                  {s.title}
+                </p>
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <Badge variant="category" category={s.category as never} size="sm" />
+                  <span className="inline-flex items-center gap-1 text-xs text-content-muted">
+                    <ThumbsUp size={10} />
+                    {s.vote_count ?? 0}
+                  </span>
+                  <span className="truncate text-xs text-content-muted">
+                    {s.submitter?.display_name} · {formatRelativeDate(s.submitted_at)}
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-content-muted mb-2">
-                {s.submitter?.display_name} · {formatRelativeDate(s.submitted_at)}
-              </p>
 
               {/* Ações por status */}
-              <div className="mt-auto flex gap-1.5 flex-wrap pt-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 lg:shrink-0 lg:justify-end">
                 {status === 'pending' && (
                   <>
                     <button
@@ -137,7 +141,7 @@ function KanbanColumn({
                 </button>}
                 <button
                   onClick={() => onDelete?.(s)}
-                  className="ml-auto inline-flex items-center gap-1 text-xs text-content-muted transition-colors hover:text-status-rejected"
+                  className="inline-flex items-center gap-1 text-xs text-content-muted transition-colors hover:text-status-rejected"
                   aria-label={`Excluir ${s.title}`}
                 >
                   <Trash2 size={11} />
