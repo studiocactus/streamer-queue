@@ -115,6 +115,7 @@ export interface Database {
           description: string | null
           poster_url: string | null
           release_year: number | null
+          source_url: string | null
           status: string
           queue_position: number | null
           rejection_reason: string | null
@@ -132,6 +133,7 @@ export interface Database {
           description?: string | null
           poster_url?: string | null
           release_year?: number | null
+          source_url?: string | null
           status?: string
           queue_position?: number | null
           rejection_reason?: string | null
@@ -146,6 +148,7 @@ export interface Database {
           description?: string | null
           poster_url?: string | null
           release_year?: number | null
+          source_url?: string | null
           status?: string
           queue_position?: number | null
           rejection_reason?: string | null

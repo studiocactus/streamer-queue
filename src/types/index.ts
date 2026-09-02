@@ -4,9 +4,9 @@
 
 export type Role = 'owner' | 'moderator' | 'viewer'
 export type SuggestionStatus = 'pending' | 'approved' | 'queued' | 'watching' | 'completed' | 'rejected'
-export type SuggestionCategory = 'movie' | 'series' | 'anime' | 'other'
+export type SuggestionCategory = 'movie' | 'series' | 'anime' | 'react' | 'music' | 'other'
 export type MonetizationMode = 'free' | 'highlight' | 'skip_queue' | 'custom'
-export type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed'
+export type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed' | 'streamer_added'
 export type MessageStatus = 'sent' | 'failed' | 'simulated'
 
 // ============================================================
@@ -75,6 +75,7 @@ export interface Suggestion {
   description: string | null
   poster_url: string | null
   release_year: number | null
+  source_url?: string | null
   status: SuggestionStatus
   queue_position: number | null
   rejection_reason: string | null

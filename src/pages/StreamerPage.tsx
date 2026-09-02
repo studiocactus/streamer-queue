@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Tv2, ThumbsUp, Send, Filter, Clock,
-  Trophy, History, Play, ExternalLink, AlertCircle
+  Trophy, History, Play, ExternalLink, AlertCircle, Link as LinkIcon
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStreamer } from '@/hooks/useStreamer'
@@ -67,6 +67,12 @@ function SuggestionCard({
           </p>
         )}
 
+        {suggestion.source_url && (
+          <a href={suggestion.source_url} target="_blank" rel="noreferrer" className="mb-2 inline-flex items-center gap-1 text-xs text-brand-purple hover:underline">
+            <LinkIcon size={11} /> Abrir conteúdo
+          </a>
+        )}
+
         <div className="flex items-center justify-between">
           <span className="text-xs text-content-muted">
             {formatRelativeDate(suggestion.submitted_at)}
@@ -103,13 +109,14 @@ function SuggestModal({
 }: {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: { title: string; category: SuggestionCategory; description?: string; release_year?: number }) => Promise<boolean>
+  onSubmit: (data: { title: string; category: SuggestionCategory; description?: string; release_year?: number; source_url?: string }) => Promise<boolean>
   onCheckDuplicates: (title: string) => Promise<{ id: string; title: string; status: string }[]>
 }) {
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<SuggestionCategory>('movie')
   const [description, setDescription] = useState('')
   const [releaseYear, setReleaseYear] = useState('')
+  const [sourceUrl, setSourceUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [duplicates, setDuplicates] = useState<{ id: string; title: string; status: string }[]>([])
 
@@ -129,12 +136,14 @@ function SuggestModal({
       category,
       description: description.trim() || undefined,
       release_year: releaseYear ? parseInt(releaseYear) : undefined,
+      source_url: sourceUrl.trim() || undefined,
     })
     setLoading(false)
     if (ok) {
       setTitle('')
       setDescription('')
       setReleaseYear('')
+      setSourceUrl('')
       setDuplicates([])
       onClose()
     }
@@ -174,11 +183,13 @@ function SuggestModal({
             { value: 'movie', label: 'Filme' },
             { value: 'series', label: 'Série' },
             { value: 'anime', label: 'Anime' },
+            { value: 'react', label: 'React / Vídeo' },
+            { value: 'music', label: 'Música' },
             { value: 'other', label: 'Outro' },
           ]}
         />
 
-        <Input
+        {(category === 'movie' || category === 'series' || category === 'anime') && <Input
           label="Ano de lançamento"
           type="number"
           placeholder="Ex: 2014"
@@ -186,7 +197,16 @@ function SuggestModal({
           onChange={(e) => setReleaseYear(e.target.value)}
           min={1888}
           max={2100}
-        />
+        />}
+
+        {(category === 'react' || category === 'music') && <Input
+          label={category === 'react' ? 'Link do YouTube' : 'Link do Spotify ou YouTube'}
+          type="url"
+          required
+          placeholder={category === 'react' ? 'https://youtube.com/watch?...' : 'https://open.spotify.com/...'}
+          value={sourceUrl}
+          onChange={(e) => setSourceUrl(e.target.value)}
+        />}
 
         <Textarea
           label="Descrição (opcional)"
@@ -292,6 +312,8 @@ export default function StreamerPage() {
     { value: 'movie', label: 'Filmes' },
     { value: 'series', label: 'Séries' },
     { value: 'anime', label: 'Animes' },
+    { value: 'react', label: 'Reacts' },
+    { value: 'music', label: 'Músicas' },
     { value: 'other', label: 'Outros' },
   ]
 
@@ -478,7 +500,7 @@ export default function StreamerPage() {
                 </h3>
                 <p className="text-sm text-content-secondary max-w-md mx-auto mt-1">
                   {tab === 'queue'
-                    ? `Envie a primeira sugestão de filme, série ou anime para ${streamer.channel_name} assistir na live!`
+                    ? `Envie a primeira sugestão de filme, série, anime, react ou música para ${streamer.channel_name}!`
                     : 'Ajuste os filtros acima para ver outras sugestões.'}
                 </p>
               </div>
@@ -494,7 +516,7 @@ export default function StreamerPage() {
                 key={suggestion.id}
                 suggestion={suggestion}
                 onVote={vote}
-                canVote={!!user}
+                canVote={!!user && suggestion.submitted_by !== user.id}
               />
             ))
           )}

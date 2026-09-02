@@ -14,11 +14,11 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { Modal } from '@/components/ui/Modal'
-import { Input, Textarea } from '@/components/ui/Input'
+import { Input, Textarea, Select } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { cn, formatRelativeDate, categoryLabel } from '@/lib/utils'
-import type { Suggestion, SuggestionStatus } from '@/types'
+import type { Suggestion, SuggestionStatus, SuggestionCategory } from '@/types'
 import { getTwitchChatConnectUrl } from '@/lib/supabase'
 
 // ============================================================
@@ -193,7 +193,7 @@ function RejectModal({
 // Dashboard do Streamer
 // ============================================================
 type DashTab = 'kanban' | 'settings' | 'moderators' | 'twitch'
-type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed'
+type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed' | 'streamer_added'
 type ModeratorMember = {
   id: string
   user_id: string
@@ -208,6 +208,7 @@ const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
   suggestion_approved: '✅ A sugestão “{titulo}”, enviada por {viewer}, foi aprovada! Participe também pelo WatchQueue.',
   watching_now: '🍿 Agora estamos assistindo “{titulo}”, sugestão de {viewer}! Qual deveria ser a próxima?',
   completed: '🎉 Terminamos “{titulo}”, sugestão de {viewer}! Obrigado por participar da comunidade.',
+  streamer_added: '📌 {viewer} adicionou “{titulo}” em {categoria}. Vote na sua ideia favorita pelo WatchQueue!',
 }
 
 const CHAT_TEMPLATE_LABELS: Record<ChatEventType, string> = {
@@ -215,6 +216,7 @@ const CHAT_TEMPLATE_LABELS: Record<ChatEventType, string> = {
   suggestion_approved: 'Aprovação',
   watching_now: 'Assistindo agora',
   completed: 'Concluído',
+  streamer_added: 'Conteúdo adicionado pelo streamer',
 }
 
 export default function StreamerDashboard() {
@@ -238,6 +240,12 @@ export default function StreamerDashboard() {
   const [selectedModeratorId, setSelectedModeratorId] = useState('')
   const [moderatorsLoading, setModeratorsLoading] = useState(false)
   const [moderatorCandidates, setModeratorCandidates] = useState<ModeratorCandidate[]>([])
+  const [addContentOpen, setAddContentOpen] = useState(false)
+  const [newContentTitle, setNewContentTitle] = useState('')
+  const [newContentCategory, setNewContentCategory] = useState<SuggestionCategory>('react')
+  const [newContentUrl, setNewContentUrl] = useState('')
+  const [newContentDescription, setNewContentDescription] = useState('')
+  const [newContentSaving, setNewContentSaving] = useState(false)
 
   const {
     suggestions, watching, queued, pending, approved,
@@ -412,6 +420,53 @@ export default function StreamerDashboard() {
     }
   }
 
+  const handleAddStreamerContent = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!streamerProfile || !profile || !newContentTitle.trim()) return
+    if ((newContentCategory === 'react' || newContentCategory === 'music') && !newContentUrl.trim()) {
+      toast.error('Informe o link do conteúdo.')
+      return
+    }
+    setNewContentSaving(true)
+    try {
+      const { data: created, error } = await supabase.from('suggestions').insert({
+        streamer_id: streamerProfile.id,
+        submitted_by: profile.id,
+        category: newContentCategory,
+        title: newContentTitle.trim(),
+        description: newContentDescription.trim() || null,
+        source_url: newContentUrl.trim() || null,
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+      } as never).select('id').single()
+      if (error) throw error
+
+      const { data: chatResult, error: chatError } = await supabase.functions.invoke('twitch-chat', {
+        body: {
+          streamer_id: streamerProfile.id,
+          suggestion_id: created?.id,
+          event_type: 'streamer_added',
+          viewer_name: profile.display_name,
+          title: newContentTitle.trim(),
+        },
+      })
+      if (chatError || chatResult?.status !== 'sent') {
+        toast.warning('Conteúdo adicionado, mas a mensagem não chegou à Twitch.')
+      } else {
+        toast.success('Conteúdo adicionado e anunciado no chat.')
+      }
+      setNewContentTitle('')
+      setNewContentUrl('')
+      setNewContentDescription('')
+      setAddContentOpen(false)
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível adicionar o conteúdo.')
+    } finally {
+      setNewContentSaving(false)
+    }
+  }
+
   const handleAction = async (id: string, status: SuggestionStatus) => {
     try {
       await updateStatus(id, status)
@@ -568,6 +623,10 @@ export default function StreamerDashboard() {
             </div>
           </div>
 
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Button size="sm" onClick={() => setAddContentOpen(true)} leftIcon={<Send size={15} />}>
+              Adicionar ideia
+            </Button>
           {/* Assistindo agora */}
           {watching && (
             <div className="flex items-center gap-2 bg-status-watching/10 border border-status-watching/20 rounded-xl px-4 py-2">
@@ -582,6 +641,7 @@ export default function StreamerDashboard() {
               </button>
             </div>
           )}
+          </div>
         </div>
 
         {/* Stats */}
@@ -797,7 +857,7 @@ export default function StreamerDashboard() {
                       rows={2}
                       maxLength={450}
                     />
-                    <p className="text-[11px] text-content-muted">Prévia: {chatTemplates[eventType].split('{viewer}').join(profile?.display_name ?? 'Viewer').split('{titulo}').join('Nome do conteúdo')}</p>
+                    <p className="text-[11px] text-content-muted">Prévia: {chatTemplates[eventType].split('{viewer}').join(profile?.display_name ?? 'Viewer').split('{titulo}').join('Nome do conteúdo').split('{categoria}').join('Reacts')}</p>
                   </div>
                 ))}
               </div>
@@ -894,6 +954,35 @@ export default function StreamerDashboard() {
         onClose={() => setRejectTarget(null)}
         onReject={handleReject}
       />
+
+      <Modal isOpen={addContentOpen} onClose={() => setAddContentOpen(false)} title="Adicionar ideia para a comunidade" size="md">
+        <form onSubmit={handleAddStreamerContent} className="space-y-4">
+          <Input label="Título" required value={newContentTitle} onChange={(event) => setNewContentTitle(event.target.value)} placeholder="Ex: React do novo trailer" />
+          <Select
+            label="Categoria"
+            value={newContentCategory}
+            onChange={(event) => setNewContentCategory(event.target.value as SuggestionCategory)}
+            options={[
+              { value: 'movie', label: 'Filme' }, { value: 'series', label: 'Série' },
+              { value: 'anime', label: 'Anime' }, { value: 'react', label: 'React / Vídeo' },
+              { value: 'music', label: 'Música' }, { value: 'other', label: 'Outro' },
+            ]}
+          />
+          <Input
+            label={newContentCategory === 'music' ? 'Link do Spotify ou YouTube' : 'Link do conteúdo (opcional)'}
+            type="url"
+            required={newContentCategory === 'react' || newContentCategory === 'music'}
+            value={newContentUrl}
+            onChange={(event) => setNewContentUrl(event.target.value)}
+            placeholder="https://..."
+          />
+          <Textarea label="Descrição (opcional)" value={newContentDescription} onChange={(event) => setNewContentDescription(event.target.value)} rows={3} />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setAddContentOpen(false)}>Cancelar</Button>
+            <Button type="submit" loading={newContentSaving}>Adicionar e anunciar</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

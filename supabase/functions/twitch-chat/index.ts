@@ -16,7 +16,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 interface ChatEventPayload {
   streamer_id: string
   suggestion_id?: string
-  event_type: 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed'
+  event_type: 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed' | 'streamer_added'
   viewer_name: string
   title: string
 }
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     // viewer from the database and confirm who is allowed to trigger the event.
     const { data: suggestion } = await adminClient
       .from('suggestions')
-      .select('id, streamer_id, submitted_by, title')
+      .select('id, streamer_id, submitted_by, title, category')
       .eq('id', suggestion_id)
       .eq('streamer_id', streamer_id)
       .maybeSingle()
@@ -111,6 +111,7 @@ Deno.serve(async (req) => {
     message = message
       .replaceAll('{viewer}', viewerName)
       .replaceAll('{titulo}', suggestionTitle)
+      .replaceAll('{categoria}', getCategoryLabel(suggestion.category))
 
     // Verificar se há integração Twitch configurada
     const { data: connection } = await adminClient
@@ -216,6 +217,11 @@ function getDefaultTemplate(eventType: string): string {
     suggestion_approved: '✅ A sugestão "{titulo}" de {viewer} foi aprovada!',
     watching_now: '🍿 O streamer começou a assistir "{titulo}", sugestão de {viewer}!',
     completed: '🎉 Terminamos de assistir "{titulo}"! Obrigado, {viewer}!',
+    streamer_added: '📌 {viewer} adicionou “{titulo}” em {categoria}. Vote na sua ideia favorita pelo WatchQueue!',
   }
   return templates[eventType] ?? '📺 Nova atividade no WatchQueue!'
+}
+
+function getCategoryLabel(category: string): string {
+  return ({ movie: 'Filmes', series: 'Séries', anime: 'Animes', react: 'Reacts', music: 'Músicas', other: 'Outros' } as Record<string, string>)[category] ?? 'Conteúdos'
 }

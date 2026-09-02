@@ -159,6 +159,7 @@ export function useSuggestions(streamerId: string | undefined) {
       category: SuggestionCategory
       description?: string
       release_year?: number
+      source_url?: string
     }) => {
       if (!user) { toast.error('Você precisa estar logado para sugerir'); return false }
       if (!streamerId) return false
@@ -171,6 +172,7 @@ export function useSuggestions(streamerId: string | undefined) {
           title: data.title.trim(),
           description: data.description?.trim() ?? null,
           release_year: data.release_year ?? null,
+          source_url: data.source_url?.trim() || null,
           status: 'pending',
         } as AnyRecord).select('id').single()
 

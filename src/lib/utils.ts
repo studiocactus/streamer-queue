@@ -42,6 +42,8 @@ export function categoryLabel(category: SuggestionCategory): string {
     movie: 'Filme',
     series: 'Série',
     anime: 'Anime',
+    react: 'React',
+    music: 'Música',
     other: 'Outro',
   }
   return labels[category]

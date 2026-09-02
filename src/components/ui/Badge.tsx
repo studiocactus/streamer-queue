@@ -44,6 +44,8 @@ export function Badge({
       movie: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
       series: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
       anime: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+      react: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+      music: 'bg-green-500/10 text-green-400 border-green-500/20',
       other: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
     }
     return (
