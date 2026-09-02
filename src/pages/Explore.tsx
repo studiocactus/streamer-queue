@@ -13,7 +13,7 @@ import type { Streamer } from '@/types'
 
 function StreamerCard({ streamer }: { streamer: Streamer }) {
   return (
-    <Link to={`/streamer/${streamer.slug}`} className="block group">
+    <Link to={`/streamer/${streamer.slug.toLowerCase()}`} className="block group">
       <Card
         hover
         className="overflow-hidden h-full flex flex-col"

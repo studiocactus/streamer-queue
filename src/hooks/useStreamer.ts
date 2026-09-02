@@ -20,7 +20,7 @@ export function useStreamer(slug: string | undefined) {
           owner:profiles!owner_id(id, display_name, avatar_url, twitch_login),
           settings:streamer_settings(*)
         `)
-        .eq('slug', slug)
+        .ilike('slug', slug.trim())
         .eq('is_public', true)
         .eq('is_active', true)
         .single()

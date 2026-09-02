@@ -139,7 +139,7 @@ export default function ViewerDashboard() {
                 <Send size={16} className="text-brand-purple" />
                 Minhas Sugestões
               </h2>
-              <Link to="/explore">
+              <Link to={streamerProfile ? `/streamer/${streamerProfile.slug}` : '/explore'}>
                 <Button size="sm" variant="ghost" leftIcon={<Plus size={14} />}>
                   Nova sugestão
                 </Button>
