@@ -70,12 +70,18 @@ export function Footer() {
             <p className="max-w-md text-sm leading-relaxed text-content-secondary">
               A comunidade escolhe o que o streamer assiste. Organize filas, receba sugestões e transforme cada transmissão em uma experiência compartilhada.
             </p>
-            <a href={supportUrl} target="_blank" rel="noopener noreferrer" className="support-cta mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white transition-all duration-300">
-              <Coffee size={16} /> Apoiar o projeto <ArrowUpRight size={14} />
-            </a>
-            <p className="mt-2 max-w-sm text-xs leading-relaxed text-content-muted">
-              Caso você queira ajudar, quando eu estiver ao vivo na Twitch, sua mensagem será exibida na tela.
-            </p>
+            <div className="mt-5 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              <a href={supportUrl} target="_blank" rel="noopener noreferrer" className="support-cta inline-flex shrink-0 items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white transition-all duration-300">
+                <Coffee size={16} /> Apoiar o projeto <ArrowUpRight size={14} />
+              </a>
+              <p className="max-w-md text-xs leading-relaxed text-content-muted">
+                Caso você queira ajudar e não é obrigado! Quando o Streamer Thenees (
+                <a href="https://twitch.tv/thenes" target="_blank" rel="noopener noreferrer" className="text-content-secondary underline decoration-brand-purple/50 underline-offset-2 transition-colors hover:text-content-primary">
+                  twitch.tv/thenes
+                </a>
+                ) estiver ao vivo na Twitch, sua mensagem será exibida na tela.
+              </p>
+            </div>
           </div>
 
           <FooterLinks title="Produto" links={[
