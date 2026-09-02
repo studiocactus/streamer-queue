@@ -86,6 +86,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // A atualização do status acontece antes desta chamada. Se o navegador perder
+    // a resposta e repetir a solicitação, não publique a mesma mensagem novamente.
+    const { data: previousDelivery } = await adminClient
+      .from('chat_message_logs')
+      .select('message, status')
+      .eq('suggestion_id', suggestion_id)
+      .eq('event_type', event_type)
+      .eq('status', 'sent')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (previousDelivery) {
+      return new Response(
+        JSON.stringify({ success: true, message: previousDelivery.message, status: 'sent', duplicate: true }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { data: viewer } = suggestion.submitted_by
       ? await adminClient.from('profiles').select('display_name').eq('id', suggestion.submitted_by).maybeSingle()
       : { data: null }

@@ -259,23 +259,33 @@ export function useSuggestions(streamerId: string | undefined) {
             : null
       const currentSuggestion = suggestions.find((item) => item.id === suggestionId)
       if (eventType && currentSuggestion?.status !== status) {
-        const { data: chatResult, error: chatError } = await supabase.functions.invoke('twitch-chat', {
-          body: {
-            streamer_id: streamerId,
-            suggestion_id: suggestionId,
-            event_type: eventType,
-            viewer_name: currentSuggestion?.submitter?.display_name ?? 'Viewer',
-            title: currentSuggestion?.title ?? '',
-          },
-        })
-        if (chatError || chatResult?.status !== 'sent') {
-          console.error('Erro ao notificar chat:', chatError ?? chatResult)
+        let chatDelivered = false
+        let lastChatError: unknown = null
+        for (let attempt = 0; attempt < 2 && !chatDelivered; attempt++) {
+          try {
+            const { data: chatResult, error: chatError } = await supabase.functions.invoke('twitch-chat', {
+              body: {
+                streamer_id: streamerId,
+                suggestion_id: suggestionId,
+                event_type: eventType,
+                viewer_name: currentSuggestion?.submitter?.display_name ?? currentSuggestion?.chat_display_name ?? 'Viewer',
+                title: currentSuggestion?.title ?? '',
+              },
+            })
+            lastChatError = chatError ?? chatResult
+            chatDelivered = !chatError && chatResult?.status === 'sent'
+          } catch (error) {
+            lastChatError = error
+          }
+        }
+        if (!chatDelivered) {
+          console.error('Erro ao notificar chat:', lastChatError)
           toast.warning('Status atualizado, mas a mensagem não chegou à Twitch.', {
             description: 'Reconecte as mensagens na aba Twitch e tente novamente.',
           })
         }
       }
-      fetchSuggestions()
+      await fetchSuggestions()
     },
     [fetchSuggestions, streamerId, suggestions]
   )
