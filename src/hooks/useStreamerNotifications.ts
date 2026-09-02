@@ -39,6 +39,11 @@ export function useStreamerNotifications(streamerId?: string) {
         if (payload.eventType === 'INSERT') {
           const notification = payload.new as StreamerNotification
           setNotifications((current) => [notification, ...current.filter((item) => item.id !== notification.id)].slice(0, 50))
+          if (notification.suggestion_id) {
+            window.dispatchEvent(new CustomEvent('watchqueue:suggestions-changed', {
+              detail: { streamerId: notification.streamer_id },
+            }))
+          }
           toast.info(notification.title, { description: notification.message })
         } else {
           refresh()

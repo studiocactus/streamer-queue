@@ -833,7 +833,7 @@ export default function StreamerDashboard() {
   ]
 
   const tabs: { id: DashTab; label: string; icon: typeof LayoutGrid }[] = [
-    { id: 'kanban', label: 'Kanban', icon: LayoutGrid },
+    { id: 'kanban', label: 'Lista de Sugestões', icon: LayoutGrid },
     { id: 'moderators', label: 'Moderadores', icon: Users },
     { id: 'twitch', label: 'Twitch', icon: Zap },
     { id: 'settings', label: 'Configurações', icon: Settings },
