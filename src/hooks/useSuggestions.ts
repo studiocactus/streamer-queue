@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import type { Suggestion, SuggestionStatus, SuggestionCategory, FilterOptions } from '@/types'
@@ -68,7 +68,12 @@ export function useSuggestions(streamerId: string | undefined, filters?: FilterO
     fetchSuggestions()
   }, [fetchSuggestions])
 
-  // Realtime subscription
+  const fetchRef = useRef(fetchSuggestions)
+  useEffect(() => {
+    fetchRef.current = fetchSuggestions
+  }, [fetchSuggestions])
+
+  // Realtime subscription — mantido estável sem loop de re-inscrição
   useEffect(() => {
     if (!streamerId) return
 
@@ -79,17 +84,17 @@ export function useSuggestions(streamerId: string | undefined, filters?: FilterO
         schema: 'public',
         table: 'suggestions',
         filter: `streamer_id=eq.${streamerId}`,
-      }, () => { fetchSuggestions() })
+      }, () => { fetchRef.current() })
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'votes',
         filter: `streamer_id=eq.${streamerId}`,
-      }, () => { fetchSuggestions() })
+      }, () => { fetchRef.current() })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [streamerId, fetchSuggestions])
+  }, [streamerId])
 
   const vote = useCallback(
     async (suggestionId: string, currentlyVoted: boolean) => {
