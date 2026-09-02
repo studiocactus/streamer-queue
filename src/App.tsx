@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, Component } from 'react'
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -6,6 +6,48 @@ import { useAuthStore } from '@/store/authStore'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
+
+// Error Boundary para capturar crashes e mostrar mensagem em vez de tela preta
+class ErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null }
+  static getDerivedStateFromError(error: Error) { return { error } }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ErrorBoundary] crash:', error, info)
+  }
+  render() {
+    if (this.state.error) {
+      const err = this.state.error as Error
+      return (
+        <div style={{
+          minHeight: '100vh', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', flexDirection: 'column', gap: 16,
+          background: '#0f0f17', color: '#f5f5f7', padding: 32, textAlign: 'center'
+        }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#ff4d6a' }}>Erro na aplicação</h1>
+          <p style={{ color: '#9999aa', maxWidth: 600 }}>{err.message}</p>
+          <pre style={{
+            background: '#17171f', border: '1px solid #2a2a36',
+            borderRadius: 8, padding: 16, fontSize: 11,
+            color: '#9999aa', maxWidth: 700, overflowX: 'auto', textAlign: 'left'
+          }}>{err.stack}</pre>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              background: '#7c4dff', color: '#fff', border: 'none',
+              borderRadius: 8, padding: '10px 24px', cursor: 'pointer', fontSize: 14
+            }}
+          >
+            Recarregar página
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 // Pages
 import LandingPage from '@/pages/Landing'
@@ -87,6 +129,7 @@ export default function App() {
           }}
         />
 
+        <ErrorBoundary>
         <Routes>
           {/* Public routes with header+footer */}
           <Route element={<AppLayout />}>
@@ -133,6 +176,7 @@ export default function App() {
             }
           />
         </Routes>
+        </ErrorBoundary>
       </AppInitializer>
     </BrowserRouter>
   )
