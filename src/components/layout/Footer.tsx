@@ -75,9 +75,9 @@ export function Footer() {
                 <Coffee size={16} /> Apoiar o projeto <ArrowUpRight size={14} />
               </a>
               <p className="max-w-md text-xs leading-relaxed text-content-muted">
-                Caso você queira ajudar e não é obrigado! Quando o Streamer Thenees (
-                <a href="https://twitch.tv/thenes" target="_blank" rel="noopener noreferrer" className="text-content-secondary underline decoration-brand-purple/50 underline-offset-2 transition-colors hover:text-content-primary">
-                  twitch.tv/thenes
+                Caso você queira ajudar e <strong className="font-bold text-white">não é obrigado!</strong> Quando o Streamer Thenees (
+                <a href="https://www.twitch.tv/thenees" target="_blank" rel="noopener noreferrer" className="text-content-secondary underline decoration-brand-purple/50 underline-offset-2 transition-colors hover:text-content-primary">
+                  twitch.tv/thenees
                 </a>
                 ) estiver ao vivo na Twitch, sua mensagem será exibida na tela.
               </p>
