@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown, Bell } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { getTwitchAuthUrl } from '@/lib/supabase'
 import { Avatar } from '@/components/ui/Avatar'
@@ -12,6 +12,7 @@ export function Header() {
   const { user, profile, streamerProfile, logout } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const { pendingCount } = useStreamerNotifications(streamerProfile?.id)
 
@@ -21,6 +22,30 @@ export function Header() {
     setMobileOpen(false)
     setUserMenuOpen(false)
   }, [location.pathname, location.search])
+
+  useEffect(() => {
+    if (!userMenuOpen) return
+
+    const closeOnOutsideInteraction = (event: PointerEvent) => {
+      if (!userMenuRef.current?.contains(event.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setUserMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsideInteraction)
+    document.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideInteraction)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [userMenuOpen])
 
   const handleLoginWithTwitch = () => {
     window.location.href = getTwitchAuthUrl()
@@ -92,7 +117,7 @@ export function Header() {
               </Link>
             )}
             {user ? (
-              <div className="relative">
+              <div ref={userMenuRef} className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-bg-secondary transition-colors"
@@ -113,12 +138,7 @@ export function Header() {
                 </button>
 
                 {userMenuOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setUserMenuOpen(false)}
-                    />
-                    <div className="absolute right-0 mt-2 w-52 bg-bg-secondary border border-border rounded-xl shadow-xl z-20 py-1 animate-fade-in">
+                    <div className="absolute right-0 z-20 mt-2 w-52 rounded-xl border border-border bg-bg-secondary py-1 shadow-xl animate-fade-in">
                       <div className="px-4 py-3 border-b border-border">
                         <p className="text-sm font-medium text-content-primary">
                           {profile?.display_name}
@@ -161,7 +181,6 @@ export function Header() {
                         Sair
                       </button>
                     </div>
-                  </>
                 )}
               </div>
             ) : (
