@@ -702,15 +702,6 @@ export default function StreamerDashboard() {
 
   const handleCoverUpload = async (file?: File) => {
     if (!file || !streamerProfile) return
-    const allowedCoverTypes: Record<string, string> = {
-      'image/jpeg': 'jpg',
-      'image/png': 'png',
-      'image/webp': 'webp',
-    }
-    if (!allowedCoverTypes[file.type]) {
-      toast.error('Escolha uma imagem PNG, JPG, JPEG ou WebP.')
-      return
-    }
     if (file.size > 1024 * 1024) {
       toast.error('A imagem deve ter no máximo 1 MB.')
       return
@@ -718,20 +709,46 @@ export default function StreamerDashboard() {
 
     setCoverUploading(true)
     try {
-      const extension = allowedCoverTypes[file.type]
+      const header = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+      const isPng = header.length >= 8 && [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => header[index] === byte)
+      const isJpeg = header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff
+      const isWebp = header.length >= 12
+        && String.fromCharCode(...header.slice(0, 4)) === 'RIFF'
+        && String.fromCharCode(...header.slice(8, 12)) === 'WEBP'
+      const format = isPng
+        ? { extension: 'png', contentType: 'image/png' }
+        : isJpeg
+          ? { extension: 'jpg', contentType: 'image/jpeg' }
+          : isWebp
+            ? { extension: 'webp', contentType: 'image/webp' }
+            : null
+      if (!format) {
+        toast.error('O arquivo não é uma imagem PNG, JPG, JPEG ou WebP válida.')
+        return
+      }
+
+      const extension = format.extension
       const path = `${streamerProfile.id}/cover.${extension}`
       const { error } = await supabase.storage
         .from('streamer-assets')
-        .upload(path, file, { upsert: true, contentType: file.type })
+        .upload(path, file, { upsert: true, contentType: format.contentType })
       if (error) throw error
 
       const { data } = supabase.storage.from('streamer-assets').getPublicUrl(path)
       const publicUrl = `${data.publicUrl}?v=${Date.now()}`
+      const { error: profileError } = await supabase
+        .from('streamers')
+        .update({ cover_url: publicUrl } as never)
+        .eq('id', streamerProfile.id)
+      if (profileError) throw profileError
       setCoverUrl(publicUrl)
-      toast.success('Capa enviada. Clique em salvar para confirmar.')
+      await refreshProfile()
+      toast.success('Capa enviada e publicada no perfil.')
     } catch (error) {
       console.error(error)
-      toast.error('Não foi possível enviar a imagem de capa.')
+      toast.error('Não foi possível enviar a imagem de capa.', {
+        description: error instanceof Error ? error.message : 'Tente novamente em alguns instantes.',
+      })
     } finally {
       setCoverUploading(false)
     }
