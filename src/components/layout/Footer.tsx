@@ -9,7 +9,7 @@ interface PlatformStats {
   operational: boolean | null
 }
 
-const supportUrl = import.meta.env.VITE_SUPPORT_URL || 'https://www.twitch.tv/subs/thenees'
+const supportUrl = 'https://livepix.gg/thenees'
 
 export function Footer() {
   const [stats, setStats] = useState<PlatformStats>({ usersCount: null, streamersCount: null, operational: null })
@@ -73,7 +73,9 @@ export function Footer() {
             <a href={supportUrl} target="_blank" rel="noopener noreferrer" className="support-cta mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white transition-all duration-300">
               <Coffee size={16} /> Apoiar o projeto <ArrowUpRight size={14} />
             </a>
-            <p className="mt-2 text-xs text-content-muted">Apoio financeiro é bem-vindo, mas totalmente opcional.</p>
+            <p className="mt-2 max-w-sm text-xs leading-relaxed text-content-muted">
+              Caso você queira ajudar, quando eu estiver ao vivo na Twitch, sua mensagem será exibida na tela.
+            </p>
           </div>
 
           <FooterLinks title="Produto" links={[
