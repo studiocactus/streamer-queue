@@ -1,26 +1,29 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown, Bell } from 'lucide-react'
+import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown, Bell, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { getTwitchAuthUrl } from '@/lib/supabase'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
+import { cn, formatRelativeDate } from '@/lib/utils'
 import { useStreamerNotifications } from '@/hooks/useStreamerNotifications'
 
 export function Header() {
   const { user, profile, streamerProfile, logout } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const notificationRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
-  const { pendingCount } = useStreamerNotifications(streamerProfile?.id)
+  const { notifications, unreadCount, markAllRead, removeOne, removeAll } = useStreamerNotifications(streamerProfile?.id)
 
   const isActive = (path: string) => location.pathname === path
 
   useEffect(() => {
     setMobileOpen(false)
     setUserMenuOpen(false)
+    setNotificationsOpen(false)
   }, [location.pathname, location.search])
 
   useEffect(() => {
@@ -46,6 +49,22 @@ export function Header() {
       document.removeEventListener('keydown', closeOnEscape)
     }
   }, [userMenuOpen])
+
+  useEffect(() => {
+    if (!notificationsOpen) return
+    const close = (event: PointerEvent) => {
+      if (!notificationRef.current?.contains(event.target as Node)) setNotificationsOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNotificationsOpen(false)
+    }
+    document.addEventListener('pointerdown', close)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', close)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [notificationsOpen])
 
   const handleLoginWithTwitch = () => {
     window.location.href = getTwitchAuthUrl()
@@ -103,18 +122,64 @@ export function Header() {
           {/* Auth */}
           <div className="flex items-center gap-3">
             {streamerProfile && (
-              <Link
-                to="/dashboard/streamer"
-                aria-label={`${pendingCount} sugestões pendentes`}
-                className="focus-ring relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-bg-secondary text-content-secondary transition-colors hover:text-content-primary"
-              >
-                <Bell size={17} />
-                {pendingCount > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full border-2 border-bg-primary bg-brand-purple px-1 text-center text-[10px] font-bold leading-4 text-white">
-                    {pendingCount > 99 ? '99+' : pendingCount}
-                  </span>
+              <div ref={notificationRef} className="relative">
+                <button
+                  type="button"
+                  aria-label={`${unreadCount} notificações não lidas`}
+                  aria-haspopup="dialog"
+                  aria-expanded={notificationsOpen}
+                  onClick={() => {
+                    const nextOpen = !notificationsOpen
+                    setNotificationsOpen(nextOpen)
+                    setUserMenuOpen(false)
+                    if (nextOpen) markAllRead()
+                  }}
+                  className="focus-ring relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-bg-secondary text-content-secondary transition-colors hover:text-content-primary"
+                >
+                  <Bell size={17} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full border-2 border-bg-primary bg-brand-purple px-1 text-center text-[10px] font-bold leading-4 text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {notificationsOpen && (
+                  <div role="dialog" aria-label="Notificações" className="absolute right-0 z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-bg-secondary shadow-2xl animate-fade-in">
+                    <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                      <div>
+                        <p className="text-sm font-semibold text-content-primary">Notificações</p>
+                        <p className="text-[11px] text-content-muted">Mensagens recebidas pelo canal</p>
+                      </div>
+                      {notifications.length > 0 && (
+                        <button type="button" onClick={removeAll} className="text-xs font-medium text-status-rejected hover:underline">
+                          Limpar todas
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <p className="px-4 py-8 text-center text-sm text-content-muted">Nenhuma notificação.</p>
+                      ) : notifications.map((notification) => (
+                        <div key={notification.id} className="flex gap-3 border-b border-border/70 px-4 py-3 last:border-0 hover:bg-bg-tertiary/60">
+                          <Link to="/dashboard/streamer" onClick={() => setNotificationsOpen(false)} className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-content-primary">{notification.title}</p>
+                            <p className="mt-0.5 line-clamp-2 text-xs text-content-secondary">{notification.message}</p>
+                            <p className="mt-1 text-[10px] text-content-muted">{formatRelativeDate(notification.created_at)}</p>
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => removeOne(notification.id)}
+                            aria-label={`Excluir ${notification.title}`}
+                            className="self-start rounded-lg p-1.5 text-content-muted transition-colors hover:bg-status-rejected/10 hover:text-status-rejected"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </Link>
+              </div>
             )}
             {user ? (
               <div ref={userMenuRef} className="relative">

@@ -192,6 +192,31 @@ export interface Database {
         }
         Update: Record<string, never>
       }
+      streamer_notifications: {
+        Row: {
+          id: string
+          streamer_id: string
+          suggestion_id: string | null
+          type: string
+          title: string
+          message: string
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          streamer_id: string
+          suggestion_id?: string | null
+          type?: string
+          title: string
+          message: string
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          read_at?: string | null
+        }
+      }
       streamer_settings: {
         Row: {
           streamer_id: string

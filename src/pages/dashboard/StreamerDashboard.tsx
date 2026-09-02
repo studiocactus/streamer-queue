@@ -408,6 +408,7 @@ export default function StreamerDashboard() {
     if (!streamerProfile) return
     setChatDisconnecting(true)
     try {
+      await supabase.auth.refreshSession()
       const { error } = await supabase.functions.invoke('twitch-auth', {
         body: { action: 'disconnect_chat', streamer_id: streamerProfile.id },
       })
@@ -610,7 +611,13 @@ export default function StreamerDashboard() {
   const handleAction = async (id: string, status: SuggestionStatus) => {
     try {
       await updateStatus(id, status)
-      toast.success(`Sugestão ${status === 'approved' ? 'aprovada' : status === 'queued' ? 'adicionada à fila' : 'atualizada'}!`)
+      const successMessage: Partial<Record<SuggestionStatus, string>> = {
+        approved: 'Sugestão aprovada!',
+        queued: 'Sugestão adicionada à fila!',
+        watching: 'Status “Assistindo agora” ativado!',
+        completed: 'Sugestão concluída!',
+      }
+      toast.success(successMessage[status] ?? 'Sugestão atualizada!')
     } catch {
       toast.error('Erro ao atualizar sugestão')
     }
@@ -624,7 +631,6 @@ export default function StreamerDashboard() {
       await updateStatus(watching.id, 'queued')
     }
     await handleAction(id, 'watching')
-    toast.success('Status "Assistindo agora" ativado!')
   }
 
   const handleReject = async (id: string, reason: string) => {

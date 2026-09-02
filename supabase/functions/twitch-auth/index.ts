@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
       headers: {
         'Access-Control-Allow-Origin': APP_URL,
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
       },
     })
   }
@@ -100,11 +100,10 @@ Deno.serve(async (req) => {
       }
 
       const { data: owner } = await adminClient
-        .from('streamer_members')
+        .from('streamers')
         .select('id')
-        .eq('streamer_id', streamerId)
-        .eq('user_id', authData.user.id)
-        .eq('role', 'owner')
+        .eq('id', streamerId)
+        .eq('owner_id', authData.user.id)
         .maybeSingle()
       if (!owner) {
         return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders })
@@ -124,9 +123,13 @@ Deno.serve(async (req) => {
         }).catch((error) => console.error('Falha ao revogar token Twitch:', error))
       }
 
-      await adminClient.from('twitch_chat_credentials').delete().eq('streamer_id', streamerId)
-      await adminClient.from('twitch_connections').update({ token_status: 'revoked' }).eq('streamer_id', streamerId)
-      await adminClient.from('streamer_settings').update({ chat_notifications_enabled: false }).eq('streamer_id', streamerId)
+      const [credentialsResult, connectionResult, settingsResult] = await Promise.all([
+        adminClient.from('twitch_chat_credentials').delete().eq('streamer_id', streamerId),
+        adminClient.from('twitch_connections').update({ token_status: 'revoked' }).eq('streamer_id', streamerId),
+        adminClient.from('streamer_settings').update({ chat_notifications_enabled: false }).eq('streamer_id', streamerId),
+      ])
+      const persistenceError = credentialsResult.error ?? connectionResult.error ?? settingsResult.error
+      if (persistenceError) throw persistenceError
 
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders })
     } catch (error) {
