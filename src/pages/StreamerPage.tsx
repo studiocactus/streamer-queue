@@ -98,13 +98,13 @@ function SuggestionCard({
 function SuggestModal({
   isOpen,
   onClose,
-  streamerId,
   onSubmit,
+  onCheckDuplicates,
 }: {
   isOpen: boolean
   onClose: () => void
-  streamerId: string
   onSubmit: (data: { title: string; category: SuggestionCategory; description?: string; release_year?: number }) => Promise<boolean>
+  onCheckDuplicates: (title: string) => Promise<{ id: string; title: string; status: string }[]>
 }) {
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<SuggestionCategory>('movie')
@@ -113,11 +113,9 @@ function SuggestModal({
   const [loading, setLoading] = useState(false)
   const [duplicates, setDuplicates] = useState<{ id: string; title: string; status: string }[]>([])
 
-  const { checkDuplicates } = useSuggestions(streamerId)
-
   const handleTitleBlur = async () => {
     if (title.trim().length > 2) {
-      const found = await checkDuplicates(title)
+      const found = await onCheckDuplicates(title)
       setDuplicates(found)
     }
   }
@@ -228,7 +226,7 @@ export default function StreamerPage() {
   // Hook busca TODAS as sugestões; filtragem é feita localmente para evitar loop infinito
   const {
     suggestions, watching, queued, pending: _pending,
-    completed, isLoading: suggestionsLoading, vote, submit,
+    completed, isLoading: suggestionsLoading, vote, submit, checkDuplicates,
   } = useSuggestions(streamer?.id)
 
   const handleSuggest = () => {
@@ -476,8 +474,8 @@ export default function StreamerPage() {
         <SuggestModal
           isOpen={suggestOpen}
           onClose={() => setSuggestOpen(false)}
-          streamerId={streamer.id}
           onSubmit={submit}
+          onCheckDuplicates={checkDuplicates}
         />
       )}
     </div>
