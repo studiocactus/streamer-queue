@@ -1,0 +1,2 @@
+-- Registro histórico da promoção inicial executada em 2026-09-02.
+-- A operação específica foi removida para não alterar contas em outros ambientes.
