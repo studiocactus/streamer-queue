@@ -211,9 +211,16 @@ export default function LandingPage() {
           </div>
 
           {/* Social proof */}
-          <p data-hero-proof className="mt-7 text-xs text-content-muted">
-            <span className="text-brand-green">●</span> Gratuito para viewers &nbsp;·&nbsp; Streamers por convite &nbsp;·&nbsp; Login seguro com Twitch
-          </p>
+          <div data-hero-proof className="mt-7 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm font-medium text-content-muted sm:gap-x-4 sm:text-[15px]">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-brand-green shadow-[0_0_12px_rgba(183,255,0,0.7)]" aria-hidden="true" />
+              Gratuito para viewers
+            </span>
+            <Users size={16} className="shrink-0 text-brand-purple" aria-hidden="true" />
+            <span>Streamers por convite</span>
+            <Shield size={16} className="shrink-0 text-brand-purple" aria-hidden="true" />
+            <span>Login seguro com Twitch</span>
+          </div>
 
           <div data-hero-product className="landing-product mx-auto mt-14 max-w-5xl text-left sm:mt-16">
             <div className="landing-product-bar flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5">
