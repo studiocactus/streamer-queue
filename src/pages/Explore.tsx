@@ -69,7 +69,7 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
         </div>
 
         <div className="relative flex flex-1 flex-col gap-4 p-5 pt-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             <Avatar
               src={streamer.avatar_url}
               alt={streamer.channel_name}
@@ -77,7 +77,7 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
               size="md"
               className="-mt-10 ring-4 ring-bg-secondary shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-transform duration-300 group-hover:scale-105"
             />
-            <div className="-mt-5 min-w-0 pt-0.5">
+            <div className="-mt-10 min-w-0 pt-1">
               <h3 className="block truncate text-base font-bold text-content-primary transition-colors group-hover:text-white">
                 {streamer.channel_name}
               </h3>
