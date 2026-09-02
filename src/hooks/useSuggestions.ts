@@ -68,12 +68,14 @@ export function useSuggestions(streamerId: string | undefined) {
     fetchRef.current = fetchSuggestions
   }, [fetchSuggestions])
 
-  // Realtime — abre canal UMA vez por streamerId
+  // Realtime — nome único para nunca reutilizar canal já subscrito
   useEffect(() => {
     if (!streamerId) return
 
+    // Prefixo aleatório evita o erro "cannot add callbacks after subscribe()"
+    const channelName = `suggestions-${streamerId}-${Math.random().toString(36).slice(2)}`
     const channel = supabase
-      .channel(`suggestions:${streamerId}`)
+      .channel(channelName)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -88,7 +90,10 @@ export function useSuggestions(streamerId: string | undefined) {
       }, () => { fetchRef.current() })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      channel.unsubscribe()
+      supabase.removeChannel(channel)
+    }
   }, [streamerId])
 
   const vote = useCallback(
