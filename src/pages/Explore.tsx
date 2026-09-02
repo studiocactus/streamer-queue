@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Tv2, ThumbsUp, Eye, Play } from 'lucide-react'
+import { Search, Tv2, ThumbsUp, Play, X, RefreshCw } from 'lucide-react'
 import { useStreamers } from '@/hooks/useStreamer'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -31,13 +31,14 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
               <Tv2 size={32} className="text-brand-purple/30" />
             </div>
           )}
-          {/* Live indicator */}
-          <div className="absolute top-3 right-3">
-            <Badge variant="purple" size="sm" className="text-xs">
-              <span className="live-dot mr-1.5" />
-              Live
-            </Badge>
-          </div>
+          {streamer.watching_now_title && (
+            <div className="absolute top-3 right-3">
+              <Badge variant="purple" size="sm" className="text-xs">
+                <Play size={10} className="mr-1 fill-current" />
+                Assistindo agora
+              </Badge>
+            </div>
+          )}
         </div>
 
         <div className="p-4 flex flex-col gap-3 flex-1">
@@ -61,6 +62,13 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
             <p className="text-xs text-content-secondary line-clamp-2">{streamer.bio}</p>
           )}
 
+          {streamer.watching_now_title && (
+            <p className="truncate rounded-lg border border-brand-purple/20 bg-brand-purple/10 px-2.5 py-2 text-xs text-content-secondary">
+              <span className="text-content-muted">Agora:</span>{' '}
+              <span className="font-medium text-content-primary">{streamer.watching_now_title}</span>
+            </p>
+          )}
+
           <div className="flex items-center justify-between mt-auto pt-2 border-t border-border">
             <div className="flex items-center gap-3 text-xs text-content-muted">
               <span className="flex items-center gap-1">
@@ -82,14 +90,12 @@ export default function ExplorePage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
-  // Debounce simples
-  const handleSearch = (value: string) => {
-    setSearch(value)
-    clearTimeout(window._searchTimeout)
-    window._searchTimeout = setTimeout(() => setDebouncedSearch(value), 400)
-  }
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 350)
+    return () => window.clearTimeout(timeout)
+  }, [search])
 
-  const { streamers, isLoading } = useStreamers(debouncedSearch || undefined)
+  const { streamers, isLoading, error } = useStreamers(debouncedSearch || undefined)
 
   return (
     <div className="min-h-screen py-12 px-4">
@@ -105,17 +111,46 @@ export default function ExplorePage() {
         </div>
 
         {/* Search */}
-        <div className="max-w-lg mx-auto mb-10">
+        <div className="max-w-xl mx-auto mb-8">
           <Input
-            placeholder="Buscar streamer..."
+            placeholder="Buscar por nome do streamer..."
             value={search}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             leftIcon={<Search size={16} />}
+            rightIcon={search ? (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Limpar busca"
+                className="rounded-md p-1 text-content-muted hover:bg-bg-tertiary hover:text-content-primary"
+              >
+                <X size={14} />
+              </button>
+            ) : undefined}
           />
         </div>
 
+        {!isLoading && !error && streamers.length > 0 && (
+          <div className="mb-5 flex items-center justify-between gap-4 border-b border-border pb-4">
+            <p className="text-sm text-content-secondary">
+              <span className="font-semibold text-content-primary">{streamers.length}</span>{' '}
+              {streamers.length === 1 ? 'canal encontrado' : 'canais encontrados'}
+              {debouncedSearch && <> para “{debouncedSearch}”</>}
+            </p>
+            <p className="hidden text-xs text-content-muted sm:block">
+              Escolha um canal para sugerir e votar
+            </p>
+          </div>
+        )}
+
         {/* Grid */}
-        {isLoading ? (
+        {error ? (
+          <EmptyState
+            icon={<RefreshCw size={24} />}
+            title="Não foi possível carregar os canais"
+            description="Verifique sua conexão e tente novamente em alguns instantes."
+          />
+        ) : isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonStreamerCard key={i} />
@@ -141,9 +176,4 @@ export default function ExplorePage() {
       </div>
     </div>
   )
-}
-
-// Tipagem para o timeout global
-declare global {
-  interface Window { _searchTimeout: ReturnType<typeof setTimeout> }
 }

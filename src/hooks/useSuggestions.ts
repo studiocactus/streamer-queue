@@ -213,6 +213,23 @@ export function useSuggestions(streamerId: string | undefined) {
     [fetchSuggestions]
   )
 
+  const remove = useCallback(
+    async (suggestionId: string) => {
+      const { error: deleteError } = await supabase
+        .from('suggestions')
+        .delete()
+        .eq('id', suggestionId)
+
+      if (deleteError) {
+        toast.error('Erro ao excluir sugestão')
+        throw deleteError
+      }
+
+      setSuggestions((current) => current.filter((item) => item.id !== suggestionId))
+    },
+    []
+  )
+
   const checkDuplicates = useCallback(
     async (title: string): Promise<{ id: string; title: string; status: string }[]> => {
       if (!streamerId || !title.trim()) return []
@@ -244,7 +261,7 @@ export function useSuggestions(streamerId: string | undefined) {
     suggestions, watching, queued, pending,
     completed, rejected, approved,
     isLoading, error,
-    vote, submit, updateStatus, checkDuplicates,
+    vote, submit, updateStatus, remove, checkDuplicates,
     refetch: fetchSuggestions,
   }
 }

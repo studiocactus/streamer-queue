@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle
+  ChevronRight, AlertCircle, Trash2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -30,6 +30,7 @@ interface KanbanColumnProps {
   onAction?: (id: string, status: SuggestionStatus) => void
   onReject?: (s: Suggestion) => void
   onWatch?: (id: string) => void
+  onDelete?: (suggestion: Suggestion) => void
 }
 
 function KanbanColumn({
@@ -40,6 +41,7 @@ function KanbanColumn({
   onAction,
   onReject,
   onWatch,
+  onDelete,
 }: KanbanColumnProps) {
   return (
     <div className="bg-bg-tertiary border border-border rounded-2xl min-h-[200px] w-72 shrink-0 flex flex-col">
@@ -119,6 +121,14 @@ function KanbanColumn({
                     Marcar concluído
                   </button>
                 )}
+                <button
+                  onClick={() => onDelete?.(s)}
+                  className="ml-auto inline-flex items-center gap-1 text-xs text-content-muted transition-colors hover:text-status-rejected"
+                  aria-label={`Excluir ${s.title}`}
+                >
+                  <Trash2 size={11} />
+                  Excluir
+                </button>
               </div>
             </div>
           ))
@@ -189,7 +199,7 @@ export default function StreamerDashboard() {
 
   const {
     suggestions, watching, queued, pending, approved,
-    completed, rejected, isLoading, updateStatus
+    completed, rejected, isLoading, updateStatus, remove
   } = useSuggestions(streamerProfile?.id)
 
   const handleAction = async (id: string, status: SuggestionStatus) => {
@@ -215,6 +225,20 @@ export default function StreamerDashboard() {
   const handleReject = async (id: string, reason: string) => {
     await updateStatus(id, 'rejected', { rejection_reason: reason || undefined })
     toast.success('Sugestão rejeitada.')
+  }
+
+  const handleDelete = async (suggestion: Suggestion) => {
+    const confirmed = window.confirm(
+      `Excluir “${suggestion.title}” definitivamente? Esta ação não pode ser desfeita.`
+    )
+    if (!confirmed) return
+
+    try {
+      await remove(suggestion.id)
+      toast.success('Sugestão excluída definitivamente.')
+    } catch {
+      // O hook já apresenta a mensagem de erro.
+    }
   }
 
   if (!streamerProfile) {
@@ -338,6 +362,7 @@ export default function StreamerDashboard() {
                 color="bg-status-pending"
                 onAction={handleAction}
                 onReject={setRejectTarget}
+                onDelete={handleDelete}
               />
               <KanbanColumn
                 title="Aprovado"
@@ -346,6 +371,7 @@ export default function StreamerDashboard() {
                 color="bg-status-approved"
                 onAction={handleAction}
                 onReject={setRejectTarget}
+                onDelete={handleDelete}
               />
               <KanbanColumn
                 title="Na Fila"
@@ -355,6 +381,7 @@ export default function StreamerDashboard() {
                 onAction={handleAction}
                 onReject={setRejectTarget}
                 onWatch={handleWatch}
+                onDelete={handleDelete}
               />
               <KanbanColumn
                 title="Assistindo"
@@ -363,6 +390,7 @@ export default function StreamerDashboard() {
                 color="bg-status-watching"
                 onAction={handleAction}
                 onReject={setRejectTarget}
+                onDelete={handleDelete}
               />
               <KanbanColumn
                 title="Concluído"
@@ -371,6 +399,7 @@ export default function StreamerDashboard() {
                 color="bg-status-completed"
                 onAction={handleAction}
                 onReject={setRejectTarget}
+                onDelete={handleDelete}
               />
               <KanbanColumn
                 title="Rejeitado"
@@ -379,6 +408,7 @@ export default function StreamerDashboard() {
                 color="bg-status-rejected"
                 onAction={handleAction}
                 onReject={setRejectTarget}
+                onDelete={handleDelete}
               />
             </div>
           </div>

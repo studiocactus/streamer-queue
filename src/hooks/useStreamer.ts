@@ -54,27 +54,24 @@ export function useStreamer(slug: string | undefined) {
 export function useStreamers(search?: string) {
   const [streamers, setStreamers] = useState<Streamer[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
       setIsLoading(true)
+      setError(null)
       try {
-        let query = supabase
-          .from('streamers')
-          .select('id, channel_name, slug, avatar_url, cover_url, bio')
-          .eq('is_public', true)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(40)
-
-        if (search && search.trim()) {
-          query = query.ilike('channel_name', `%${search.trim()}%`)
-        }
-
-        const { data } = await query
+        const { data, error: fetchError } = await supabase.rpc('get_public_streamers', {
+          p_search: search?.trim() || null,
+          p_limit: 40,
+          p_offset: 0,
+        })
+        if (fetchError) throw fetchError
         setStreamers((data ?? []) as unknown as Streamer[])
       } catch (err) {
         console.error(err)
+        setStreamers([])
+        setError('Não foi possível carregar os canais agora.')
       } finally {
         setIsLoading(false)
       }
@@ -82,5 +79,5 @@ export function useStreamers(search?: string) {
     load()
   }, [search])
 
-  return { streamers, isLoading }
+  return { streamers, isLoading, error }
 }

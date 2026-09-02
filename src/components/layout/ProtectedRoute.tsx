@@ -21,7 +21,16 @@ export function ProtectedRoute({ children, requireStreamer = false }: ProtectedR
   }
 
   if (!user) {
-    return <Navigate to="/" state={{ from: location }} replace />
+    return (
+      <Navigate
+        to="/"
+        state={{
+          from: location.pathname,
+          authRequired: true,
+        }}
+        replace
+      />
+    )
   }
 
   if (requireStreamer && !streamerProfile) {

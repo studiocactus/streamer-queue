@@ -45,6 +45,7 @@ export interface Streamer {
   suggestion_count?: number
   is_live?: boolean
   watching_now?: Suggestion | null
+  watching_now_title?: string | null
 }
 
 // ============================================================

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   Tv2, Users, ThumbsUp, Zap, Shield, Gift,
   ChevronRight, Play, Star, CheckCircle, ArrowRight
@@ -71,12 +71,33 @@ const FAQ = [
 ]
 
 export default function LandingPage() {
+  const location = useLocation()
+  const authRequired = Boolean(
+    (location.state as { authRequired?: boolean } | null)?.authRequired
+  )
+
   const handleLoginWithTwitch = () => {
     window.location.href = getTwitchAuthUrl()
   }
 
   return (
     <div className="min-h-screen">
+      {authRequired && (
+        <div
+          role="status"
+          className="border-b border-brand-purple/30 bg-brand-purple/10 px-4 py-3"
+        >
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 sm:flex-row">
+            <p className="text-center text-sm text-content-secondary sm:text-left">
+              Entre com sua conta Twitch para acessar o Dashboard e gerenciar suas sugestões.
+            </p>
+            <Button size="sm" onClick={handleLoginWithTwitch}>
+              Entrar com Twitch
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* ============================================================
           HERO
       ============================================================ */}
@@ -114,10 +135,12 @@ export default function LandingPage() {
             >
               Criar página para meu canal
             </Button>
-            <Link to="/explore">
-              <Button size="lg" variant="secondary" rightIcon={<ChevronRight size={18} />}>
-                Encontrar um streamer
-              </Button>
+            <Link
+              to="/explore"
+              className="focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border bg-bg-tertiary px-6 text-base font-medium text-content-primary transition-all duration-200 hover:border-border-light hover:bg-border"
+            >
+              Encontrar um streamer
+              <ChevronRight size={18} />
             </Link>
           </div>
 
@@ -343,10 +366,11 @@ export default function LandingPage() {
             >
               Criar página para meu canal
             </Button>
-            <Link to="/explore">
-              <Button size="lg" variant="ghost">
-                Explorar streamers →
-              </Button>
+            <Link
+              to="/explore"
+              className="focus-ring inline-flex h-12 items-center justify-center rounded-xl border border-transparent px-6 text-base font-medium text-content-secondary transition-all duration-200 hover:bg-bg-secondary hover:text-content-primary"
+            >
+              Explorar streamers →
             </Link>
           </div>
         </div>
