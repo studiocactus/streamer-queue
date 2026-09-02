@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
+import { getTwitchAuthUrl } from '@/lib/supabase'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
@@ -15,9 +16,7 @@ export function Header() {
   const isActive = (path: string) => location.pathname === path
 
   const handleLoginWithTwitch = () => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-    if (!supabaseUrl) return
-    window.location.href = `${supabaseUrl}/functions/v1/twitch-auth/login`
+    window.location.href = getTwitchAuthUrl()
   }
 
   return (

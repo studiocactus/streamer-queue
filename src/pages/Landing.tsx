@@ -4,6 +4,7 @@ import {
   ChevronRight, Play, Star, CheckCircle, ArrowRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { getTwitchAuthUrl } from '@/lib/supabase'
 
 const HOW_IT_WORKS = [
   {
@@ -71,9 +72,7 @@ const FAQ = [
 
 export default function LandingPage() {
   const handleLoginWithTwitch = () => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-    if (!supabaseUrl) return
-    window.location.href = `${supabaseUrl}/functions/v1/twitch-auth/login`
+    window.location.href = getTwitchAuthUrl()
   }
 
   return (
