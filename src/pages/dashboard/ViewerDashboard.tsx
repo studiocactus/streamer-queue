@@ -80,7 +80,9 @@ export default function ViewerDashboard() {
             />
             <div>
               <h1 className="text-2xl font-bold text-content-primary">{profile.display_name}</h1>
-              <p className="text-content-secondary text-sm">@{profile.twitch_login}</p>
+              {!streamerProfile && (
+                <p className="text-content-secondary text-sm">@{profile.twitch_login}</p>
+              )}
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex items-center gap-1.5 text-xs bg-brand-purple/10 text-brand-purple border border-brand-purple/20 rounded-full px-2.5 py-1 font-medium">
                   <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current">
