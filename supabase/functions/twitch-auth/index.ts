@@ -24,6 +24,12 @@ const TWITCH_USERS_URL = 'https://api.twitch.tv/helix/users'
 // Escopos mínimos — apenas identificação do viewer
 // Permissões de chat serão concedidas pelo streamer separadamente
 const VIEWER_SCOPES = 'openid user:read:email'
+const CHAT_SCOPES = 'user:write:chat'
+
+function readCookie(req: Request, name: string) {
+  const cookies = req.headers.get('cookie') ?? ''
+  return cookies.split(';').map((item) => item.trim()).find((item) => item.startsWith(`${name}=`))?.slice(name.length + 1)
+}
 
 Deno.serve(async (req) => {
   const url = new URL(req.url)
@@ -81,12 +87,34 @@ Deno.serve(async (req) => {
     })
   }
 
+  if (pathname.endsWith('/connect-chat')) {
+    const streamerId = url.searchParams.get('streamer_id')
+    if (!streamerId || !TWITCH_CLIENT_ID || !TWITCH_REDIRECT_URI) {
+      return Response.redirect(`${APP_URL}/dashboard/streamer?chat=invalid`, 302)
+    }
+    const state = crypto.randomUUID()
+    const params = new URLSearchParams({
+      client_id: TWITCH_CLIENT_ID,
+      redirect_uri: TWITCH_REDIRECT_URI,
+      response_type: 'code',
+      scope: CHAT_SCOPES,
+      state,
+      force_verify: 'true',
+    })
+    const headers = new Headers({ Location: `${TWITCH_AUTH_URL}?${params}` })
+    headers.append('Set-Cookie', `twitch_oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600; Path=/`)
+    headers.append('Set-Cookie', `twitch_oauth_mode=chat; HttpOnly; Secure; SameSite=Lax; Max-Age=600; Path=/`)
+    headers.append('Set-Cookie', `twitch_streamer_id=${streamerId}; HttpOnly; Secure; SameSite=Lax; Max-Age=600; Path=/`)
+    return new Response(null, { status: 302, headers })
+  }
+
   // ============================================================
   // GET /twitch-auth/callback — Processa o retorno do Twitch
   // ============================================================
   if (pathname.endsWith('/callback')) {
     const code = url.searchParams.get('code')
     const state = url.searchParams.get('state')
+    const expectedState = readCookie(req, 'twitch_oauth_state')
     const error = url.searchParams.get('error')
 
     if (error) {
@@ -99,6 +127,13 @@ Deno.serve(async (req) => {
     if (!code) {
       return Response.redirect(
         `${APP_URL}/auth/callback?error=missing_code`,
+        302
+      )
+    }
+
+    if (!state || !expectedState || state !== expectedState) {
+      return Response.redirect(
+        `${APP_URL}/auth/callback?error=invalid_oauth_state`,
         302
       )
     }
@@ -154,6 +189,37 @@ Deno.serve(async (req) => {
       const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
+
+      if (readCookie(req, 'twitch_oauth_mode') === 'chat') {
+        const streamerId = readCookie(req, 'twitch_streamer_id')
+        const { data: streamer } = await adminClient
+          .from('streamers')
+          .select('id, twitch_broadcaster_id')
+          .eq('id', streamerId)
+          .maybeSingle()
+        if (!streamer || streamer.twitch_broadcaster_id !== twitchUser.id) {
+          throw new Error('A conta Twitch não corresponde ao canal do streamer')
+        }
+        await adminClient.from('twitch_chat_credentials').upsert({
+          streamer_id: streamer.id,
+          broadcaster_id: twitchUser.id,
+          access_token,
+          refresh_token,
+          scopes: tokenData.scope ?? [],
+          expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        await adminClient.from('twitch_connections').upsert({
+          streamer_id: streamer.id,
+          broadcaster_id: twitchUser.id,
+          bot_user_id: twitchUser.id,
+          scopes: tokenData.scope ?? [],
+          token_status: 'active',
+          token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+        }, { onConflict: 'streamer_id' })
+        await adminClient.from('streamer_settings').update({ chat_notifications_enabled: true }).eq('streamer_id', streamer.id)
+        return Response.redirect(`${APP_URL}/dashboard/streamer?chat=connected`, 302)
+      }
 
       // Verificar se já existe usuário com este twitch_user_id
       const { data: existingProfile } = await adminClient

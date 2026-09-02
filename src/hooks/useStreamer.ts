@@ -35,7 +35,11 @@ export function useStreamer(slug: string | undefined) {
         setError('Canal não encontrado ou indisponível.')
         setStreamer(null)
       } else {
-        setStreamer(data as unknown as Streamer)
+        const loadedStreamer = data as unknown as Streamer
+        const { data: liveStatus } = await supabase.functions.invoke('twitch-status', {
+          body: { login: loadedStreamer.slug },
+        })
+        setStreamer({ ...loadedStreamer, is_live: Boolean(liveStatus?.is_live) })
       }
     } catch (err) {
       console.error('Erro ao buscar streamer:', err)

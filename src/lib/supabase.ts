@@ -28,4 +28,8 @@ export function getTwitchAuthUrl() {
   return `${supabaseUrl}/functions/v1/twitch-auth/login`
 }
 
+export function getTwitchChatConnectUrl(streamerId: string) {
+  return `${supabaseUrl}/functions/v1/twitch-auth/connect-chat?streamer_id=${encodeURIComponent(streamerId)}`
+}
+
 export default supabase

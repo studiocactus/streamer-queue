@@ -1,17 +1,19 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown } from 'lucide-react'
+import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown, Bell } from 'lucide-react'
 import { useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { getTwitchAuthUrl } from '@/lib/supabase'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
+import { useStreamerNotifications } from '@/hooks/useStreamerNotifications'
 
 export function Header() {
   const { user, profile, streamerProfile, logout } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const location = useLocation()
+  const { pendingCount } = useStreamerNotifications(streamerProfile?.id)
 
   const isActive = (path: string) => location.pathname === path
 
@@ -70,6 +72,20 @@ export function Header() {
 
           {/* Auth */}
           <div className="flex items-center gap-3">
+            {streamerProfile && (
+              <Link
+                to="/dashboard/streamer"
+                aria-label={`${pendingCount} sugestões pendentes`}
+                className="focus-ring relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-bg-secondary text-content-secondary transition-colors hover:text-content-primary"
+              >
+                <Bell size={17} />
+                {pendingCount > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full border-2 border-bg-primary bg-brand-purple px-1 text-center text-[10px] font-bold leading-4 text-white">
+                    {pendingCount > 99 ? '99+' : pendingCount}
+                  </span>
+                )}
+              </Link>
+            )}
             {user ? (
               <div className="relative">
                 <button

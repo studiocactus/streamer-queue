@@ -19,6 +19,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { cn, formatRelativeDate, categoryLabel } from '@/lib/utils'
 import type { Suggestion, SuggestionStatus } from '@/types'
+import { getTwitchChatConnectUrl } from '@/lib/supabase'
 
 // ============================================================
 // Kanban Column
@@ -517,11 +518,14 @@ export default function StreamerDashboard() {
                 <CheckCircle size={18} className="text-brand-purple shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-content-primary mb-1">
-                    Autenticação Twitch Ativa & Conectada
+                    Conecte o chat da Twitch
                   </p>
                   <p className="text-xs text-content-secondary">
-                    Seu canal está sincronizado com sua conta Twitch. Os viewers autenticados podem enviar sugestões e votar na sua fila.
+                    Autorize separadamente o envio de mensagens. Viewers continuam usando apenas o login básico.
                   </p>
+                  <Button className="mt-3" size="sm" onClick={() => { window.location.href = getTwitchChatConnectUrl(streamerProfile.id) }}>
+                    Autorizar mensagens no chat
+                  </Button>
                 </div>
               </div>
 
@@ -538,7 +542,7 @@ export default function StreamerDashboard() {
                       <p className="text-xs font-medium text-content-primary">{item.event}</p>
                       <p className="text-xs text-content-muted font-mono">{item.msg}</p>
                     </div>
-                    <div className="text-xs text-content-muted">Simulado</div>
+                    <div className="text-xs text-content-muted">Configurável</div>
                   </div>
                 ))}
               </div>

@@ -212,13 +212,13 @@ function SuggestModal({
 // ============================================================
 // Página Principal do Streamer
 // ============================================================
-type TabType = 'queue' | 'top' | 'recent' | 'completed'
+type TabType = 'all' | 'queue' | 'top' | 'completed'
 type CategoryFilter = SuggestionCategory | 'all'
 
 export default function StreamerPage() {
   const { slug } = useParams<{ slug: string }>()
   const { streamer, isLoading: streamerLoading, error: streamerError } = useStreamer(slug)
-  const [tab, setTab] = useState<TabType>('queue')
+  const [tab, setTab] = useState<TabType>('all')
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [suggestOpen, setSuggestOpen] = useState(false)
   const { user } = useAuthStore()
@@ -273,14 +273,17 @@ export default function StreamerPage() {
     .sort((a, b) => (b.vote_count ?? 0) - (a.vote_count ?? 0))
     .slice(0, 10)
 
-  const recentSuggestions = [...allSuggestions]
+  const allFilteredSuggestions = [...allSuggestions]
     .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
-    .slice(0, 10)
+  const queuedFiltered = allFilteredSuggestions
+    .filter((s) => s.status === 'queued')
+    .sort((a, b) => (a.queue_position ?? 999) - (b.queue_position ?? 999))
+  const completedFiltered = allFilteredSuggestions.filter((s) => s.status === 'completed')
 
   const tabs: { id: TabType; label: string; icon: typeof Play }[] = [
+    { id: 'all', label: 'Todas', icon: Clock },
     { id: 'queue', label: 'Fila', icon: Play },
     { id: 'top', label: 'Mais Votados', icon: Trophy },
-    { id: 'recent', label: 'Recentes', icon: Clock },
     { id: 'completed', label: 'Concluídos', icon: History },
   ]
 
@@ -294,10 +297,10 @@ export default function StreamerPage() {
 
   const getTabItems = (): Suggestion[] => {
     switch (tab) {
-      case 'queue': return queued
+      case 'all': return allFilteredSuggestions
+      case 'queue': return queuedFiltered
       case 'top': return topVoted
-      case 'recent': return recentSuggestions
-      case 'completed': return completed
+      case 'completed': return completedFiltered
       default: return []
     }
   }
@@ -333,6 +336,15 @@ export default function StreamerPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl font-bold text-content-primary">{streamer.channel_name}</h1>
                 <Badge variant="purple" size="sm">@{streamer.slug}</Badge>
+                <span className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+                  streamer.is_live
+                    ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                    : 'border-border bg-bg-secondary text-content-muted'
+                )}>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', streamer.is_live ? 'bg-red-500 animate-pulse' : 'bg-content-muted')} />
+                  {streamer.is_live ? 'Online' : 'Offline'}
+                </span>
               </div>
               {watching && (
                 <div className="flex items-center gap-1.5 mt-1">

@@ -16,7 +16,7 @@ export function useSuggestions(streamerId: string | undefined) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
 
   const fetchSuggestions = useCallback(async () => {
     if (!streamerId) {
@@ -155,7 +155,7 @@ export function useSuggestions(streamerId: string | undefined) {
       if (!streamerId) return false
 
       try {
-        const { error: insertError } = await supabase.from('suggestions').insert({
+        const { data: created, error: insertError } = await supabase.from('suggestions').insert({
           streamer_id: streamerId,
           submitted_by: user.id,
           category: data.category,
@@ -163,9 +163,20 @@ export function useSuggestions(streamerId: string | undefined) {
           description: data.description?.trim() ?? null,
           release_year: data.release_year ?? null,
           status: 'pending',
-        } as AnyRecord)
+        } as AnyRecord).select('id').single()
 
         if (insertError) throw insertError
+
+        // O envio ao chat é processado no backend e não bloqueia o cadastro.
+        supabase.functions.invoke('twitch-chat', {
+          body: {
+            streamer_id: streamerId,
+            suggestion_id: created?.id,
+            event_type: 'suggestion_received',
+            viewer_name: profile?.display_name ?? 'Viewer',
+            title: data.title.trim(),
+          },
+        }).catch((chatError) => console.error('Erro ao notificar chat:', chatError))
 
         toast.success('Sugestão enviada!', {
           description: `"${data.title}" foi enviada ao streamer.`,
@@ -178,7 +189,7 @@ export function useSuggestions(streamerId: string | undefined) {
         return false
       }
     },
-    [user, streamerId, fetchSuggestions]
+    [user, profile?.display_name, streamerId, fetchSuggestions]
   )
 
   const updateStatus = useCallback(
