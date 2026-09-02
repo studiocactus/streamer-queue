@@ -173,12 +173,17 @@ Deno.serve(async (req) => {
           headers: { Authorization: `Bearer ${accessToken}`, 'Client-Id': TWITCH_CLIENT_ID!, 'Content-Type': 'application/json' },
           body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message: message.slice(0, 500) }),
         })
+        const chatResult = await chatResponse.json().catch(() => null)
         if (!chatResponse.ok) {
-          errorMessage = `Twitch respondeu ${chatResponse.status}: ${await chatResponse.text()}`
+          errorMessage = `Twitch respondeu ${chatResponse.status}: ${JSON.stringify(chatResult)}`
           status = 'failed'
           if (chatResponse.status === 401 || chatResponse.status === 403) {
             await adminClient.from('twitch_connections').update({ token_status: 'expired' }).eq('streamer_id', streamer_id)
           }
+        } else if (chatResult?.data?.[0]?.is_sent !== true) {
+          const dropReason = chatResult?.data?.[0]?.drop_reason
+          errorMessage = dropReason?.message ?? dropReason?.code ?? 'A Twitch descartou a mensagem'
+          status = 'failed'
         } else {
           status = 'sent'
         }
