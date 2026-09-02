@@ -319,7 +319,9 @@ export function useSuggestions(streamerId: string | undefined) {
   const queued = suggestions
     .filter((s) => s.status === 'queued')
     .sort((a, b) => (a.queue_position ?? 999) - (b.queue_position ?? 999))
-  const pending = suggestions.filter((s) => s.status === 'pending')
+  const pending = suggestions
+    .filter((s) => s.status === 'pending')
+    .sort((a, b) => b.submission_priority - a.submission_priority || a.submitted_at.localeCompare(b.submitted_at))
   const completed = suggestions.filter((s) => s.status === 'completed')
   const rejected = suggestions.filter((s) => s.status === 'rejected')
   const approved = suggestions.filter((s) => s.status === 'approved')

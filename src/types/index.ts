@@ -69,7 +69,7 @@ export interface StreamerMember {
 export interface Suggestion {
   id: string
   streamer_id: string
-  submitted_by: string
+  submitted_by: string | null
   category: SuggestionCategory
   title: string
   description: string | null
@@ -83,6 +83,11 @@ export interface Suggestion {
   approved_at: string | null
   started_at: string | null
   completed_at: string | null
+  submission_source: 'platform' | 'chat'
+  submission_priority: number
+  chat_user_id: string | null
+  chat_user_login: string | null
+  chat_display_name: string | null
   // Joined
   submitter?: Profile
   vote_count?: number
@@ -110,6 +115,8 @@ export interface StreamerSettings {
   max_suggestions_per_user: number
   public_list: boolean
   chat_notifications_enabled: boolean
+  chat_command: string
+  chat_command_enabled: boolean
   monetization_mode: MonetizationMode
   created_at: string
   updated_at: string

@@ -83,8 +83,9 @@ function KanbanColumn({
                     {s.vote_count ?? 0}
                   </span>
                   <span className="truncate text-xs text-content-muted">
-                    {s.submitter?.display_name} · {formatRelativeDate(s.submitted_at)}
+                    {s.submitter?.display_name ?? s.chat_display_name ?? 'Viewer da Twitch'} · {formatRelativeDate(s.submitted_at)}
                   </span>
+                  {s.submission_source === 'chat' && <Badge variant="purple" size="sm">Via chat · prioridade normal</Badge>}
                 </div>
               </div>
 
@@ -131,7 +132,7 @@ function KanbanColumn({
                     Marcar concluído
                   </button>
                 )}
-                {s.submitted_by !== ownerId && <button
+                {s.submitted_by && s.submitted_by !== ownerId && <button
                   onClick={() => onBan?.(s)}
                   className="inline-flex items-center gap-1 text-xs text-content-muted transition-colors hover:text-status-rejected"
                   aria-label={`Banir ${s.submitter?.display_name ?? 'usuário'}`}
@@ -221,7 +222,7 @@ function RejectModal({
           <div className="bg-bg-tertiary rounded-xl p-3">
             <p className="text-sm font-medium text-content-primary">{suggestion.title}</p>
             <p className="text-xs text-content-muted mt-1">
-              por {suggestion.submitter?.display_name}
+              por {suggestion.submitter?.display_name ?? suggestion.chat_display_name ?? 'Viewer da Twitch'}
             </p>
           </div>
           <Input
@@ -291,6 +292,9 @@ export default function StreamerDashboard() {
   const [chatConnected, setChatConnected] = useState(false)
   const [chatStatusLoading, setChatStatusLoading] = useState(true)
   const [chatDisconnecting, setChatDisconnecting] = useState(false)
+  const [chatCommand, setChatCommand] = useState('!sugerir')
+  const [chatCommandEnabled, setChatCommandEnabled] = useState(true)
+  const [chatCommandSaving, setChatCommandSaving] = useState(false)
   const [chatTemplates, setChatTemplates] = useState<Record<ChatEventType, string>>(DEFAULT_CHAT_TEMPLATES)
   const [templatesSaving, setTemplatesSaving] = useState(false)
   const [moderators, setModerators] = useState<ModeratorMember[]>([])
@@ -316,13 +320,15 @@ export default function StreamerDashboard() {
     let active = true
     const loadChatStatus = async () => {
       setChatStatusLoading(true)
-      const { data } = await supabase
-        .from('twitch_connections')
-        .select('token_status')
-        .eq('streamer_id', streamerProfile.id)
-        .maybeSingle()
+      const [{ data }, { data: chatSettings }] = await Promise.all([
+        supabase.from('twitch_connections').select('token_status, scopes').eq('streamer_id', streamerProfile.id).maybeSingle(),
+        supabase.from('streamer_settings').select('chat_command, chat_command_enabled').eq('streamer_id', streamerProfile.id).maybeSingle(),
+      ])
       if (active) {
-        setChatConnected(data?.token_status === 'active')
+        const requiredChatScopes = ['user:read:chat', 'user:write:chat', 'user:bot', 'channel:bot']
+        setChatConnected(data?.token_status === 'active' && requiredChatScopes.every((scope) => (data.scopes ?? []).includes(scope)))
+        if (chatSettings?.chat_command) setChatCommand(chatSettings.chat_command)
+        if (typeof chatSettings?.chat_command_enabled === 'boolean') setChatCommandEnabled(chatSettings.chat_command_enabled)
         setChatStatusLoading(false)
       }
     }
@@ -331,7 +337,7 @@ export default function StreamerDashboard() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('chat') === 'connected') {
       setActiveTab('twitch')
-      toast.success('Mensagens da Twitch conectadas.')
+      toast.success('Comandos e mensagens da Twitch conectados.')
       window.history.replaceState({}, '', window.location.pathname)
     }
     return () => { active = false }
@@ -407,7 +413,7 @@ export default function StreamerDashboard() {
       })
       if (error) throw error
       setChatConnected(false)
-      toast.success('Mensagens da Twitch desconectadas.')
+      toast.success('Integração com o chat desconectada.')
     } catch (error) {
       console.error(error)
       toast.error('Não foi possível desconectar as mensagens da Twitch.')
@@ -442,6 +448,30 @@ export default function StreamerDashboard() {
       toast.error('Não foi possível salvar as mensagens automáticas.')
     } finally {
       setTemplatesSaving(false)
+    }
+  }
+
+  const handleSaveChatCommand = async () => {
+    if (!streamerProfile) return
+    const normalized = `!${chatCommand.trim().replace(/^!+/, '').toLowerCase()}`
+    if (!/^![a-z0-9][a-z0-9_-]{1,30}$/.test(normalized)) {
+      toast.error('Use um comando como !sugerir, com 2 a 31 letras, números, _ ou -.')
+      return
+    }
+    setChatCommandSaving(true)
+    try {
+      const { error } = await supabase.from('streamer_settings').update({
+        chat_command: normalized,
+        chat_command_enabled: chatCommandEnabled,
+      }).eq('streamer_id', streamerProfile.id)
+      if (error) throw error
+      setChatCommand(normalized)
+      toast.success('Comando do chat salvo.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível salvar o comando do chat.')
+    } finally {
+      setChatCommandSaving(false)
     }
   }
 
@@ -986,23 +1016,59 @@ export default function StreamerDashboard() {
                 <CheckCircle size={18} className={cn('shrink-0 mt-0.5', chatConnected ? 'text-green-400' : 'text-brand-purple')} />
                 <div>
                   <p className="text-sm font-medium text-content-primary mb-1">
-                    {chatConnected ? 'Mensagens conectadas' : 'Conecte o chat da Twitch'}
+                    {chatConnected ? 'Chat conectado' : 'Conecte o chat da Twitch'}
                   </p>
                   <p className="text-xs text-content-secondary">
                     {chatConnected
-                      ? 'O WatchQueue está autorizado a enviar as mensagens configuradas no chat do seu canal.'
-                      : 'Autorize separadamente o envio de mensagens. Viewers continuam usando apenas o login básico.'}
+                      ? 'O WatchQueue pode receber comandos e enviar respostas no chat do seu canal.'
+                      : 'Autorize a leitura de comandos e o envio das respostas. Viewers continuam usando apenas o login básico.'}
                   </p>
                   {!chatStatusLoading && (chatConnected ? (
                     <Button className="mt-3" size="sm" variant="danger" loading={chatDisconnecting} onClick={handleDisconnectChat}>
-                      Desconectar mensagens
+                      Desconectar chat
                     </Button>
                   ) : (
                     <Button className="mt-3" size="sm" onClick={() => { window.location.href = getTwitchChatConnectUrl(streamerProfile.id) }}>
-                      Autorizar mensagens no chat
+                      Autorizar comandos no chat
                     </Button>
                   ))}
                 </div>
+              </div>
+
+              <div className="space-y-3 rounded-xl border border-brand-purple/20 bg-brand-purple/5 p-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-content-primary">Comando para receber sugestões</p>
+                    <p className="text-xs text-content-muted">Exemplo no chat: {chatCommand || '!sugerir'} Nome do conteúdo</p>
+                  </div>
+                  <label className="inline-flex items-center gap-2 text-xs text-content-secondary">
+                    <input
+                      type="checkbox"
+                      checked={chatCommandEnabled}
+                      onChange={(event) => setChatCommandEnabled(event.target.checked)}
+                      className="h-4 w-4 accent-brand-purple"
+                    />
+                    Comando ativo
+                  </label>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <div className="flex-1">
+                    <Input
+                      label="Comando"
+                      value={chatCommand}
+                      onChange={(event) => setChatCommand(event.target.value)}
+                      onBlur={() => setChatCommand((current) => `!${current.trim().replace(/^!+/, '').toLowerCase()}`)}
+                      placeholder="!sugerir"
+                      maxLength={32}
+                    />
+                  </div>
+                  <Button size="sm" loading={chatCommandSaving} onClick={handleSaveChatCommand} leftIcon={<Save size={14} />}>
+                    Salvar comando
+                  </Button>
+                </div>
+                <p className="text-[11px] text-content-muted">
+                  O comando sempre começa com !. Sugestões de usuários cadastrados na plataforma aparecem primeiro para revisão.
+                </p>
               </div>
 
               <div className="space-y-2">

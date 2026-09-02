@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     // viewer from the database and confirm who is allowed to trigger the event.
     const { data: suggestion } = await adminClient
       .from('suggestions')
-      .select('id, streamer_id, submitted_by, title, category')
+      .select('id, streamer_id, submitted_by, title, category, chat_display_name')
       .eq('id', suggestion_id)
       .eq('streamer_id', streamer_id)
       .maybeSingle()
@@ -86,12 +86,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { data: viewer } = await adminClient
-      .from('profiles')
-      .select('display_name')
-      .eq('id', suggestion.submitted_by)
-      .maybeSingle()
-    viewerName = viewer?.display_name ?? 'Viewer'
+    const { data: viewer } = suggestion.submitted_by
+      ? await adminClient.from('profiles').select('display_name').eq('id', suggestion.submitted_by).maybeSingle()
+      : { data: null }
+    viewerName = viewer?.display_name ?? suggestion.chat_display_name ?? 'Viewer da Twitch'
     suggestionTitle = suggestion.title
 
     // Buscar template de mensagem

@@ -16,6 +16,8 @@ const TWITCH_REDIRECT_URI = Deno.env.get('TWITCH_REDIRECT_URI')
 const APP_URL = Deno.env.get('APP_URL') ?? 'http://localhost:5173'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const TWITCH_EVENTSUB_SECRET = Deno.env.get('TWITCH_EVENTSUB_SECRET')
+const TWITCH_EVENTSUB_CALLBACK = Deno.env.get('TWITCH_EVENTSUB_CALLBACK') ?? `${SUPABASE_URL}/functions/v1/twitch-eventsub`
 
 const TWITCH_AUTH_URL = 'https://id.twitch.tv/oauth2/authorize'
 const TWITCH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token'
@@ -24,7 +26,41 @@ const TWITCH_USERS_URL = 'https://api.twitch.tv/helix/users'
 // Escopos mínimos — apenas identificação do viewer
 // Permissões de chat serão concedidas pelo streamer separadamente
 const VIEWER_SCOPES = 'openid user:read:email'
-const CHAT_SCOPES = 'user:write:chat'
+const CHAT_SCOPES = 'user:write:chat user:read:chat user:bot channel:bot'
+
+async function subscribeToChatMessages(broadcasterId: string) {
+  if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET || !TWITCH_EVENTSUB_SECRET) {
+    throw new Error('EventSub não configurado no servidor')
+  }
+  const tokenResponse = await fetch(TWITCH_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: TWITCH_CLIENT_ID,
+      client_secret: TWITCH_CLIENT_SECRET,
+      grant_type: 'client_credentials',
+    }),
+  })
+  if (!tokenResponse.ok) throw new Error('Falha ao autorizar EventSub')
+  const appToken = await tokenResponse.json()
+  const response = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${appToken.access_token}`,
+      'Client-Id': TWITCH_CLIENT_ID,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      type: 'channel.chat.message',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId, user_id: broadcasterId },
+      transport: { method: 'webhook', callback: TWITCH_EVENTSUB_CALLBACK, secret: TWITCH_EVENTSUB_SECRET },
+    }),
+  })
+  if (!response.ok && response.status !== 409) {
+    throw new Error(`Falha ao assinar mensagens do chat: ${await response.text()}`)
+  }
+}
 
 function readCookie(req: Request, name: string) {
   const cookies = req.headers.get('cookie') ?? ''
@@ -271,6 +307,7 @@ Deno.serve(async (req) => {
           token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
         }, { onConflict: 'streamer_id' })
         await adminClient.from('streamer_settings').update({ chat_notifications_enabled: true }).eq('streamer_id', streamer.id)
+        await subscribeToChatMessages(twitchUser.id)
         return Response.redirect(`${APP_URL}/dashboard/streamer?chat=connected`, 302)
       }
 

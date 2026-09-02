@@ -1,0 +1,3 @@
+[functions.twitch-eventsub]
+verify_jwt = false
+

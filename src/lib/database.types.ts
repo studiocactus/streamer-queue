@@ -112,7 +112,7 @@ export interface Database {
         Row: {
           id: string
           streamer_id: string
-          submitted_by: string
+          submitted_by: string | null
           category: string
           title: string
           description: string | null
@@ -126,11 +126,16 @@ export interface Database {
           approved_at: string | null
           started_at: string | null
           completed_at: string | null
+          submission_source: string
+          submission_priority: number
+          chat_user_id: string | null
+          chat_user_login: string | null
+          chat_display_name: string | null
         }
         Insert: {
           id?: string
           streamer_id: string
-          submitted_by: string
+          submitted_by?: string | null
           category: string
           title: string
           description?: string | null
@@ -144,6 +149,11 @@ export interface Database {
           approved_at?: string | null
           started_at?: string | null
           completed_at?: string | null
+          submission_source?: string
+          submission_priority?: number
+          chat_user_id?: string | null
+          chat_user_login?: string | null
+          chat_display_name?: string | null
         }
         Update: {
           category?: string
@@ -158,6 +168,11 @@ export interface Database {
           approved_at?: string | null
           started_at?: string | null
           completed_at?: string | null
+          submission_source?: string
+          submission_priority?: number
+          chat_user_id?: string | null
+          chat_user_login?: string | null
+          chat_display_name?: string | null
         }
       }
       votes: {
@@ -185,6 +200,8 @@ export interface Database {
           max_suggestions_per_user: number
           public_list: boolean
           chat_notifications_enabled: boolean
+          chat_command: string
+          chat_command_enabled: boolean
           monetization_mode: string
           created_at: string
           updated_at: string
@@ -196,6 +213,8 @@ export interface Database {
           max_suggestions_per_user?: number
           public_list?: boolean
           chat_notifications_enabled?: boolean
+          chat_command?: string
+          chat_command_enabled?: boolean
           monetization_mode?: string
           created_at?: string
           updated_at?: string
@@ -206,6 +225,8 @@ export interface Database {
           max_suggestions_per_user?: number
           public_list?: boolean
           chat_notifications_enabled?: boolean
+          chat_command?: string
+          chat_command_enabled?: boolean
           monetization_mode?: string
           updated_at?: string
         }

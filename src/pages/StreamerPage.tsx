@@ -57,9 +57,9 @@ function SuggestionCard({
 
         <div className="flex items-center gap-2 mb-2">
           <Badge variant="category" category={suggestion.category as SuggestionCategory} size="sm" />
-          {suggestion.submitter && (
+          {(suggestion.submitter || suggestion.chat_display_name) && (
             <span className="text-xs text-content-muted">
-              por <span className="text-content-secondary">{suggestion.submitter.display_name}</span>
+              por <span className="text-content-secondary">{suggestion.submitter?.display_name ?? suggestion.chat_display_name}</span>
             </span>
           )}
         </div>
@@ -450,7 +450,7 @@ export default function StreamerPage() {
               <p className="font-semibold text-content-primary truncate">{watching.title}</p>
               <p className="text-xs text-content-secondary">
                 {categoryLabel(watching.category as SuggestionCategory)} · sugestão de{' '}
-                <span className="font-medium">{watching.submitter?.display_name ?? 'viewer'}</span>
+                <span className="font-medium">{watching.submitter?.display_name ?? watching.chat_display_name ?? 'viewer'}</span>
               </p>
             </div>
           </div>
