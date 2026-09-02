@@ -165,6 +165,14 @@ export function useSuggestions(streamerId: string | undefined) {
       if (!streamerId) return false
 
       try {
+        let posterUrl: string | null = null
+        if (data.source_url) {
+          const { data: metadata } = await supabase.functions.invoke('content-metadata', {
+            body: { url: data.source_url },
+          })
+          posterUrl = metadata?.thumbnail_url ?? null
+        }
+
         const { data: created, error: insertError } = await supabase.from('suggestions').insert({
           streamer_id: streamerId,
           submitted_by: user.id,
@@ -173,6 +181,7 @@ export function useSuggestions(streamerId: string | undefined) {
           description: data.description?.trim() ?? null,
           release_year: data.release_year ?? null,
           source_url: data.source_url?.trim() || null,
+          poster_url: posterUrl,
           status: 'pending',
         } as AnyRecord).select('id').single()
 

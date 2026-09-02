@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner'
 import { useStreamer } from '@/hooks/useStreamer'
 import { useSuggestions } from '@/hooks/useSuggestions'
+import { useContentThumbnail } from '@/hooks/useContentThumbnail'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -30,12 +31,14 @@ function SuggestionCard({
   onVote?: (id: string, voted: boolean) => void
   canVote?: boolean
 }) {
+  const thumbnail = useContentThumbnail(suggestion.source_url, suggestion.poster_url)
+
   return (
     <div className="bg-bg-secondary border border-border rounded-2xl p-4 flex gap-4 hover:border-border-light transition-colors">
       {/* Poster placeholder */}
       <div className="w-14 h-20 rounded-lg bg-bg-tertiary shrink-0 flex items-center justify-center overflow-hidden">
-        {suggestion.poster_url ? (
-          <img src={suggestion.poster_url} alt={suggestion.title} className="w-full h-full object-cover" />
+        {thumbnail ? (
+          <img src={thumbnail} alt={`Thumbnail de ${suggestion.title}`} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <Tv2 size={20} className="text-content-muted" />
         )}

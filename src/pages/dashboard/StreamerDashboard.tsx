@@ -526,6 +526,13 @@ export default function StreamerDashboard() {
     }
     setNewContentSaving(true)
     try {
+      let posterUrl: string | null = null
+      if (newContentUrl.trim()) {
+        const { data: metadata } = await supabase.functions.invoke('content-metadata', {
+          body: { url: newContentUrl.trim() },
+        })
+        posterUrl = metadata?.thumbnail_url ?? null
+      }
       const { data: created, error } = await supabase.from('suggestions').insert({
         streamer_id: streamerProfile.id,
         submitted_by: profile.id,
@@ -533,6 +540,7 @@ export default function StreamerDashboard() {
         title: newContentTitle.trim(),
         description: newContentDescription.trim() || null,
         source_url: newContentUrl.trim() || null,
+        poster_url: posterUrl,
         status: 'approved',
         approved_at: new Date().toISOString(),
       } as never).select('id').single()
