@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Tv2, ThumbsUp, Send, Filter, Clock,
@@ -21,21 +21,33 @@ import type { Suggestion, SuggestionCategory } from '@/types'
 
 const PROFILE_THEME_STYLES = {
   neon: {
+    primary: '145 70 255',
+    primaryLight: '169 112 255',
+    primaryDark: '122 53 224',
     page: 'bg-[radial-gradient(circle_at_20%_0%,rgba(145,70,255,0.12),transparent_35%)]',
     fallback: 'bg-gradient-to-br from-brand-purple/35 via-bg-tertiary to-bg-secondary',
     overlay: 'bg-gradient-to-t from-bg-primary via-brand-purple/5 to-transparent',
   },
   aurora: {
+    primary: '20 184 166',
+    primaryLight: '45 212 191',
+    primaryDark: '13 148 136',
     page: 'bg-[radial-gradient(circle_at_20%_0%,rgba(45,212,191,0.12),transparent_35%)]',
     fallback: 'bg-gradient-to-br from-teal-500/35 via-cyan-950/40 to-bg-secondary',
     overlay: 'bg-gradient-to-t from-bg-primary via-teal-500/5 to-transparent',
   },
   sunset: {
+    primary: '244 63 94',
+    primaryLight: '251 113 133',
+    primaryDark: '225 29 72',
     page: 'bg-[radial-gradient(circle_at_20%_0%,rgba(251,113,133,0.12),transparent_35%)]',
     fallback: 'bg-gradient-to-br from-orange-500/35 via-rose-950/40 to-bg-secondary',
     overlay: 'bg-gradient-to-t from-bg-primary via-rose-500/5 to-transparent',
   },
   midnight: {
+    primary: '59 130 246',
+    primaryLight: '96 165 250',
+    primaryDark: '37 99 235',
     page: 'bg-[radial-gradient(circle_at_20%_0%,rgba(59,130,246,0.12),transparent_35%)]',
     fallback: 'bg-gradient-to-br from-blue-600/30 via-slate-900 to-bg-secondary',
     overlay: 'bg-gradient-to-t from-bg-primary via-blue-500/5 to-transparent',
@@ -363,8 +375,14 @@ export default function StreamerPage() {
   const tabItems = getTabItems()
   const visibleItems = tabItems.slice(0, visibleCount)
 
+  const profileThemeVariables = {
+    '--theme-primary': profileTheme.primary,
+    '--theme-primary-light': profileTheme.primaryLight,
+    '--theme-primary-dark': profileTheme.primaryDark,
+  } as CSSProperties
+
   return (
-    <div className={cn('min-h-screen', profileTheme.page)}>
+    <div className={cn('min-h-screen', profileTheme.page)} style={profileThemeVariables}>
       {/* Capa */}
       <div className="relative h-52 bg-bg-secondary overflow-hidden">
         {streamer.cover_url ? (
@@ -422,7 +440,7 @@ export default function StreamerPage() {
                 rel="noopener noreferrer"
                 className="block w-full"
               >
-                <Button className="w-full" variant="secondary" size="sm" leftIcon={<ExternalLink size={14} />}>
+                <Button className="w-full" variant="outline" size="sm" leftIcon={<ExternalLink size={14} />}>
                   Twitch
                 </Button>
               </a>
@@ -508,7 +526,7 @@ export default function StreamerPage() {
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200',
                 tab === id
-                  ? 'bg-bg-primary text-content-primary shadow'
+                  ? 'bg-brand-purple/15 text-brand-purple shadow'
                   : 'text-content-muted hover:text-content-secondary'
               )}
             >

@@ -13,9 +13,9 @@ export default {
           tertiary: '#1E1E28',
         },
         brand: {
-          purple: '#9146FF',
-          'purple-light': '#A970FF',
-          'purple-dark': '#7A35E0',
+          purple: 'rgb(var(--theme-primary) / <alpha-value>)',
+          'purple-light': 'rgb(var(--theme-primary-light) / <alpha-value>)',
+          'purple-dark': 'rgb(var(--theme-primary-dark) / <alpha-value>)',
           green: '#C5FF00',
           'green-dark': '#A8D900',
         },

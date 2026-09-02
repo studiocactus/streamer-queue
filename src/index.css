@@ -5,6 +5,12 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --theme-primary: 145 70 255;
+    --theme-primary-light: 169 112 255;
+    --theme-primary-dark: 122 53 224;
+  }
+
   * {
     box-sizing: border-box;
   }
