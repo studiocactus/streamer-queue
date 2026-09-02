@@ -1,6 +1,6 @@
 -- Channel-scoped bans controlled exclusively by the streamer owner.
 create table if not exists public.banned_users (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   streamer_id uuid not null references public.streamers(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   banned_by uuid not null references public.profiles(id) on delete cascade,
