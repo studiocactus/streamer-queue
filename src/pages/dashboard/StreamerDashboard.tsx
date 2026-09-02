@@ -269,7 +269,7 @@ export default function StreamerDashboard() {
                 to={`/streamer/${streamerProfile.slug}`}
                 className="text-xs text-brand-purple hover:underline flex items-center gap-1"
               >
-                watchqueue.app/streamer/{streamerProfile.slug}
+                {window.location.host}/streamer/{streamerProfile.slug}
                 <ExternalLink size={10} />
               </Link>
             </div>
@@ -415,21 +415,15 @@ export default function StreamerDashboard() {
               </h2>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-status-pending/10 border border-status-pending/20 rounded-xl p-4 flex gap-3">
-                <AlertCircle size={18} className="text-status-pending shrink-0 mt-0.5" />
+              <div className="bg-brand-purple/10 border border-brand-purple/20 rounded-xl p-4 flex gap-3">
+                <CheckCircle size={18} className="text-brand-purple shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-content-primary mb-1">
-                    Integração aguardando configuração
+                    Autenticação Twitch Ativa & Conectada
                   </p>
                   <p className="text-xs text-content-secondary">
-                    Configure as credenciais Twitch nas variáveis de ambiente do Supabase Edge Functions
-                    para ativar o envio de mensagens automáticas ao chat.
+                    Seu canal está sincronizado com sua conta Twitch. Os viewers autenticados podem enviar sugestões e votar na sua fila.
                   </p>
-                  <code className="block mt-2 text-xs bg-bg-tertiary rounded p-2 font-mono text-content-muted">
-                    TWITCH_CLIENT_ID=...<br />
-                    TWITCH_CLIENT_SECRET=...<br />
-                    TWITCH_REDIRECT_URI=...
-                  </code>
                 </div>
               </div>
 
