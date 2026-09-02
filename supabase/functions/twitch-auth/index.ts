@@ -67,6 +67,11 @@ function readCookie(req: Request, name: string) {
   return cookies.split(';').map((item) => item.trim()).find((item) => item.startsWith(`${name}=`))?.slice(name.length + 1)
 }
 
+function safeStreamerReturnTo(value: string | null | undefined) {
+  if (value && /^\/streamer\/[a-z0-9-]+$/i.test(value)) return value
+  return '/dashboard'
+}
+
 Deno.serve(async (req) => {
   const url = new URL(req.url)
   const pathname = url.pathname
@@ -151,6 +156,7 @@ Deno.serve(async (req) => {
 
     // State para CSRF protection
     const state = crypto.randomUUID()
+    const returnTo = safeStreamerReturnTo(url.searchParams.get('return_to'))
 
     const params = new URLSearchParams({
       client_id: TWITCH_CLIENT_ID,
@@ -171,6 +177,10 @@ Deno.serve(async (req) => {
     headers.set(
       'Set-Cookie',
       `twitch_oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600; Path=/`
+    )
+    headers.append(
+      'Set-Cookie',
+      `twitch_return_to=${encodeURIComponent(returnTo)}; HttpOnly; Secure; SameSite=Lax; Max-Age=600; Path=/`
     )
 
     return new Response(null, {
@@ -281,6 +291,7 @@ Deno.serve(async (req) => {
       const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
+      const returnTo = safeStreamerReturnTo(decodeURIComponent(readCookie(req, 'twitch_return_to') ?? ''))
 
       if (readCookie(req, 'twitch_oauth_mode') === 'chat') {
         const streamerId = readCookie(req, 'twitch_streamer_id')
@@ -340,7 +351,7 @@ Deno.serve(async (req) => {
             type: 'magiclink',
             email: twitchUser.email || `${twitchUser.id}@twitch.watchqueue.app`,
             options: {
-              redirectTo: `${APP_URL}/auth/callback`,
+              redirectTo: `${APP_URL}/auth/callback?return_to=${encodeURIComponent(returnTo)}`,
               data: {
                 provider: 'twitch',
                 provider_id: twitchUser.id,
@@ -381,7 +392,7 @@ Deno.serve(async (req) => {
             type: 'magiclink',
             email: twitchUser.email || `${twitchUser.id}@twitch.watchqueue.app`,
             options: {
-              redirectTo: `${APP_URL}/auth/callback`,
+              redirectTo: `${APP_URL}/auth/callback?return_to=${encodeURIComponent(returnTo)}`,
             },
           })
 

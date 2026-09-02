@@ -67,7 +67,8 @@ export function Header() {
   }, [notificationsOpen])
 
   const handleLoginWithTwitch = () => {
-    window.location.href = getTwitchAuthUrl()
+    const returnTo = location.pathname.startsWith('/streamer/') ? location.pathname : undefined
+    window.location.href = getTwitchAuthUrl(returnTo)
   }
 
   return (

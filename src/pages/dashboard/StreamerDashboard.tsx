@@ -255,6 +255,7 @@ type ModeratorMember = {
 }
 type ModeratorCandidate = { id: string; display_name: string; twitch_login: string; avatar_url: string | null }
 type PlatformViewer = ModeratorCandidate
+type PlatformStreamer = { id: string; owner_id: string; channel_name: string; slug: string; avatar_url: string | null }
 type BannedUser = { id: string; user_id: string; reason: string | null; created_at: string; profile?: ModeratorCandidate }
 
 const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
@@ -320,6 +321,7 @@ export default function StreamerDashboard() {
   const [newContentSaving, setNewContentSaving] = useState(false)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
   const [platformViewers, setPlatformViewers] = useState<PlatformViewer[]>([])
+  const [platformStreamers, setPlatformStreamers] = useState<PlatformStreamer[]>([])
   const [promotingViewerId, setPromotingViewerId] = useState<string | null>(null)
 
   const {
@@ -399,9 +401,10 @@ export default function StreamerDashboard() {
   const loadPlatformViewers = async () => {
     const [profilesResult, streamersResult] = await Promise.all([
       supabase.from('profiles').select('id, display_name, twitch_login, avatar_url').order('display_name'),
-      supabase.from('streamers').select('owner_id'),
+      supabase.from('streamers').select('id, owner_id, channel_name, slug, avatar_url').order('channel_name'),
     ])
     const streamerOwnerIds = new Set((streamersResult.data ?? []).map((row) => row.owner_id))
+    setPlatformStreamers((streamersResult.data ?? []) as PlatformStreamer[])
     setPlatformViewers(((profilesResult.data ?? []) as PlatformViewer[]).filter((viewer) => !streamerOwnerIds.has(viewer.id)))
   }
 
@@ -1192,7 +1195,38 @@ export default function StreamerDashboard() {
                 </p>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-content-primary">Streamers ativos</h3>
+                  <p className="text-xs text-content-muted">Cada canal possui um endereço público próprio para compartilhar.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {platformStreamers.map((channel) => (
+                    <div key={channel.id} className="flex items-center gap-3 rounded-xl border border-border bg-bg-tertiary/60 p-3">
+                      <Avatar src={channel.avatar_url} alt={channel.channel_name} fallback={channel.channel_name} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-content-primary">{channel.channel_name}</p>
+                        <p className="truncate text-xs text-content-muted">{window.location.host}/streamer/{channel.slug}</p>
+                      </div>
+                      <Link
+                        to={`/streamer/${channel.slug}`}
+                        target="_blank"
+                        aria-label={`Abrir perfil de ${channel.channel_name}`}
+                        className="rounded-lg p-2 text-brand-purple hover:bg-brand-purple/10"
+                      >
+                        <ExternalLink size={15} />
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-content-primary">Viewers disponíveis</h3>
+                  <p className="text-xs text-content-muted">Ao promover, o link público do novo canal é criado automaticamente.</p>
+                </div>
               {platformViewers.length === 0 ? (
                 <EmptyState
                   icon={<Users size={22} />}
@@ -1221,6 +1255,7 @@ export default function StreamerDashboard() {
                   ))}
                 </div>
               )}
+              </section>
             </CardContent>
           </Card>
         )}

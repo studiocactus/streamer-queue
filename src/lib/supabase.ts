@@ -24,8 +24,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-export function getTwitchAuthUrl() {
-  return `${supabaseUrl}/functions/v1/twitch-auth/login`
+export function getTwitchAuthUrl(returnTo?: string) {
+  const url = new URL(`${supabaseUrl}/functions/v1/twitch-auth/login`)
+  if (returnTo?.startsWith('/streamer/')) url.searchParams.set('return_to', returnTo)
+  return url.toString()
 }
 
 export function getTwitchChatConnectUrl(streamerId: string) {

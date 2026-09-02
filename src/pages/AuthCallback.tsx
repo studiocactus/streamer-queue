@@ -11,6 +11,10 @@ export default function AuthCallback() {
 
   const error = params.get('error')
   const message = params.get('message')
+  const requestedReturnTo = params.get('return_to')
+  const returnTo = requestedReturnTo && /^\/streamer\/[a-z0-9-]+$/i.test(requestedReturnTo)
+    ? requestedReturnTo
+    : '/dashboard'
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -24,7 +28,7 @@ export default function AuthCallback() {
           const { data: retryData } = await supabase.auth.getSession()
           if (retryData.session) {
             await initialize()
-            navigate('/dashboard', { replace: true })
+            navigate(returnTo, { replace: true })
           } else {
             navigate('/?auth=failed', { replace: true })
           }
@@ -33,13 +37,13 @@ export default function AuthCallback() {
       }
 
       await initialize()
-      navigate('/dashboard', { replace: true })
+      navigate(returnTo, { replace: true })
     }
 
     if (!error) {
       handleCallback()
     }
-  }, [error, initialize, navigate])
+  }, [error, initialize, navigate, returnTo])
 
   if (error) {
     return (
