@@ -3,17 +3,18 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabase'
 import { useSuggestions } from '@/hooks/useSuggestions'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { Modal } from '@/components/ui/Modal'
-import { Input } from '@/components/ui/Input'
+import { Input, Textarea } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { cn, formatRelativeDate, categoryLabel } from '@/lib/utils'
@@ -193,9 +194,17 @@ function RejectModal({
 type DashTab = 'kanban' | 'settings' | 'moderators' | 'twitch'
 
 export default function StreamerDashboard() {
-  const { streamerProfile, profile } = useAuthStore()
+  const { streamerProfile, profile, refreshProfile } = useAuthStore()
   const [activeTab, setActiveTab] = useState<DashTab>('kanban')
   const [rejectTarget, setRejectTarget] = useState<Suggestion | null>(null)
+  const [channelName, setChannelName] = useState(streamerProfile?.channel_name ?? '')
+  const [bio, setBio] = useState(streamerProfile?.bio ?? '')
+  const [coverUrl, setCoverUrl] = useState(streamerProfile?.cover_url ?? '')
+  const [socialLinks, setSocialLinks] = useState<Record<string, string>>(
+    streamerProfile?.social_links ?? { instagram: '', youtube: '', tiktok: '', discord: '' }
+  )
+  const [settingsSaving, setSettingsSaving] = useState(false)
+  const [coverUploading, setCoverUploading] = useState(false)
 
   const {
     suggestions, watching, queued, pending, approved,
@@ -238,6 +247,63 @@ export default function StreamerDashboard() {
       toast.success('Sugestão excluída definitivamente.')
     } catch {
       // O hook já apresenta a mensagem de erro.
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    if (!streamerProfile || !channelName.trim()) return
+    setSettingsSaving(true)
+    try {
+      const { error } = await supabase
+        .from('streamers')
+        .update({
+          channel_name: channelName.trim(),
+          bio: bio.trim() || null,
+          cover_url: coverUrl.trim() || null,
+          social_links: socialLinks,
+        } as never)
+        .eq('id', streamerProfile.id)
+
+      if (error) throw error
+      await refreshProfile()
+      toast.success('Informações do canal atualizadas.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível salvar as informações do canal.')
+    } finally {
+      setSettingsSaving(false)
+    }
+  }
+
+  const handleCoverUpload = async (file?: File) => {
+    if (!file || !streamerProfile) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Escolha um arquivo de imagem.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5 MB.')
+      return
+    }
+
+    setCoverUploading(true)
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${streamerProfile.id}/cover.${extension}`
+      const { error } = await supabase.storage
+        .from('streamer-assets')
+        .upload(path, file, { upsert: true, contentType: file.type })
+      if (error) throw error
+
+      const { data } = supabase.storage.from('streamer-assets').getPublicUrl(path)
+      const publicUrl = `${data.publicUrl}?v=${Date.now()}`
+      setCoverUrl(publicUrl)
+      toast.success('Capa enviada. Clique em salvar para confirmar.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível enviar a imagem de capa.')
+    } finally {
+      setCoverUploading(false)
     }
   }
 
@@ -482,20 +548,81 @@ export default function StreamerDashboard() {
 
         {/* Configurações */}
         {activeTab === 'settings' && (
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
-              <h2 className="font-semibold text-content-primary flex items-center gap-2">
-                <Settings size={16} className="text-brand-purple" />
-                Configurações do Canal
-              </h2>
+              <div>
+                <h2 className="font-semibold text-content-primary flex items-center gap-2">
+                  <Settings size={16} className="text-brand-purple" />
+                  Perfil público do canal
+                </h2>
+                <p className="mt-1 text-xs text-content-secondary">
+                  Essas informações serão vistas pelos viewers na página do seu canal.
+                </p>
+              </div>
             </CardHeader>
-            <CardContent>
-              <EmptyState
-                icon={<Settings size={22} />}
-                title="Configurações em breve"
-                description="Aqui você poderá configurar aprovação automática, limite de sugestões por viewer, regras e aparência."
-                compact
-              />
+            <CardContent className="space-y-8">
+              <section className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Image size={16} className="text-brand-purple" />
+                  <h3 className="text-sm font-semibold text-content-primary">Imagem de capa</h3>
+                </div>
+                <div className="overflow-hidden rounded-2xl border border-border bg-bg-tertiary">
+                  <div className="aspect-[4/1] min-h-32 w-full">
+                    {coverUrl ? (
+                      <img src={coverUrl} alt="Prévia da capa" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full min-h-32 items-center justify-center bg-gradient-to-br from-brand-purple/20 to-bg-tertiary text-content-muted">
+                        <Image size={28} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <label className="focus-ring inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-brand-purple/50 px-4 text-sm font-medium text-brand-purple transition-colors hover:bg-brand-purple/5">
+                    <Upload size={15} />
+                    {coverUploading ? 'Enviando...' : 'Enviar nova capa'}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      disabled={coverUploading}
+                      onChange={(event) => handleCoverUpload(event.target.files?.[0])}
+                    />
+                  </label>
+                  <p className="text-xs text-content-muted">JPG, PNG ou WebP · até 5 MB · proporção recomendada 4:1</p>
+                </div>
+              </section>
+
+              <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-content-primary">Informações pessoais</h3>
+                  <Input label="Nome do canal" value={channelName} onChange={(e) => setChannelName(e.target.value)} maxLength={80} />
+                  <Textarea label="Sobre o canal" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={500} rows={5} placeholder="Conte aos viewers sobre você e suas lives..." />
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-content-primary">
+                    <LinkIcon size={15} className="text-brand-purple" />
+                    Redes e comunidade
+                  </h3>
+                  {['instagram', 'youtube', 'tiktok', 'discord'].map((network) => (
+                    <Input
+                      key={network}
+                      label={network.charAt(0).toUpperCase() + network.slice(1)}
+                      type="url"
+                      placeholder={`https://${network}.com/...`}
+                      value={socialLinks[network] ?? ''}
+                      onChange={(e) => setSocialLinks((current) => ({ ...current, [network]: e.target.value }))}
+                    />
+                  ))}
+                </div>
+              </section>
+
+              <div className="flex justify-end border-t border-border pt-5">
+                <Button loading={settingsSaving} onClick={handleSaveSettings} leftIcon={<Save size={15} />}>
+                  Salvar perfil público
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

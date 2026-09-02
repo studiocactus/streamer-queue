@@ -318,7 +318,7 @@ export default function StreamerPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-bg-primary/80 to-transparent" />
       </div>
 
-      <div className="app-shell">
+      <div className="app-shell relative z-10">
         {/* Avatar e info */}
         <div className="mt-4 mb-8 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-end gap-4">
@@ -370,6 +370,26 @@ export default function StreamerPage() {
         {/* Bio */}
         {streamer.bio && (
           <p className="text-sm text-content-secondary mb-8 max-w-2xl">{streamer.bio}</p>
+        )}
+
+        {streamer.social_links && Object.values(streamer.social_links).some(Boolean) && (
+          <div className="mb-8 flex flex-wrap gap-2">
+            {Object.entries(streamer.social_links).map(([network, url]) => {
+              if (!url || !/^https?:\/\//i.test(url)) return null
+              return (
+                <a
+                  key={network}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="focus-ring inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-secondary px-3 py-1.5 text-xs font-medium capitalize text-content-secondary transition-colors hover:border-brand-purple/30 hover:text-content-primary"
+                >
+                  {network}
+                  <ExternalLink size={11} />
+                </a>
+              )
+            })}
+          </div>
         )}
 
         {/* Assistindo agora */}
