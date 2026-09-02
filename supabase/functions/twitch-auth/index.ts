@@ -68,7 +68,10 @@ function readCookie(req: Request, name: string) {
 }
 
 function safeStreamerReturnTo(value: string | null | undefined) {
-  if (value && /^\/streamer\/[a-z0-9-]+$/i.test(value)) return value
+  if (!value) return '/dashboard'
+  const legacyMatch = value.match(/^\/streamer\/([a-z0-9_-]+)$/i)
+  const slug = legacyMatch?.[1] ?? value.match(/^\/([a-z0-9_-]+)$/i)?.[1]
+  if (slug && !['auth', 'dashboard', 'explore', 'streamer'].includes(slug.toLowerCase())) return `/${slug.toLowerCase()}`
   return '/dashboard'
 }
 

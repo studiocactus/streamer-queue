@@ -10,10 +10,11 @@ import { SkeletonStreamerCard } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { cn } from '@/lib/utils'
 import type { Streamer } from '@/types'
+import { streamerPath } from '@/lib/routes'
 
 function StreamerCard({ streamer }: { streamer: Streamer }) {
   const navigate = useNavigate()
-  const profilePath = `/streamer/${streamer.slug.toLowerCase()}`
+  const profilePath = streamerPath(streamer.slug)
 
   return (
     <article className="group block h-full rounded-3xl">

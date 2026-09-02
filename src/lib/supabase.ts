@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { normalizeStreamerReturnPath } from '@/lib/routes'
 
 const rawUrl = import.meta.env.VITE_SUPABASE_URL || ''
 export const supabaseUrl = rawUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')
@@ -26,7 +27,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export function getTwitchAuthUrl(returnTo?: string) {
   const url = new URL(`${supabaseUrl}/functions/v1/twitch-auth/login`)
-  if (returnTo?.startsWith('/streamer/')) url.searchParams.set('return_to', returnTo)
+  const safeReturnTo = normalizeStreamerReturnPath(returnTo)
+  if (safeReturnTo) url.searchParams.set('return_to', safeReturnTo)
   return url.toString()
 }
 

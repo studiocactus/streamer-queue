@@ -7,6 +7,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { cn, formatRelativeDate } from '@/lib/utils'
 import { useStreamerNotifications } from '@/hooks/useStreamerNotifications'
+import { normalizeStreamerReturnPath, streamerPath } from '@/lib/routes'
 
 export function Header() {
   const { user, profile, streamerProfile, logout } = useAuthStore()
@@ -67,7 +68,7 @@ export function Header() {
   }, [notificationsOpen])
 
   const handleLoginWithTwitch = () => {
-    const returnTo = location.pathname.startsWith('/streamer/') ? location.pathname : undefined
+    const returnTo = normalizeStreamerReturnPath(location.pathname)
     window.location.href = getTwitchAuthUrl(returnTo)
   }
 
@@ -230,7 +231,7 @@ export function Header() {
                             Painel do streamer
                           </Link>
                           <Link
-                            to={`/streamer/${streamerProfile.slug}`}
+                            to={streamerPath(streamerProfile.slug)}
                             onClick={() => setUserMenuOpen(false)}
                             className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-tertiary transition-colors"
                           >

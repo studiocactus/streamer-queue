@@ -1,11 +1,12 @@
 import { useEffect, Component } from 'react'
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, Navigate, useParams } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
+import { streamerPath } from '@/lib/routes'
 
 // Error Boundary para capturar crashes e mostrar mensagem em vez de tela preta
 class ErrorBoundary extends Component<
@@ -82,6 +83,11 @@ function DashLayout() {
   )
 }
 
+function LegacyStreamerRedirect() {
+  const { slug = '' } = useParams()
+  return <Navigate to={streamerPath(slug)} replace />
+}
+
 function AppInitializer({ children }: { children: React.ReactNode }) {
   const { initialize, setSession, setUser } = useAuthStore()
 
@@ -135,7 +141,8 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<LandingPage />} />
             <Route path="/explore" element={<ExplorePage />} />
-            <Route path="/streamer/:slug" element={<StreamerPage />} />
+            <Route path="/streamer/:slug" element={<LegacyStreamerRedirect />} />
+            <Route path="/:slug" element={<StreamerPage />} />
           </Route>
 
           {/* Auth callback */}

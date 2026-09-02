@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { formatRelativeDate } from '@/lib/utils'
 import type { Suggestion } from '@/types'
+import { streamerPath } from '@/lib/routes'
 
 interface ViewerStats {
   suggestions: Suggestion[]
@@ -93,7 +94,7 @@ export default function ViewerDashboard() {
 
           {streamerProfile && (
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-border">
-              <Link to={`/streamer/${streamerProfile.slug}`} className="w-full sm:w-auto">
+              <Link to={streamerPath(streamerProfile.slug)} className="w-full sm:w-auto">
                 <Button className="w-full" variant="secondary" size="sm" leftIcon={<Tv2 size={14} />}>
                   Ver meu canal
                 </Button>
@@ -155,7 +156,7 @@ export default function ViewerDashboard() {
                 <Send size={16} className="text-brand-purple" />
                 Minhas Sugestões
               </h2>
-              <Link to={streamerProfile ? `/streamer/${streamerProfile.slug}` : '/explore'}>
+              <Link to={streamerProfile ? streamerPath(streamerProfile.slug) : '/explore'}>
                 <Button size="sm" variant="ghost" leftIcon={<Plus size={14} />}>
                   Nova sugestão
                 </Button>
@@ -195,7 +196,7 @@ export default function ViewerDashboard() {
                         <div className="flex items-center gap-2 mt-1">
                           {streamer.streamer && (
                             <Link
-                              to={`/streamer/${streamer.streamer.slug}`}
+                              to={streamerPath(streamer.streamer.slug)}
                               className="text-xs text-brand-purple hover:underline"
                             >
                               {streamer.streamer.channel_name}

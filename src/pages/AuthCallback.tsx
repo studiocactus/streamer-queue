@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { normalizeStreamerReturnPath } from '@/lib/routes'
 import { useAuthStore } from '@/store/authStore'
 
 export default function AuthCallback() {
@@ -12,9 +13,7 @@ export default function AuthCallback() {
   const error = params.get('error')
   const message = params.get('message')
   const requestedReturnTo = params.get('return_to')
-  const returnTo = requestedReturnTo && /^\/streamer\/[a-z0-9-]+$/i.test(requestedReturnTo)
-    ? requestedReturnTo
-    : '/dashboard'
+  const returnTo = normalizeStreamerReturnPath(requestedReturnTo) ?? '/dashboard'
 
   useEffect(() => {
     const handleCallback = async () => {

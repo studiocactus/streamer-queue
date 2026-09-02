@@ -21,6 +21,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton'
 import { cn, formatRelativeDate, categoryLabel } from '@/lib/utils'
 import type { Suggestion, SuggestionStatus, SuggestionCategory } from '@/types'
 import { getTwitchChatConnectUrl } from '@/lib/supabase'
+import { streamerPath } from '@/lib/routes'
 
 // ============================================================
 // Kanban Column
@@ -879,10 +880,10 @@ export default function StreamerDashboard() {
             <div>
               <h1 className="text-xl font-bold text-content-primary">{streamerProfile.channel_name}</h1>
               <Link
-                to={`/streamer/${streamerProfile.slug}`}
+                to={streamerPath(streamerProfile.slug)}
                 className="text-xs text-brand-purple hover:underline flex items-center gap-1"
               >
-                {window.location.host}/streamer/{streamerProfile.slug}
+                {window.location.host}/{streamerProfile.slug}
                 <ExternalLink size={10} />
               </Link>
             </div>
@@ -1230,10 +1231,10 @@ export default function StreamerDashboard() {
                       <Avatar src={channel.avatar_url} alt={channel.channel_name} fallback={channel.channel_name} size="sm" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-content-primary">{channel.channel_name}</p>
-                        <p className="truncate text-xs text-content-muted">{window.location.host}/streamer/{channel.slug}</p>
+                        <p className="truncate text-xs text-content-muted">{window.location.host}/{channel.slug}</p>
                       </div>
                       <Link
-                        to={`/streamer/${channel.slug}`}
+                        to={streamerPath(channel.slug)}
                         target="_blank"
                         aria-label={`Abrir perfil de ${channel.channel_name}`}
                         className="rounded-lg p-2 text-brand-purple hover:bg-brand-purple/10"
