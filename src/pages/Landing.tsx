@@ -1,10 +1,16 @@
+import { useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useGSAP } from '@gsap/react'
 import {
   Tv2, Users, ThumbsUp, Zap, Shield, Gift,
   ChevronRight, Play, Star, CheckCircle, ArrowRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { getTwitchAuthUrl } from '@/lib/supabase'
+
+gsap.registerPlugin(useGSAP, ScrollTrigger)
 
 const HOW_IT_WORKS = [
   {
@@ -71,6 +77,7 @@ const FAQ = [
 ]
 
 export default function LandingPage() {
+  const pageRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const authRequired = Boolean(
     (location.state as { authRequired?: boolean } | null)?.authRequired
@@ -80,8 +87,51 @@ export default function LandingPage() {
     window.location.href = getTwitchAuthUrl()
   }
 
+  useGSAP(() => {
+    const media = gsap.matchMedia()
+
+    media.add('(prefers-reduced-motion: no-preference)', () => {
+      const hero = gsap.timeline({ defaults: { ease: 'power3.out' } })
+      hero
+        .from('[data-hero-glow]', { autoAlpha: 0, scale: 0.72, duration: 1.2 })
+        .from('[data-hero-badge]', { autoAlpha: 0, y: 18, duration: 0.45 }, 0.1)
+        .from('[data-hero-title]', { autoAlpha: 0, y: 34, duration: 0.75 }, 0.18)
+        .from('[data-hero-copy]', { autoAlpha: 0, y: 22, duration: 0.55 }, 0.38)
+        .from('[data-hero-actions] > *', { autoAlpha: 0, y: 16, stagger: 0.09, duration: 0.42 }, 0.52)
+        .from('[data-hero-proof]', { autoAlpha: 0, duration: 0.45 }, 0.7)
+
+      gsap.to('[data-hero-glow]', {
+        scale: 1.08,
+        duration: 4,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+      })
+
+      gsap.utils.toArray<HTMLElement>('[data-gsap-section]').forEach((section) => {
+        const heading = section.querySelector('[data-gsap-heading]')
+        const cards = section.querySelectorAll('[data-gsap-card]')
+        const timeline = gsap.timeline({
+          scrollTrigger: { trigger: section, start: 'top 82%', once: true },
+          defaults: { ease: 'power2.out' },
+        })
+
+        if (heading) timeline.from(heading, { autoAlpha: 0, y: 26, duration: 0.55 })
+        if (cards.length) timeline.from(cards, { autoAlpha: 0, y: 28, scale: 0.985, duration: 0.5, stagger: 0.08 }, heading ? '-=0.2' : 0)
+      })
+    })
+
+    media.add('(prefers-reduced-motion: reduce)', () => {
+      gsap.set('[data-hero-glow], [data-hero-badge], [data-hero-title], [data-hero-copy], [data-hero-actions] > *, [data-hero-proof], [data-gsap-heading], [data-gsap-card]', {
+        clearProps: 'all',
+      })
+    })
+
+    return () => media.revert()
+  }, { scope: pageRef })
+
   return (
-    <div className="min-h-screen">
+    <div ref={pageRef} className="min-h-screen">
       {authRequired && (
         <div
           role="status"
@@ -104,26 +154,26 @@ export default function LandingPage() {
       <section className="relative overflow-hidden bg-bg-hero-gradient py-20 sm:py-24 lg:py-32">
         {/* Background glow */}
         <div className="absolute inset-0 bg-hero-gradient pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-brand-purple/8 rounded-full blur-3xl pointer-events-none" />
+        <div data-hero-glow className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-brand-purple/8 rounded-full blur-3xl pointer-events-none" />
 
         <div className="app-shell relative text-center">
-          <div className="inline-flex items-center gap-2 bg-brand-purple/10 border border-brand-purple/20 rounded-full px-4 py-1.5 mb-8">
+          <div data-hero-badge className="inline-flex items-center gap-2 bg-brand-purple/10 border border-brand-purple/20 rounded-full px-4 py-1.5 mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse-slow" />
             <span className="text-xs font-medium text-brand-purple">Plataforma multi-streamer</span>
           </div>
 
-          <h1 className="mx-auto max-w-5xl text-[clamp(2.35rem,6vw,5rem)] font-bold tracking-[-0.045em] text-content-primary leading-[1.02] mb-6">
+          <h1 data-hero-title className="mx-auto max-w-5xl text-[clamp(2.35rem,6vw,5rem)] font-bold tracking-[-0.045em] text-content-primary leading-[1.02] mb-6">
             Sua comunidade escolhe.{' '}
             <span className="text-gradient">Você decide</span>{' '}
             o que assistir.
           </h1>
 
-          <p className="text-lg text-content-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p data-hero-copy className="text-lg text-content-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
             Receba sugestões de filmes, séries, animes e muito mais, organize sua fila e
             transforme as escolhas da comunidade em momentos de live.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div data-hero-actions className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
               size="lg"
               onClick={handleLoginWithTwitch}
@@ -145,7 +195,7 @@ export default function LandingPage() {
           </div>
 
           {/* Social proof */}
-          <p className="mt-8 text-xs text-content-muted">
+          <p data-hero-proof className="mt-8 text-xs text-content-muted">
             Gratuito para viewers · Streamers por convite · Login seguro com Twitch
           </p>
         </div>
@@ -154,9 +204,9 @@ export default function LandingPage() {
       {/* ============================================================
           COMO FUNCIONA
       ============================================================ */}
-      <section className="page-section" id="como-funciona">
+      <section data-gsap-section className="page-section" id="como-funciona">
         <div className="app-shell">
-          <div className="text-center mb-12">
+          <div data-gsap-heading className="text-center mb-12">
             <h2 className="text-3xl font-bold text-content-primary mb-3">Como funciona</h2>
             <p className="text-content-secondary max-w-xl mx-auto">
               Em quatro passos simples, sua comunidade e você têm a melhor experiência de live watch party.
@@ -164,7 +214,7 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {HOW_IT_WORKS.map(({ step, title, description, icon: Icon }) => (
-              <div key={step} className="group relative bg-bg-secondary border border-border rounded-2xl p-6 hover:border-brand-purple/30 transition-all duration-200">
+              <div data-gsap-card key={step} className="group relative bg-bg-secondary border border-border rounded-2xl p-6 hover:border-brand-purple/30 transition-all duration-200">
                 <div className="text-5xl font-black text-border mb-4 group-hover:text-brand-purple/20 transition-colors">
                   {step}
                 </div>
@@ -182,10 +232,10 @@ export default function LandingPage() {
       {/* ============================================================
           RECURSOS — STREAMERS
       ============================================================ */}
-      <section className="page-section bg-bg-secondary/60" id="recursos-streamer">
+      <section data-gsap-section className="page-section bg-bg-secondary/60" id="recursos-streamer">
         <div className="app-shell">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
+            <div data-gsap-heading>
               <div className="inline-flex items-center gap-2 bg-brand-purple/10 border border-brand-purple/20 rounded-full px-3 py-1 mb-5">
                 <Tv2 size={13} className="text-brand-purple" />
                 <span className="text-xs font-medium text-brand-purple">Para Streamers</span>
@@ -219,7 +269,7 @@ export default function LandingPage() {
             </div>
 
             {/* Preview card */}
-            <div className="relative">
+            <div data-gsap-card className="relative">
               <div className="bg-bg-primary border border-border rounded-2xl p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-content-primary">Fila do Canal</span>
@@ -230,7 +280,7 @@ export default function LandingPage() {
                   { title: 'Ruptura', cat: 'Série', votes: 28, status: 'queued' },
                   { title: 'One Piece', cat: 'Anime', votes: 19, status: 'queued' },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-bg-secondary border border-border rounded-xl p-3">
+                  <div data-gsap-card key={i} className="flex items-center gap-3 bg-bg-secondary border border-border rounded-xl p-3">
                     <div className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center text-xs font-bold text-content-muted">
                       {item.status === 'watching' ? '▶' : i}
                     </div>
@@ -259,9 +309,9 @@ export default function LandingPage() {
       {/* ============================================================
           RECURSOS — VIEWERS
       ============================================================ */}
-      <section className="page-section" id="recursos-viewer">
+      <section data-gsap-section className="page-section" id="recursos-viewer">
         <div className="app-shell">
-          <div className="text-center mb-12">
+          <div data-gsap-heading className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-brand-green/10 border border-brand-green/20 rounded-full px-3 py-1 mb-5">
               <Users size={13} className="text-brand-green" />
               <span className="text-xs font-medium text-brand-green">Para Viewers</span>
@@ -275,7 +325,7 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {VIEWER_FEATURES.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="bg-bg-secondary border border-border rounded-2xl p-5 hover:border-brand-green/30 transition-all duration-200 group">
+              <div data-gsap-card key={title} className="bg-bg-secondary border border-border rounded-2xl p-5 hover:border-brand-green/30 transition-all duration-200 group">
                 <div className="w-10 h-10 rounded-xl bg-brand-green/10 border border-brand-green/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                   <Icon size={18} className="text-brand-green" />
                 </div>
@@ -290,9 +340,9 @@ export default function LandingPage() {
       {/* ============================================================
           INTEGRAÇÃO TWITCH
       ============================================================ */}
-      <section className="page-section bg-bg-secondary/60" id="twitch">
+      <section data-gsap-section className="page-section bg-bg-secondary/60" id="twitch">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="w-16 h-16 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center mx-auto mb-6">
+          <div data-gsap-heading className="w-16 h-16 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center mx-auto mb-6">
             <svg viewBox="0 0 24 24" className="w-8 h-8 fill-brand-purple">
               <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
             </svg>
@@ -310,7 +360,7 @@ export default function LandingPage() {
               { title: '✅ Aprovação', msg: 'A sugestão "{titulo}" foi aprovada!' },
               { title: '🍿 Assistindo agora', msg: 'Começamos a assistir "{titulo}"!' },
             ].map((item) => (
-              <div key={item.title} className="bg-bg-primary border border-border rounded-xl p-4">
+              <div data-gsap-card key={item.title} className="bg-bg-primary border border-border rounded-xl p-4">
                 <p className="text-xs font-semibold text-content-primary mb-2">{item.title}</p>
                 <p className="text-xs text-content-muted">{item.msg}</p>
               </div>
@@ -322,14 +372,14 @@ export default function LandingPage() {
       {/* ============================================================
           FAQ
       ============================================================ */}
-      <section className="page-section" id="faq">
+      <section data-gsap-section className="page-section" id="faq">
         <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-12">
+          <div data-gsap-heading className="text-center mb-12">
             <h2 className="text-3xl font-bold text-content-primary mb-3">Perguntas frequentes</h2>
           </div>
           <div className="space-y-3">
             {FAQ.map((item) => (
-              <details key={item.q} className="group bg-bg-secondary border border-border rounded-2xl">
+              <details data-gsap-card key={item.q} className="group bg-bg-secondary border border-border rounded-2xl">
                 <summary className="flex items-center justify-between p-5 cursor-pointer list-none">
                   <span className="text-sm font-medium text-content-primary">{item.q}</span>
                   <ChevronRight size={16} className="text-content-muted group-open:rotate-90 transition-transform shrink-0 ml-3" />
@@ -346,8 +396,8 @@ export default function LandingPage() {
       {/* ============================================================
           CTA FINAL
       ============================================================ */}
-      <section className="page-section bg-bg-secondary/60">
-        <div className="max-w-2xl mx-auto text-center">
+      <section data-gsap-section className="page-section bg-bg-secondary/60">
+        <div data-gsap-heading className="max-w-2xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-content-primary mb-4">
             Pronto para começar?
           </h2>
