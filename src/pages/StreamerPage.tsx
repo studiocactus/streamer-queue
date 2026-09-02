@@ -387,19 +387,21 @@ export default function StreamerPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pb-2">
+          <div className="grid w-full grid-cols-2 gap-2 pb-2 sm:w-[22rem]">
             {streamer.twitch_broadcaster_id && (
               <a
                 href={`https://twitch.tv/${streamer.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                className="block w-full"
               >
-                <Button variant="secondary" size="sm" leftIcon={<ExternalLink size={14} />}>
+                <Button className="w-full" variant="secondary" size="sm" leftIcon={<ExternalLink size={14} />}>
                   Twitch
                 </Button>
               </a>
             )}
             <Button
+              className="w-full"
               onClick={handleSuggest}
               size="sm"
               leftIcon={<Send size={14} />}
