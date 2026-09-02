@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -33,6 +33,8 @@ interface KanbanColumnProps {
   onReject?: (s: Suggestion) => void
   onWatch?: (id: string) => void
   onDelete?: (suggestion: Suggestion) => void
+  onBan?: (suggestion: Suggestion) => void
+  ownerId?: string
 }
 
 function KanbanColumn({
@@ -44,6 +46,8 @@ function KanbanColumn({
   onReject,
   onWatch,
   onDelete,
+  onBan,
+  ownerId,
 }: KanbanColumnProps) {
   return (
     <div className="bg-bg-tertiary/70 border border-border rounded-2xl min-h-[220px] w-full min-w-0 flex flex-col">
@@ -123,6 +127,14 @@ function KanbanColumn({
                     Marcar concluído
                   </button>
                 )}
+                {s.submitted_by !== ownerId && <button
+                  onClick={() => onBan?.(s)}
+                  className="inline-flex items-center gap-1 text-xs text-content-muted transition-colors hover:text-status-rejected"
+                  aria-label={`Banir ${s.submitter?.display_name ?? 'usuário'}`}
+                >
+                  <ShieldBan size={11} />
+                  Banir usuário
+                </button>}
                 <button
                   onClick={() => onDelete?.(s)}
                   className="ml-auto inline-flex items-center gap-1 text-xs text-content-muted transition-colors hover:text-status-rejected"
@@ -137,6 +149,41 @@ function KanbanColumn({
         )}
       </div>
     </div>
+  )
+}
+
+function BanModal({ suggestion, isOpen, onClose, onBan }: {
+  suggestion: Suggestion | null
+  isOpen: boolean
+  onClose: () => void
+  onBan: (suggestion: Suggestion, reason: string) => Promise<void>
+}) {
+  const [reason, setReason] = useState('')
+  const [loading, setLoading] = useState(false)
+  const submit = async () => {
+    if (!suggestion || !reason.trim()) return
+    setLoading(true)
+    try {
+      await onBan(suggestion, reason.trim())
+      setReason('')
+      onClose()
+    } finally {
+      setLoading(false)
+    }
+  }
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Banir usuário" size="sm">
+      <div className="space-y-4">
+        <div className="rounded-xl border border-status-rejected/20 bg-status-rejected/10 p-3 text-sm text-content-secondary">
+          <strong className="text-content-primary">{suggestion?.submitter?.display_name}</strong> não poderá enviar sugestões nem votar neste canal.
+        </div>
+        <Textarea label="Motivo do banimento" required value={reason} onChange={(event) => setReason(event.target.value)} rows={3} placeholder="Descreva a violação das regras..." />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button variant="danger" loading={loading} disabled={!reason.trim()} onClick={submit}>Confirmar banimento</Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 
@@ -202,6 +249,7 @@ type ModeratorMember = {
   profile?: { display_name: string; twitch_login: string; avatar_url: string | null }
 }
 type ModeratorCandidate = { id: string; display_name: string; twitch_login: string; avatar_url: string | null }
+type BannedUser = { id: string; user_id: string; reason: string | null; created_at: string; profile?: ModeratorCandidate }
 
 const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
   suggestion_received: '🎬 {viewer} adicionou “{titulo}” à lista do canal! Envie sua sugestão também no WatchQueue.',
@@ -241,6 +289,8 @@ export default function StreamerDashboard() {
   const [moderatorsLoading, setModeratorsLoading] = useState(false)
   const [moderatorCandidates, setModeratorCandidates] = useState<ModeratorCandidate[]>([])
   const [addContentOpen, setAddContentOpen] = useState(false)
+  const [banTarget, setBanTarget] = useState<Suggestion | null>(null)
+  const [bannedUsers, setBannedUsers] = useState<BannedUser[]>([])
   const [newContentTitle, setNewContentTitle] = useState('')
   const [newContentCategory, setNewContentCategory] = useState<SuggestionCategory>('react')
   const [newContentUrl, setNewContentUrl] = useState('')
@@ -280,7 +330,7 @@ export default function StreamerDashboard() {
 
   const loadModeratorData = async () => {
     if (!streamerProfile?.id) return
-    const [membersResult, suggestionsResult] = await Promise.all([
+    const [membersResult, suggestionsResult, bansResult] = await Promise.all([
       supabase
         .from('streamer_members')
         .select('id, user_id, role, permissions, profile:profiles!user_id(display_name, twitch_login, avatar_url)')
@@ -290,8 +340,14 @@ export default function StreamerDashboard() {
         .from('suggestions')
         .select('submitted_by, submitter:profiles!submitted_by(id, display_name, twitch_login, avatar_url)')
         .eq('streamer_id', streamerProfile.id),
+      supabase
+        .from('banned_users')
+        .select('id, user_id, reason, created_at, profile:profiles!user_id(id, display_name, twitch_login, avatar_url)')
+        .eq('streamer_id', streamerProfile.id)
+        .order('created_at', { ascending: false }),
     ])
     const nextModerators = (membersResult.data ?? []) as unknown as ModeratorMember[]
+    const nextBans = (bansResult.data ?? []) as unknown as BannedUser[]
     setModerators(nextModerators)
 
     const candidateMap = new Map<string, ModeratorCandidate>()
@@ -300,10 +356,12 @@ export default function StreamerDashboard() {
       if (
         viewer &&
         row.submitted_by !== streamerProfile.owner_id &&
+        !nextBans.some((banned) => banned.user_id === row.submitted_by) &&
         !nextModerators.some((member) => member.user_id === row.submitted_by)
       ) candidateMap.set(row.submitted_by, viewer)
     })
     setModeratorCandidates(Array.from(candidateMap.values()))
+    setBannedUsers(nextBans)
   }
 
   useEffect(() => {
@@ -418,6 +476,41 @@ export default function StreamerDashboard() {
     } finally {
       setModeratorsLoading(false)
     }
+  }
+
+  const handleBanUser = async (suggestion: Suggestion, reason: string) => {
+    if (!streamerProfile || !profile || suggestion.submitted_by === streamerProfile.owner_id) return
+    const { error } = await supabase.from('banned_users').upsert({
+      streamer_id: streamerProfile.id,
+      user_id: suggestion.submitted_by,
+      banned_by: profile.id,
+      reason,
+    } as never, { onConflict: 'streamer_id,user_id' })
+    if (error) {
+      toast.error('Não foi possível banir o usuário.')
+      throw error
+    }
+    await supabase
+      .from('streamer_members')
+      .delete()
+      .eq('streamer_id', streamerProfile.id)
+      .eq('user_id', suggestion.submitted_by)
+      .eq('role', 'moderator')
+    await supabase
+      .from('suggestions')
+      .update({ status: 'rejected', rejection_reason: `Usuário banido: ${reason}` } as never)
+      .eq('streamer_id', streamerProfile.id)
+      .eq('submitted_by', suggestion.submitted_by)
+      .eq('status', 'pending')
+    await loadModeratorData()
+    toast.success('Usuário banido deste canal.')
+  }
+
+  const handleUnbanUser = async (banned: BannedUser) => {
+    const { error } = await supabase.from('banned_users').delete().eq('id', banned.id)
+    if (error) return toast.error('Não foi possível desbloquear o usuário.')
+    setBannedUsers((current) => current.filter((item) => item.id !== banned.id))
+    toast.success('Usuário desbloqueado.')
   }
 
   const handleAddStreamerContent = async (event: React.FormEvent) => {
@@ -692,6 +785,8 @@ export default function StreamerDashboard() {
                 onAction={handleAction}
                 onReject={setRejectTarget}
                 onDelete={handleDelete}
+                onBan={setBanTarget}
+                ownerId={streamerProfile.owner_id}
               />
               <KanbanColumn
                 title="Aprovado"
@@ -701,6 +796,8 @@ export default function StreamerDashboard() {
                 onAction={handleAction}
                 onReject={setRejectTarget}
                 onDelete={handleDelete}
+                onBan={setBanTarget}
+                ownerId={streamerProfile.owner_id}
               />
               <KanbanColumn
                 title="Na Fila"
@@ -711,6 +808,8 @@ export default function StreamerDashboard() {
                 onReject={setRejectTarget}
                 onWatch={handleWatch}
                 onDelete={handleDelete}
+                onBan={setBanTarget}
+                ownerId={streamerProfile.owner_id}
               />
               <KanbanColumn
                 title="Assistindo"
@@ -720,6 +819,8 @@ export default function StreamerDashboard() {
                 onAction={handleAction}
                 onReject={setRejectTarget}
                 onDelete={handleDelete}
+                onBan={setBanTarget}
+                ownerId={streamerProfile.owner_id}
               />
               <KanbanColumn
                 title="Concluído"
@@ -729,6 +830,8 @@ export default function StreamerDashboard() {
                 onAction={handleAction}
                 onReject={setRejectTarget}
                 onDelete={handleDelete}
+                onBan={setBanTarget}
+                ownerId={streamerProfile.owner_id}
               />
               <KanbanColumn
                 title="Rejeitado"
@@ -738,6 +841,8 @@ export default function StreamerDashboard() {
                 onAction={handleAction}
                 onReject={setRejectTarget}
                 onDelete={handleDelete}
+                onBan={setBanTarget}
+                ownerId={streamerProfile.owner_id}
               />
             </div>
           </div>
@@ -797,6 +902,32 @@ export default function StreamerDashboard() {
                   ))}
                 </div>
               )}
+
+              <div className="border-t border-border pt-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <ShieldBan size={16} className="text-status-rejected" />
+                  <div>
+                    <p className="text-sm font-semibold text-content-primary">Usuários banidos</p>
+                    <p className="text-xs text-content-muted">Não podem enviar sugestões nem votar neste canal.</p>
+                  </div>
+                </div>
+                {bannedUsers.length === 0 ? (
+                  <p className="rounded-xl border border-border bg-bg-tertiary p-4 text-xs text-content-muted">Nenhum usuário banido.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {bannedUsers.map((banned) => (
+                      <div key={banned.id} className="flex items-center gap-3 rounded-xl border border-status-rejected/20 bg-status-rejected/5 p-3">
+                        <Avatar src={banned.profile?.avatar_url} fallback={banned.profile?.display_name ?? 'B'} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-content-primary">{banned.profile?.display_name ?? 'Usuário'}</p>
+                          <p className="truncate text-xs text-content-muted">{banned.reason || 'Sem motivo informado'}</p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => handleUnbanUser(banned)}>Desbloquear</Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -953,6 +1084,13 @@ export default function StreamerDashboard() {
         isOpen={!!rejectTarget}
         onClose={() => setRejectTarget(null)}
         onReject={handleReject}
+      />
+
+      <BanModal
+        suggestion={banTarget}
+        isOpen={!!banTarget}
+        onClose={() => setBanTarget(null)}
+        onBan={handleBanUser}
       />
 
       <Modal isOpen={addContentOpen} onClose={() => setAddContentOpen(false)} title="Adicionar ideia para a comunidade" size="md">

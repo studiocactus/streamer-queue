@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown, Bell } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { getTwitchAuthUrl } from '@/lib/supabase'
 import { Avatar } from '@/components/ui/Avatar'
@@ -16,6 +16,11 @@ export function Header() {
   const { pendingCount } = useStreamerNotifications(streamerProfile?.id)
 
   const isActive = (path: string) => location.pathname === path
+
+  useEffect(() => {
+    setMobileOpen(false)
+    setUserMenuOpen(false)
+  }, [location.pathname, location.search])
 
   const handleLoginWithTwitch = () => {
     window.location.href = getTwitchAuthUrl()
