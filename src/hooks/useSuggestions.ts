@@ -176,8 +176,8 @@ export function useSuggestions(streamerId: string | undefined) {
 
         if (insertError) throw insertError
 
-        // O envio ao chat é processado no backend e não bloqueia o cadastro.
-        supabase.functions.invoke('twitch-chat', {
+        // Confirma o processamento no backend para não perder o envio ao fechar o modal.
+        const { data: chatResult, error: chatError } = await supabase.functions.invoke('twitch-chat', {
           body: {
             streamer_id: streamerId,
             suggestion_id: created?.id,
@@ -185,7 +185,13 @@ export function useSuggestions(streamerId: string | undefined) {
             viewer_name: profile?.display_name ?? 'Viewer',
             title: data.title.trim(),
           },
-        }).catch((chatError) => console.error('Erro ao notificar chat:', chatError))
+        })
+        if (chatError || chatResult?.status !== 'sent') {
+          console.error('Erro ao notificar chat:', chatError ?? chatResult)
+          toast.warning('Sugestão salva, mas a mensagem não chegou à Twitch.', {
+            description: 'O streamer deve reconectar as mensagens na aba Twitch.',
+          })
+        }
 
         toast.success('Sugestão enviada!', {
           description: `"${data.title}" foi enviada ao streamer.`,
@@ -238,7 +244,7 @@ export function useSuggestions(streamerId: string | undefined) {
             : null
       const currentSuggestion = suggestions.find((item) => item.id === suggestionId)
       if (eventType && currentSuggestion?.status !== status) {
-        supabase.functions.invoke('twitch-chat', {
+        const { data: chatResult, error: chatError } = await supabase.functions.invoke('twitch-chat', {
           body: {
             streamer_id: streamerId,
             suggestion_id: suggestionId,
@@ -246,7 +252,13 @@ export function useSuggestions(streamerId: string | undefined) {
             viewer_name: currentSuggestion?.submitter?.display_name ?? 'Viewer',
             title: currentSuggestion?.title ?? '',
           },
-        }).catch((chatError) => console.error('Erro ao notificar chat:', chatError))
+        })
+        if (chatError || chatResult?.status !== 'sent') {
+          console.error('Erro ao notificar chat:', chatError ?? chatResult)
+          toast.warning('Status atualizado, mas a mensagem não chegou à Twitch.', {
+            description: 'Reconecte as mensagens na aba Twitch e tente novamente.',
+          })
+        }
       }
       fetchSuggestions()
     },

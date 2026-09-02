@@ -175,6 +175,9 @@ Deno.serve(async (req) => {
         if (!chatResponse.ok) {
           errorMessage = `Twitch respondeu ${chatResponse.status}: ${await chatResponse.text()}`
           status = 'failed'
+          if (chatResponse.status === 401 || chatResponse.status === 403) {
+            await adminClient.from('twitch_connections').update({ token_status: 'expired' }).eq('streamer_id', streamer_id)
+          }
         } else {
           status = 'sent'
         }
@@ -195,8 +198,8 @@ Deno.serve(async (req) => {
     })
 
     return new Response(
-      JSON.stringify({ success: true, message, status }),
-      { headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: status === 'sent', message, status, error: errorMessage }),
+      { status: status === 'failed' ? 502 : 200, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (err) {
     console.error('[twitch-chat] Erro:', err)

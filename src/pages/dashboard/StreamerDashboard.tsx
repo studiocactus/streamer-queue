@@ -201,6 +201,7 @@ type ModeratorMember = {
   permissions: string[]
   profile?: { display_name: string; twitch_login: string; avatar_url: string | null }
 }
+type ModeratorCandidate = { id: string; display_name: string; twitch_login: string; avatar_url: string | null }
 
 const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
   suggestion_received: '🎬 {viewer} adicionou “{titulo}” à lista do canal! Envie sua sugestão também no WatchQueue.',
@@ -236,6 +237,7 @@ export default function StreamerDashboard() {
   const [moderators, setModerators] = useState<ModeratorMember[]>([])
   const [selectedModeratorId, setSelectedModeratorId] = useState('')
   const [moderatorsLoading, setModeratorsLoading] = useState(false)
+  const [moderatorCandidates, setModeratorCandidates] = useState<ModeratorCandidate[]>([])
 
   const {
     suggestions, watching, queued, pending, approved,
@@ -268,18 +270,36 @@ export default function StreamerDashboard() {
     return () => { active = false }
   }, [streamerProfile?.id])
 
-  const loadModerators = async () => {
+  const loadModeratorData = async () => {
     if (!streamerProfile?.id) return
-    const { data } = await supabase
-      .from('streamer_members')
-      .select('id, user_id, role, permissions, profile:profiles!user_id(display_name, twitch_login, avatar_url)')
-      .eq('streamer_id', streamerProfile.id)
-      .eq('role', 'moderator')
-    setModerators((data ?? []) as unknown as ModeratorMember[])
+    const [membersResult, suggestionsResult] = await Promise.all([
+      supabase
+        .from('streamer_members')
+        .select('id, user_id, role, permissions, profile:profiles!user_id(display_name, twitch_login, avatar_url)')
+        .eq('streamer_id', streamerProfile.id)
+        .eq('role', 'moderator'),
+      supabase
+        .from('suggestions')
+        .select('submitted_by, submitter:profiles!submitted_by(id, display_name, twitch_login, avatar_url)')
+        .eq('streamer_id', streamerProfile.id),
+    ])
+    const nextModerators = (membersResult.data ?? []) as unknown as ModeratorMember[]
+    setModerators(nextModerators)
+
+    const candidateMap = new Map<string, ModeratorCandidate>()
+    ;(suggestionsResult.data ?? []).forEach((row) => {
+      const viewer = row.submitter as unknown as ModeratorCandidate | null
+      if (
+        viewer &&
+        row.submitted_by !== streamerProfile.owner_id &&
+        !nextModerators.some((member) => member.user_id === row.submitted_by)
+      ) candidateMap.set(row.submitted_by, viewer)
+    })
+    setModeratorCandidates(Array.from(candidateMap.values()))
   }
 
   useEffect(() => {
-    loadModerators()
+    loadModeratorData()
     // streamerProfile is the stable ownership boundary for this list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streamerProfile?.id])
@@ -350,15 +370,6 @@ export default function StreamerDashboard() {
     }
   }
 
-  const moderatorCandidates = Array.from(
-    new Map(
-      suggestions
-        .filter((suggestion) => suggestion.submitter && suggestion.submitted_by !== streamerProfile?.owner_id)
-        .filter((suggestion) => !moderators.some((member) => member.user_id === suggestion.submitted_by))
-        .map((suggestion) => [suggestion.submitted_by, suggestion.submitter!])
-    ).entries()
-  )
-
   const handleAddModerator = async () => {
     if (!streamerProfile || !selectedModeratorId) return
     setModeratorsLoading(true)
@@ -371,7 +382,7 @@ export default function StreamerDashboard() {
       } as never, { onConflict: 'streamer_id,user_id' })
       if (error) throw error
       setSelectedModeratorId('')
-      await loadModerators()
+      await loadModeratorData()
       toast.success('Viewer definido como moderador.')
     } catch (error) {
       console.error(error)
@@ -391,6 +402,7 @@ export default function StreamerDashboard() {
         .eq('role', 'moderator')
       if (error) throw error
       setModerators((current) => current.filter((item) => item.id !== member.id))
+      await loadModeratorData()
       toast.success('Moderador removido.')
     } catch (error) {
       console.error(error)
@@ -692,8 +704,8 @@ export default function StreamerDashboard() {
                     onChange={(event) => setSelectedModeratorId(event.target.value)}
                   >
                     <option value="">Selecione um viewer</option>
-                    {moderatorCandidates.map(([userId, viewer]) => (
-                      <option key={userId} value={userId}>{viewer.display_name} (@{viewer.twitch_login})</option>
+                    {moderatorCandidates.map((viewer) => (
+                      <option key={viewer.id} value={viewer.id}>{viewer.display_name} (@{viewer.twitch_login})</option>
                     ))}
                   </select>
                   <Button disabled={!selectedModeratorId} loading={moderatorsLoading} onClick={handleAddModerator} leftIcon={<UserPlus size={15} />}>
