@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Search, Tv2, Play, X, RefreshCw, ArrowUpRight, ListVideo, Radio } from 'lucide-react'
 import { useStreamers } from '@/hooks/useStreamer'
 import { Input } from '@/components/ui/Input'
@@ -12,10 +12,23 @@ import { cn } from '@/lib/utils'
 import type { Streamer } from '@/types'
 
 function StreamerCard({ streamer }: { streamer: Streamer }) {
+  const navigate = useNavigate()
+  const profilePath = `/streamer/${streamer.slug.toLowerCase()}`
+
   return (
     <div className="group block h-full rounded-3xl">
       <Card
-        className="relative flex h-full flex-col overflow-hidden rounded-3xl border-border/80 bg-bg-secondary/95 shadow-[0_18px_55px_rgba(0,0,0,0.24)] transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-brand-purple/50 group-hover:shadow-[0_24px_70px_rgba(145,70,255,0.2)]"
+        role="link"
+        tabIndex={0}
+        aria-label={`Abrir perfil de ${streamer.channel_name}`}
+        onClick={() => navigate(profilePath)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            navigate(profilePath)
+          }
+        }}
+        className="relative flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border-border/80 bg-bg-secondary/95 shadow-[0_18px_55px_rgba(0,0,0,0.24)] transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-brand-purple/50 group-hover:shadow-[0_24px_70px_rgba(145,70,255,0.2)]"
       >
         <div className="pointer-events-none absolute inset-x-8 top-0 z-20 h-px bg-gradient-to-r from-transparent via-brand-purple/80 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
         {/* Cover */}
@@ -65,9 +78,9 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
               className="-mt-10 ring-4 ring-bg-secondary shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-transform duration-300 group-hover:scale-105"
             />
             <div className="-mt-5 min-w-0 pt-0.5">
-              <Link to={`/streamer/${streamer.slug.toLowerCase()}`} className="block truncate text-base font-bold text-content-primary transition-colors hover:text-brand-purple">
+              <h3 className="block truncate text-base font-bold text-content-primary transition-colors group-hover:text-white">
                 {streamer.channel_name}
-              </Link>
+              </h3>
               <p className="text-xs text-content-muted">@{streamer.slug}</p>
             </div>
           </div>
@@ -97,6 +110,8 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`Abrir canal de ${streamer.channel_name} na Twitch`}
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
               className="focus-ring inline-flex h-9 items-center gap-1.5 rounded-full bg-brand-purple px-3.5 text-xs font-semibold text-white shadow-[0_8px_22px_rgba(145,70,255,0.25)] transition-all duration-300 hover:bg-brand-purple-light hover:shadow-[0_10px_28px_rgba(145,70,255,0.4)]"
             >
               Ver canal <ArrowUpRight size={13} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
