@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { cn, formatRelativeDate } from '@/lib/utils'
 import { useStreamerNotifications } from '@/hooks/useStreamerNotifications'
 import { normalizeStreamerReturnPath, streamerPath } from '@/lib/routes'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 export function Header() {
   const { user, profile, streamerProfile, logout } = useAuthStore()
@@ -84,13 +85,8 @@ export function Header() {
       )}>
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-brand-purple rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Tv2 size={18} className="text-white" />
-            </div>
-            <span className="hidden text-lg font-bold text-content-primary min-[350px]:inline">
-              Watch<span className="text-brand-purple">Queue</span>
-            </span>
+          <Link to="/" aria-label="Página inicial do WatchQueue" className="group block w-[116px] shrink-0 min-[390px]:w-[138px] sm:w-[154px]">
+            <BrandLogo className="transition-transform duration-300 group-hover:scale-[1.02]" />
           </Link>
 
           {/* Nav Desktop */}

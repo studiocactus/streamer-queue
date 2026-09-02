@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Activity, ArrowUpRight, Coffee, Gauge, Heart, LayoutDashboard, Radio, Search, Sparkles, Tv2, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { BrandLogo } from '@/components/ui/BrandLogo'
 
 interface PlatformStats {
   usersCount: number | null
@@ -63,9 +64,8 @@ export function Footer() {
 
         <div className="grid grid-cols-1 gap-8 sm:gap-10 md:grid-cols-2 lg:grid-cols-4">
           <div className="md:col-span-2 lg:col-span-2">
-            <Link to="/" className="mb-4 flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-purple"><Tv2 size={16} className="text-white" /></span>
-              <span className="text-lg font-bold text-content-primary">Watch<span className="text-brand-purple">Queue</span></span>
+            <Link to="/" aria-label="Página inicial do WatchQueue" className="mb-4 block w-[172px]">
+              <BrandLogo />
             </Link>
             <p className="max-w-md text-sm leading-relaxed text-content-secondary">
               A comunidade escolhe o que o streamer assiste. Organize filas, receba sugestões e transforme cada transmissão em uma experiência compartilhada.
