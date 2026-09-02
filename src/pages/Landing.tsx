@@ -113,6 +113,10 @@ export default function LandingPage() {
       gsap.to('[data-hero-orb="right"]', { y: 110, x: -30, ease: 'none', scrollTrigger: { trigger: '[data-hero]', start: 'top top', end: 'bottom top', scrub: 1 } })
       gsap.to('[data-hero-product]', { y: 44, ease: 'none', scrollTrigger: { trigger: '[data-hero]', start: 'top top', end: 'bottom top', scrub: 1 } })
 
+      gsap.to('[data-curtain="one"]', { xPercent: 18, yPercent: 9, rotation: 4, scaleY: 1.12, duration: 7, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+      gsap.to('[data-curtain="two"]', { xPercent: -16, yPercent: -7, rotation: -5, scaleX: 1.1, duration: 9, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+      gsap.to('[data-curtain="three"]', { xPercent: 12, yPercent: 12, rotation: 3, scale: 1.08, duration: 11, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+
       gsap.utils.toArray<HTMLElement>('[data-gsap-section]').forEach((section) => {
         const heading = section.querySelector('[data-gsap-heading]')
         const cards = section.querySelectorAll('[data-gsap-card]')
@@ -161,6 +165,11 @@ export default function LandingPage() {
       <section data-hero className="landing-hero relative overflow-hidden pb-20 pt-20 sm:pt-24 lg:pt-28">
         <div className="landing-grid absolute inset-0 pointer-events-none" />
         <div data-hero-glow className="landing-aurora pointer-events-none absolute left-1/2 top-[-20rem] h-[42rem] w-[72rem] -translate-x-1/2 rounded-full" />
+        <div className="landing-curtain pointer-events-none absolute inset-0">
+          <span data-curtain="one" className="landing-curtain-layer landing-curtain-one" />
+          <span data-curtain="two" className="landing-curtain-layer landing-curtain-two" />
+          <span data-curtain="three" className="landing-curtain-layer landing-curtain-three" />
+        </div>
         <div data-hero-orb="left" className="landing-orb landing-orb-left pointer-events-none absolute" />
         <div data-hero-orb="right" className="landing-orb landing-orb-right pointer-events-none absolute" />
 
