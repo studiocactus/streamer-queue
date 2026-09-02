@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Tv2, ThumbsUp, Send, Filter, Clock,
@@ -16,7 +16,7 @@ import { Input, Textarea, Select } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonSuggestion } from '@/components/ui/Skeleton'
 import { formatRelativeDate, categoryLabel, cn } from '@/lib/utils'
-import type { Suggestion, SuggestionCategory, FilterOptions } from '@/types'
+import type { Suggestion, SuggestionCategory } from '@/types'
 
 // ============================================================
 // SuggestionCard
@@ -225,11 +225,11 @@ export default function StreamerPage() {
   const [suggestOpen, setSuggestOpen] = useState(false)
   const { user } = useAuthStore()
 
-  const filters: FilterOptions = { category: categoryFilter }
+  // Hook busca TODAS as sugestões; filtragem é feita localmente para evitar loop infinito
   const {
     suggestions, watching, queued, pending: _pending,
     completed, isLoading: suggestionsLoading, vote, submit,
-  } = useSuggestions(streamer?.id, filters)
+  } = useSuggestions(streamer?.id)
 
   const handleSuggest = () => {
     if (!user) {
@@ -265,7 +265,7 @@ export default function StreamerPage() {
     )
   }
 
-  // Filtrar por categoria
+  // Filtrar por categoria localmente
   const allSuggestions = categoryFilter === 'all'
     ? suggestions
     : suggestions.filter((s) => s.category === categoryFilter)

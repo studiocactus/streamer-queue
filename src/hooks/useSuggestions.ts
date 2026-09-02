@@ -1,25 +1,34 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import type { Suggestion, SuggestionStatus, SuggestionCategory, FilterOptions } from '@/types'
+import type { Suggestion, SuggestionStatus, SuggestionCategory } from '@/types'
 import { useAuthStore } from '@/store/authStore'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = any
 
-export function useSuggestions(streamerId: string | undefined, filters?: FilterOptions) {
+/**
+ * Busca TODAS as sugestões de um canal (sem filtros server-side).
+ * A filtragem por categoria/status é feita no componente para evitar
+ * loops infinitos causados por objetos `filters` recriados a cada render.
+ */
+export function useSuggestions(streamerId: string | undefined) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
 
   const fetchSuggestions = useCallback(async () => {
-    if (!streamerId) { setIsLoading(false); return }
+    if (!streamerId) {
+      setIsLoading(false)
+      setSuggestions([])
+      return
+    }
     setIsLoading(true)
     setError(null)
 
     try {
-      let query = supabase
+      const { data, error: fetchError } = await supabase
         .from('suggestions')
         .select(`
           *,
@@ -27,22 +36,7 @@ export function useSuggestions(streamerId: string | undefined, filters?: FilterO
           votes(id, user_id)
         `)
         .eq('streamer_id', streamerId)
-
-      if (filters?.category && filters.category !== 'all') {
-        query = query.eq('category', filters.category)
-      }
-
-      if (filters?.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status)
-      }
-
-      if (filters?.sort === 'queue') {
-        query = query.order('queue_position', { ascending: true, nullsFirst: false })
-      } else {
-        query = query.order('submitted_at', { ascending: false })
-      }
-
-      const { data, error: fetchError } = await query
+        .order('submitted_at', { ascending: false })
 
       if (fetchError) throw fetchError
 
@@ -62,18 +56,19 @@ export function useSuggestions(streamerId: string | undefined, filters?: FilterO
     } finally {
       setIsLoading(false)
     }
-  }, [streamerId, filters?.category, filters?.status, filters?.sort, user?.id])
+  }, [streamerId, user?.id]) // SEM dependência de objeto filters
 
   useEffect(() => {
     fetchSuggestions()
   }, [fetchSuggestions])
 
+  // Mantém ref estável para o Realtime subscription não criar loop
   const fetchRef = useRef(fetchSuggestions)
   useEffect(() => {
     fetchRef.current = fetchSuggestions
   }, [fetchSuggestions])
 
-  // Realtime subscription — mantido estável sem loop de re-inscrição
+  // Realtime — abre canal UMA vez por streamerId
   useEffect(() => {
     if (!streamerId) return
 
@@ -230,6 +225,7 @@ export function useSuggestions(streamerId: string | undefined, filters?: FilterO
     [streamerId]
   )
 
+  // Derivados por status (calculados do array completo)
   const watching = suggestions.find((s) => s.status === 'watching')
   const queued = suggestions
     .filter((s) => s.status === 'queued')
