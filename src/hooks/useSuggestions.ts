@@ -68,6 +68,15 @@ export function useSuggestions(streamerId: string | undefined) {
     fetchRef.current = fetchSuggestions
   }, [fetchSuggestions])
 
+  useEffect(() => {
+    const handleSuggestionChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ streamerId?: string }>).detail
+      if (detail?.streamerId === streamerId) fetchRef.current()
+    }
+    window.addEventListener('watchqueue:suggestions-changed', handleSuggestionChange)
+    return () => window.removeEventListener('watchqueue:suggestions-changed', handleSuggestionChange)
+  }, [streamerId])
+
   // Realtime — nome único para nunca reutilizar canal já subscrito
   useEffect(() => {
     if (!streamerId) return

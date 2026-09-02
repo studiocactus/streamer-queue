@@ -30,6 +30,9 @@ export function useStreamerNotifications(streamerId?: string) {
             description: title ? `“${title}” aguarda sua aprovação.` : 'Uma sugestão aguarda sua aprovação.',
           })
         }
+        window.dispatchEvent(new CustomEvent('watchqueue:suggestions-changed', {
+          detail: { streamerId },
+        }))
         refresh()
       })
       .subscribe()

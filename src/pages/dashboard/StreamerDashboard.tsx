@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -194,6 +194,13 @@ function RejectModal({
 // ============================================================
 type DashTab = 'kanban' | 'settings' | 'moderators' | 'twitch'
 type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'watching_now' | 'completed'
+type ModeratorMember = {
+  id: string
+  user_id: string
+  role: string
+  permissions: string[]
+  profile?: { display_name: string; twitch_login: string; avatar_url: string | null }
+}
 
 const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
   suggestion_received: '🎬 {viewer} adicionou “{titulo}” à lista do canal! Envie sua sugestão também no WatchQueue.',
@@ -226,6 +233,9 @@ export default function StreamerDashboard() {
   const [chatDisconnecting, setChatDisconnecting] = useState(false)
   const [chatTemplates, setChatTemplates] = useState<Record<ChatEventType, string>>(DEFAULT_CHAT_TEMPLATES)
   const [templatesSaving, setTemplatesSaving] = useState(false)
+  const [moderators, setModerators] = useState<ModeratorMember[]>([])
+  const [selectedModeratorId, setSelectedModeratorId] = useState('')
+  const [moderatorsLoading, setModeratorsLoading] = useState(false)
 
   const {
     suggestions, watching, queued, pending, approved,
@@ -256,6 +266,22 @@ export default function StreamerDashboard() {
       window.history.replaceState({}, '', window.location.pathname)
     }
     return () => { active = false }
+  }, [streamerProfile?.id])
+
+  const loadModerators = async () => {
+    if (!streamerProfile?.id) return
+    const { data } = await supabase
+      .from('streamer_members')
+      .select('id, user_id, role, permissions, profile:profiles!user_id(display_name, twitch_login, avatar_url)')
+      .eq('streamer_id', streamerProfile.id)
+      .eq('role', 'moderator')
+    setModerators((data ?? []) as unknown as ModeratorMember[])
+  }
+
+  useEffect(() => {
+    loadModerators()
+    // streamerProfile is the stable ownership boundary for this list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streamerProfile?.id])
 
   useEffect(() => {
@@ -321,6 +347,56 @@ export default function StreamerDashboard() {
       toast.error('Não foi possível salvar as mensagens automáticas.')
     } finally {
       setTemplatesSaving(false)
+    }
+  }
+
+  const moderatorCandidates = Array.from(
+    new Map(
+      suggestions
+        .filter((suggestion) => suggestion.submitter && suggestion.submitted_by !== streamerProfile?.owner_id)
+        .filter((suggestion) => !moderators.some((member) => member.user_id === suggestion.submitted_by))
+        .map((suggestion) => [suggestion.submitted_by, suggestion.submitter!])
+    ).entries()
+  )
+
+  const handleAddModerator = async () => {
+    if (!streamerProfile || !selectedModeratorId) return
+    setModeratorsLoading(true)
+    try {
+      const { error } = await supabase.from('streamer_members').upsert({
+        streamer_id: streamerProfile.id,
+        user_id: selectedModeratorId,
+        role: 'moderator',
+        permissions: [],
+      } as never, { onConflict: 'streamer_id,user_id' })
+      if (error) throw error
+      setSelectedModeratorId('')
+      await loadModerators()
+      toast.success('Viewer definido como moderador.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível adicionar o moderador.')
+    } finally {
+      setModeratorsLoading(false)
+    }
+  }
+
+  const handleRemoveModerator = async (member: ModeratorMember) => {
+    setModeratorsLoading(true)
+    try {
+      const { error } = await supabase
+        .from('streamer_members')
+        .delete()
+        .eq('id', member.id)
+        .eq('role', 'moderator')
+      if (error) throw error
+      setModerators((current) => current.filter((item) => item.id !== member.id))
+      toast.success('Moderador removido.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível remover o moderador.')
+    } finally {
+      setModeratorsLoading(false)
     }
   }
 
@@ -604,14 +680,51 @@ export default function StreamerDashboard() {
                 Moderadores
               </h2>
             </CardHeader>
-            <CardContent>
-              <EmptyState
-                icon={<Users size={22} />}
-                title="Nenhum moderador"
-                description="Adicione moderadores para ajudar a gerenciar as sugestões do seu canal."
-                compact
-                action={<Button size="sm" variant="outline">Convidar moderador</Button>}
-              />
+            <CardContent className="space-y-5">
+              <div className="rounded-xl border border-border bg-bg-tertiary p-4">
+                <p className="text-sm font-medium text-content-primary">Promover um viewer</p>
+                <p className="mt-1 text-xs text-content-muted">A lista mostra viewers que já enviaram sugestões para o seu canal. As permissões serão definidas em uma próxima etapa.</p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <select
+                    aria-label="Viewer para promover a moderador"
+                    className="focus-ring min-h-10 flex-1 rounded-xl border border-border bg-bg-secondary px-3 text-sm text-content-primary"
+                    value={selectedModeratorId}
+                    onChange={(event) => setSelectedModeratorId(event.target.value)}
+                  >
+                    <option value="">Selecione um viewer</option>
+                    {moderatorCandidates.map(([userId, viewer]) => (
+                      <option key={userId} value={userId}>{viewer.display_name} (@{viewer.twitch_login})</option>
+                    ))}
+                  </select>
+                  <Button disabled={!selectedModeratorId} loading={moderatorsLoading} onClick={handleAddModerator} leftIcon={<UserPlus size={15} />}>
+                    Tornar moderador
+                  </Button>
+                </div>
+              </div>
+
+              {moderators.length === 0 ? (
+                <EmptyState
+                  icon={<Users size={22} />}
+                  title="Nenhum moderador"
+                  description="Selecione acima um viewer que já participou do canal."
+                  compact
+                />
+              ) : (
+                <div className="space-y-2">
+                  {moderators.map((member) => (
+                    <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border bg-bg-tertiary p-3">
+                      <Avatar src={member.profile?.avatar_url} fallback={member.profile?.display_name ?? 'M'} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-content-primary">{member.profile?.display_name ?? 'Moderador'}</p>
+                        <p className="truncate text-xs text-content-muted">@{member.profile?.twitch_login ?? 'viewer'} · permissões a definir</p>
+                      </div>
+                      <Button variant="ghost" size="sm" disabled={moderatorsLoading} onClick={() => handleRemoveModerator(member)} leftIcon={<UserMinus size={14} />}>
+                        Remover
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
