@@ -64,7 +64,7 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
               size="md"
               className="-mt-10 ring-4 ring-bg-secondary shadow-[0_10px_25px_rgba(0,0,0,0.35)] transition-transform duration-300 group-hover:scale-105"
             />
-            <div className="min-w-0">
+            <div className="-mt-2 min-w-0">
               <h3 className="truncate text-base font-bold text-content-primary transition-colors group-hover:text-white">
                 {streamer.channel_name}
               </h3>
