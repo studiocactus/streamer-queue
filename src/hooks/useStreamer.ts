@@ -8,7 +8,11 @@ export function useStreamer(slug: string | undefined) {
   const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
-    if (!slug) return
+    if (!slug || !slug.trim()) {
+      setIsLoading(false)
+      setError('Canal não especificado.')
+      return
+    }
     setIsLoading(true)
     setError(null)
 
@@ -23,12 +27,20 @@ export function useStreamer(slug: string | undefined) {
         .ilike('slug', slug.trim())
         .eq('is_public', true)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
 
       if (fetchError) throw fetchError
-      setStreamer(data as unknown as Streamer)
-    } catch {
+
+      if (!data) {
+        setError('Canal não encontrado ou indisponível.')
+        setStreamer(null)
+      } else {
+        setStreamer(data as unknown as Streamer)
+      }
+    } catch (err) {
+      console.error('Erro ao buscar streamer:', err)
       setError('Canal não encontrado ou indisponível.')
+      setStreamer(null)
     } finally {
       setIsLoading(false)
     }
@@ -55,8 +67,8 @@ export function useStreamers(search?: string) {
           .order('created_at', { ascending: false })
           .limit(40)
 
-        if (search) {
-          query = query.ilike('channel_name', `%${search}%`)
+        if (search && search.trim()) {
+          query = query.ilike('channel_name', `%${search.trim()}%`)
         }
 
         const { data } = await query
