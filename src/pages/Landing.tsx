@@ -312,7 +312,7 @@ export default function LandingPage() {
             ].map((item) => (
               <div key={item.title} className="bg-bg-primary border border-border rounded-xl p-4">
                 <p className="text-xs font-semibold text-content-primary mb-2">{item.title}</p>
-                <p className="text-xs text-content-muted font-mono">{item.msg}</p>
+                <p className="text-xs text-content-muted">{item.msg}</p>
               </div>
             ))}
           </div>
