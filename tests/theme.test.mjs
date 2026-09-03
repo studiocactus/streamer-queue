@@ -49,5 +49,5 @@ test('footer credits idea and development without hiding authorship', async () =
   assert.match(source, /Ideia e Desenvolvimento/)
   assert.match(source, /Thenees/)
   assert.match(source, /Gatomipia/)
-  assert.match(source, /border-brand-purple\/25/)
+  assert.doesNotMatch(source, /Ideia e Desenvolvimento[\s\S]{0,500}shadow-\[0_12px_35px/)
 })

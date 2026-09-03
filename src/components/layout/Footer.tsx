@@ -102,7 +102,7 @@ export function Footer() {
               <li><span className="flex items-center gap-2 text-sm text-content-secondary"><Gauge size={14} /> Status em tempo real</span></li>
             </ul>
 
-            <div className="mt-6 rounded-2xl border border-brand-purple/25 bg-gradient-to-br from-brand-purple/10 to-brand-purple/[0.025] p-4 shadow-[0_12px_35px_rgba(145,70,255,0.08)]">
+            <div className="mt-6">
               <div className="flex items-center gap-2 text-brand-purple">
                 <Code2 size={15} />
                 <p className="text-xs font-bold uppercase tracking-[0.12em]">Ideia e Desenvolvimento</p>
