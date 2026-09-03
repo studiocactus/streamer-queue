@@ -46,6 +46,11 @@ Deno.serve(async (req) => {
     if (payload.delivery_id) break
   }
 
+  const { error: heartbeatError } = await admin.rpc('record_system_heartbeat', {
+    p_component: 'chat-delivery-worker',
+  })
+  if (heartbeatError) console.error('[chat-delivery-worker] Heartbeat persistence failed', heartbeatError)
+
   return json({ processed: results.length, results })
 })
 

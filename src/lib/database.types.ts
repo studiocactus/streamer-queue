@@ -390,7 +390,7 @@ export interface Database {
     Functions: {
       get_platform_stats: {
         Args: Record<string, never>
-        Returns: { users_count: number; streamers_count: number }[]
+        Returns: { users_count: number; streamers_count: number; platform_status: 'operational' | 'attention' }[]
       }
       get_streamer_by_slug: {
         Args: { p_slug: string }

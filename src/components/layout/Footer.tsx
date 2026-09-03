@@ -7,13 +7,13 @@ import { BrandLogo } from '@/components/ui/BrandLogo'
 interface PlatformStats {
   usersCount: number | null
   streamersCount: number | null
-  operational: boolean | null
+  platformStatus: 'operational' | 'attention' | null
 }
 
 const supportUrl = 'https://livepix.gg/thenees'
 
 export function Footer() {
-  const [stats, setStats] = useState<PlatformStats>({ usersCount: null, streamersCount: null, operational: null })
+  const [stats, setStats] = useState<PlatformStats>({ usersCount: null, streamersCount: null, platformStatus: null })
 
   useEffect(() => {
     let active = true
@@ -22,11 +22,13 @@ export function Footer() {
       if (!active) return
       let usersCount: number | null = null
       let streamersCount: number | null = null
+      let platformStatus: PlatformStats['platformStatus'] = null
 
       if (!error) {
         const totals = data?.[0]
         usersCount = Number(totals?.users_count ?? 0)
         streamersCount = Number(totals?.streamers_count ?? 0)
+        platformStatus = totals?.platform_status === 'operational' ? 'operational' : 'attention'
       } else {
         // Backward-compatible fallback while the aggregate RPC migration propagates.
         const [profilesResult, streamersResult] = await Promise.all([
@@ -36,12 +38,13 @@ export function Footer() {
         if (!active) return
         usersCount = profilesResult.error ? null : profilesResult.count
         streamersCount = streamersResult.error ? null : streamersResult.count
+        platformStatus = usersCount !== null && streamersCount !== null ? 'operational' : 'attention'
       }
 
       setStats({
         usersCount,
         streamersCount,
-        operational: usersCount !== null && streamersCount !== null,
+        platformStatus,
       })
     }
     loadStats()
@@ -55,8 +58,8 @@ export function Footer() {
       <div className="app-shell py-10 lg:py-14">
         <div className="mb-10 grid gap-4 sm:grid-cols-3">
           <FooterMetric icon={<Activity size={18} />} label="Status da plataforma">
-            <span className={`h-2 w-2 rounded-full ${stats.operational === null ? 'animate-pulse bg-content-muted' : stats.operational ? 'bg-status-approved' : 'bg-status-rejected'}`} />
-            {stats.operational === null ? 'Verificando sistemas...' : stats.operational ? 'Todos os sistemas operacionais' : 'Instabilidade detectada'}
+            <span className={`h-2 w-2 rounded-full ${stats.platformStatus === null ? 'animate-pulse bg-content-muted' : stats.platformStatus === 'operational' ? 'bg-status-approved' : 'bg-amber-400'}`} />
+            {stats.platformStatus === null ? 'Verificando sistemas...' : stats.platformStatus === 'operational' ? 'Todos os sistemas operacionais' : 'Sistema em atenção'}
           </FooterMetric>
           <FooterMetric icon={<Users size={18} />} label="Pessoas na comunidade" value={formatTotal(stats.usersCount)} />
           <FooterMetric icon={<Tv2 size={18} />} label="Streamers ativos" value={formatTotal(stats.streamersCount)} />

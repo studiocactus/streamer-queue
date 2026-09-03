@@ -386,23 +386,7 @@
   50% { opacity: 1; transform: scaleX(1.04) scaleY(1.08); }
 }
 
-.brand-logo__queue-glow {
-  clip-path: inset(0 0 0 60%);
-  filter: drop-shadow(0 0 2px rgba(255, 255, 255, .95)) drop-shadow(0 0 7px rgba(255, 255, 255, .58));
-  opacity: .58;
-  animation: brand-queue-glow 2.8s ease-in-out infinite;
-}
-
-@keyframes brand-queue-glow {
-  0%, 100% { opacity: .38; }
-  50% { opacity: .82; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .brand-logo__queue-glow {
-    animation: none;
-    opacity: .58;
-  }
   .landing-footer::before { animation: none; }
 }
 
