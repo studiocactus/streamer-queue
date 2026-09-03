@@ -1,4 +1,4 @@
-import { useEffect, Component } from 'react'
+import { useEffect, Component, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, Navigate, useParams } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -52,14 +52,18 @@ class ErrorBoundary extends Component<
 }
 
 // Pages
-import LandingPage from '@/pages/Landing'
-import ExplorePage from '@/pages/Explore'
-import StreamerPage from '@/pages/StreamerPage'
-import AuthCallback from '@/pages/AuthCallback'
-import ViewerDashboard from '@/pages/dashboard/ViewerDashboard'
-import StreamerDashboard from '@/pages/dashboard/StreamerDashboard'
-import OverlayPage from '@/pages/Overlay'
-import ViewerProfile from '@/pages/ViewerProfile'
+const LandingPage = lazy(() => import('@/pages/Landing'))
+const ExplorePage = lazy(() => import('@/pages/Explore'))
+const StreamerPage = lazy(() => import('@/pages/StreamerPage'))
+const AuthCallback = lazy(() => import('@/pages/AuthCallback'))
+const ViewerDashboard = lazy(() => import('@/pages/dashboard/ViewerDashboard'))
+const StreamerDashboard = lazy(() => import('@/pages/dashboard/StreamerDashboard'))
+const OverlayPage = lazy(() => import('@/pages/Overlay'))
+const ViewerProfile = lazy(() => import('@/pages/ViewerProfile'))
+
+function PageLoading() {
+  return <div role="status" className="flex min-h-[40vh] items-center justify-center px-4 text-content-secondary">Carregando…</div>
+}
 
 // Layout com header e footer
 function AppLayout() {
@@ -67,7 +71,7 @@ function AppLayout() {
     <div className="flex flex-col min-h-screen" data-app-release="2026-09-02">
       <Header />
       <main className="flex-1">
-        <Outlet />
+        <Suspense fallback={<PageLoading />}><Outlet /></Suspense>
       </main>
       <Footer />
     </div>
@@ -80,7 +84,7 @@ function DashLayout() {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1">
-        <Outlet />
+        <Suspense fallback={<PageLoading />}><Outlet /></Suspense>
       </main>
       <Footer />
     </div>
@@ -169,7 +173,7 @@ export default function App() {
 
         <ErrorBoundary>
         <Routes>
-          <Route path="/overlay/:slug" element={<OverlayPage />} />
+          <Route path="/overlay/:slug" element={<Suspense fallback={null}><OverlayPage /></Suspense>} />
           {/* Public routes with header+footer */}
           <Route element={<AppLayout />}>
             <Route path="/" element={<LandingPage />} />
@@ -180,7 +184,7 @@ export default function App() {
           </Route>
 
           {/* Auth callback */}
-          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/auth/callback" element={<Suspense fallback={<PageLoading />}><AuthCallback /></Suspense>} />
 
           {/* Protected dashboard routes */}
           <Route element={<DashLayout />}>
