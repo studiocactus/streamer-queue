@@ -15,6 +15,8 @@ test('EventSub reconciliation inventories paginated subscriptions before creatin
   assert.match(worker, /pagination\?: \{ cursor\?: string \}/)
   assert.match(worker, /webhook_callback_verification_pending/)
   assert.match(worker, /if \(!subscriptionInventoryComplete\) continue/)
+  assert.match(worker, /record_system_heartbeat/)
+  assert.match(worker, /p_component: 'twitch-eventsub-sync'/)
 })
 
 test('EventSub reconciliation runs every fifteen minutes', async () => {

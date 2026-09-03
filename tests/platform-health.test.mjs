@@ -4,6 +4,7 @@ import { PGlite } from '@electric-sql/pglite'
 import { readFile } from 'node:fs/promises'
 
 const migrationUrl = new URL('../supabase/migrations/0040_public_platform_health.sql', import.meta.url)
+const eventsubHealthMigrationUrl = new URL('../supabase/migrations/0042_eventsub_health_heartbeat.sql', import.meta.url)
 const workerUrl = new URL('../supabase/functions/chat-delivery-worker/index.ts', import.meta.url)
 
 async function createDatabase() {
@@ -19,6 +20,7 @@ async function createDatabase() {
     language sql as $$ select 0::bigint, 0::bigint $$;
   `)
   await db.exec(await readFile(migrationUrl, 'utf8'))
+  await db.exec(await readFile(eventsubHealthMigrationUrl, 'utf8'))
   return db
 }
 
@@ -35,10 +37,14 @@ test('public status reflects a recent private worker heartbeat', async () => {
   assert.deepEqual(before.rows[0], { users_count: 1, streamers_count: 1, platform_status: 'attention' })
 
   await db.query("select record_system_heartbeat('chat-delivery-worker')")
+  const chatOnly = await db.query('select * from get_platform_stats()')
+  assert.equal(chatOnly.rows[0].platform_status, 'attention')
+
+  await db.query("select record_system_heartbeat('twitch-eventsub-sync')")
   const after = await db.query('select * from get_platform_stats()')
   assert.deepEqual(after.rows[0], { users_count: 1, streamers_count: 1, platform_status: 'operational' })
 
-  await db.exec("update system_health set last_success_at = now() - interval '4 minutes'")
+  await db.exec("update system_health set last_success_at = now() - interval '36 minutes' where component = 'twitch-eventsub-sync'")
   const stale = await db.query('select * from get_platform_stats()')
   assert.equal(stale.rows[0].platform_status, 'attention')
 })

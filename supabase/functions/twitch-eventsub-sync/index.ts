@@ -150,6 +150,13 @@ Deno.serve(async (req) => {
     else reconciled++
   }
 
+  if (failures.length === 0) {
+    const { error: heartbeatError } = await admin.rpc('record_system_heartbeat', {
+      p_component: 'twitch-eventsub-sync',
+    })
+    if (heartbeatError) failures.push('heartbeat:persistence')
+  }
+
   return json({ channels: streamers?.length ?? 0, created, existing, reconciled, failures }, failures.length ? 207 : 200)
 })
 
