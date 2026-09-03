@@ -32,7 +32,7 @@ export async function normalizeContentReference(rawValue: string): Promise<Norma
     const endpoint = host.includes('spotify')
       ? `https://open.spotify.com/oembed?url=${encodeURIComponent(sourceUrl)}`
       : `https://www.youtube.com/oembed?url=${encodeURIComponent(sourceUrl)}&format=json`
-    const response = await fetch(endpoint, { headers: { 'User-Agent': 'WatchQueue/1.0' } })
+    const response = await fetch(endpoint, { headers: { 'User-Agent': 'WatchQueue/1.0' }, signal: AbortSignal.timeout(3000) })
     if (!response.ok) throw new Error(`Metadata provider returned ${response.status}`)
     const metadata = await response.json()
     return {
