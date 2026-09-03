@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.chat-delivery-worker]
 verify_jwt = false
+
+[functions.twitch-eventsub-sync]
+verify_jwt = false

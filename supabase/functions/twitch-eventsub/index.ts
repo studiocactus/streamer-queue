@@ -7,6 +7,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TWITCH_CLIENT_ID = Deno.env.get('TWITCH_CLIENT_ID')!
 const TWITCH_CLIENT_SECRET = Deno.env.get('TWITCH_CLIENT_SECRET')!
 const EVENTSUB_SECRET = Deno.env.get('TWITCH_EVENTSUB_SECRET')!
+const APP_URL = Deno.env.get('APP_URL') ?? 'https://streamer-queue.vercel.app'
 
 const encoder = new TextEncoder()
 
@@ -45,9 +46,7 @@ Deno.serve(async (req) => {
     console.warn('[twitch-eventsub] Subscription revoked:', payload.subscription?.status)
     return new Response(null, { status: 204 })
   }
-  if (messageType !== 'notification' || payload.subscription?.type !== 'channel.chat.message') {
-    return new Response(null, { status: 204 })
-  }
+  if (messageType !== 'notification') return new Response(null, { status: 204 })
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -60,6 +59,18 @@ Deno.serve(async (req) => {
   })
   if (deliveryError?.code === '23505') return new Response(null, { status: 204 })
   if (deliveryError) throw deliveryError
+
+  const subscriptionType = payload.subscription?.type
+  if (subscriptionType === 'stream.online' || subscriptionType === 'stream.offline') {
+    const isLive = subscriptionType === 'stream.online'
+    await admin.from('streamers').update({
+      is_live: isLive,
+      live_started_at: isLive ? payload.event?.started_at ?? new Date().toISOString() : null,
+      live_status_updated_at: new Date().toISOString(),
+    }).eq('twitch_broadcaster_id', payload.event?.broadcaster_user_id)
+    return new Response(null, { status: 204 })
+  }
+  if (subscriptionType !== 'channel.chat.message') return new Response(null, { status: 204 })
 
   const event = payload.event as ChatMessageEvent
   const { data: streamer } = await admin
@@ -75,7 +86,16 @@ Deno.serve(async (req) => {
   const firstSpace = text.search(/\s/)
   const command = (firstSpace === -1 ? text : text.slice(0, firstSpace)).toLowerCase()
   const title = (firstSpace === -1 ? '' : text.slice(firstSpace + 1)).trim()
-  if (command !== settings.chat_command.toLowerCase() || !title) return new Response(null, { status: 204 })
+  if (command === '!fila' || command === '!proximo') {
+    await answerQueueCommand(admin, streamer.id, event.broadcaster_user_id, event.chatter_user_login, command)
+    return new Response(null, { status: 204 })
+  }
+  if (command !== settings.chat_command.toLowerCase()) return new Response(null, { status: 204 })
+  if (!title) {
+    await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
+      `@${event.chatter_user_login}, use ${settings.chat_command} seguido do nome do conteúdo.`)
+    return new Response(null, { status: 204 })
+  }
 
   if (title.length > 200) {
     await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
@@ -142,6 +162,32 @@ async function isValidSignature(messageId: string, timestamp: string, body: stri
   let mismatch = 0
   for (let index = 0; index < expected.length; index++) mismatch |= expected.charCodeAt(index) ^ signature.charCodeAt(index)
   return mismatch === 0
+}
+
+async function answerQueueCommand(
+  admin: ReturnType<typeof createClient>,
+  streamerId: string,
+  broadcasterId: string,
+  chatterLogin: string,
+  command: string,
+) {
+  const [{ data: streamer }, { data: watching }, { data: queued }] = await Promise.all([
+    admin.from('streamers').select('slug').eq('id', streamerId).single(),
+    admin.from('suggestions').select('title').eq('streamer_id', streamerId).eq('status', 'watching').order('started_at', { ascending: false }).limit(1).maybeSingle(),
+    admin.from('suggestions').select('title, queue_position').eq('streamer_id', streamerId).eq('status', 'queued').order('queue_position', { ascending: true }).limit(3),
+  ])
+  const link = `${APP_URL.replace(/\/$/, '')}/${streamer?.slug ?? ''}`
+  let message: string
+  if (command === '!proximo') {
+    message = queued?.[0]
+      ? `@${chatterLogin}, o próximo da fila é “${queued[0].title}”. Veja a fila: ${link}`
+      : `@${chatterLogin}, a fila está vazia. Envie uma sugestão: ${link}`
+  } else {
+    const now = watching?.title ? `Agora: “${watching.title}”. ` : ''
+    const list = queued?.length ? `Fila: ${queued.map((item, index) => `${index + 1}. ${item.title}`).join(' • ')}.` : 'A fila está vazia.'
+    message = `@${chatterLogin}, ${now}${list} ${link}`
+  }
+  await sendChatMessage(admin, streamerId, broadcasterId, message)
 }
 
 async function sendChatMessage(admin: ReturnType<typeof createClient>, streamerId: string, broadcasterId: string, message: string) {

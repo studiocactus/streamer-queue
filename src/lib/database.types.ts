@@ -54,6 +54,9 @@ export interface Database {
           social_links: Record<string, string>
           is_public: boolean
           is_active: boolean
+          is_live: boolean
+          live_started_at: string | null
+          live_status_updated_at: string | null
           created_at: string
           updated_at: string
         }
@@ -70,6 +73,9 @@ export interface Database {
           social_links?: Record<string, string>
           is_public?: boolean
           is_active?: boolean
+          is_live?: boolean
+          live_started_at?: string | null
+          live_status_updated_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -86,6 +92,9 @@ export interface Database {
           social_links?: Record<string, string>
           is_public?: boolean
           is_active?: boolean
+          is_live?: boolean
+          live_started_at?: string | null
+          live_status_updated_at?: string | null
           updated_at?: string
         }
       }

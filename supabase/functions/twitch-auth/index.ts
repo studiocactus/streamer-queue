@@ -28,7 +28,7 @@ const TWITCH_USERS_URL = 'https://api.twitch.tv/helix/users'
 const VIEWER_SCOPES = 'openid user:read:email'
 const CHAT_SCOPES = 'user:write:chat user:read:chat user:bot channel:bot'
 
-async function subscribeToChatMessages(broadcasterId: string) {
+async function subscribeToTwitchEvents(broadcasterId: string) {
   if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET || !TWITCH_EVENTSUB_SECRET) {
     throw new Error('EventSub não configurado no servidor')
   }
@@ -43,22 +43,27 @@ async function subscribeToChatMessages(broadcasterId: string) {
   })
   if (!tokenResponse.ok) throw new Error('Falha ao autorizar EventSub')
   const appToken = await tokenResponse.json()
-  const response = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${appToken.access_token}`,
-      'Client-Id': TWITCH_CLIENT_ID,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      type: 'channel.chat.message',
-      version: '1',
-      condition: { broadcaster_user_id: broadcasterId, user_id: broadcasterId },
-      transport: { method: 'webhook', callback: TWITCH_EVENTSUB_CALLBACK, secret: TWITCH_EVENTSUB_SECRET },
-    }),
-  })
-  if (!response.ok && response.status !== 409) {
-    throw new Error(`Falha ao assinar mensagens do chat: ${await response.text()}`)
+  for (const type of ['channel.chat.message', 'stream.online', 'stream.offline']) {
+    const condition = type === 'channel.chat.message'
+      ? { broadcaster_user_id: broadcasterId, user_id: broadcasterId }
+      : { broadcaster_user_id: broadcasterId }
+    const response = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${appToken.access_token}`,
+        'Client-Id': TWITCH_CLIENT_ID,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type,
+        version: '1',
+        condition,
+        transport: { method: 'webhook', callback: TWITCH_EVENTSUB_CALLBACK, secret: TWITCH_EVENTSUB_SECRET },
+      }),
+    })
+    if (!response.ok && response.status !== 409) {
+      throw new Error(`Falha ao assinar evento ${type}: ${await response.text()}`)
+    }
   }
 }
 
@@ -324,7 +329,7 @@ Deno.serve(async (req) => {
           token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
         }, { onConflict: 'streamer_id' })
         await adminClient.from('streamer_settings').update({ chat_notifications_enabled: true }).eq('streamer_id', streamer.id)
-        await subscribeToChatMessages(twitchUser.id)
+        await subscribeToTwitchEvents(twitchUser.id)
         return Response.redirect(`${APP_URL}/dashboard/streamer?chat=connected`, 302)
       }
 

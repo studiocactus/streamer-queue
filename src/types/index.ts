@@ -38,6 +38,9 @@ export interface Streamer {
   social_links?: Record<string, string>
   is_public: boolean
   is_active: boolean
+  is_live?: boolean
+  live_started_at?: string | null
+  live_status_updated_at?: string | null
   created_at: string
   updated_at: string
   // Joined
@@ -45,7 +48,6 @@ export interface Streamer {
   settings?: StreamerSettings
   member_count?: number
   suggestion_count?: number
-  is_live?: boolean
   watching_now?: Suggestion | null
   watching_now_title?: string | null
 }

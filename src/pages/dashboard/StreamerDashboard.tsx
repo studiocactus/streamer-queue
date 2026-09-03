@@ -1322,6 +1322,12 @@ export default function StreamerDashboard() {
                 <p className="text-[11px] text-content-muted">
                   O comando sempre começa com !. Sugestões de usuários cadastrados na plataforma aparecem primeiro para revisão.
                 </p>
+                <div className="flex items-start gap-2 rounded-lg border border-brand-purple/20 bg-bg-secondary/70 px-3 py-2.5">
+                  <Zap size={15} className="mt-0.5 shrink-0 text-brand-purple-light" aria-hidden="true" />
+                  <p className="text-xs leading-relaxed text-content-secondary">
+                    Também estão prontos no chat: <strong className="text-content-primary">!fila</strong> mostra a fila atual e <strong className="text-content-primary">!proximo</strong> informa o próximo conteúdo.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-2">
