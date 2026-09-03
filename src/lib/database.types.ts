@@ -395,6 +395,14 @@ export interface Database {
         Args: { p_streamer_id: string }
         Returns: number
       }
+      reorder_queue: {
+        Args: { p_streamer_id: string; p_suggestion_id: string; p_new_position: number }
+        Returns: undefined
+      }
+      advance_streamer_queue: {
+        Args: { p_streamer_id: string }
+        Returns: string | null
+      }
     }
     Enums: Record<string, never>
   }

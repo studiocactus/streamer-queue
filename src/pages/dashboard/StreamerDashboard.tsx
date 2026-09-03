@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw, Copy, MonitorPlay
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw, Copy, MonitorPlay, ArrowUp, ArrowDown, SkipForward
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -34,6 +34,7 @@ interface KanbanColumnProps {
   onAction?: (id: string, status: SuggestionStatus) => void
   onReject?: (s: Suggestion) => void
   onWatch?: (id: string) => void
+  onMove?: (id: string, position: number) => void
   onDelete?: (suggestion: Suggestion) => void
   onBan?: (suggestion: Suggestion) => void
   ownerId?: string
@@ -66,6 +67,7 @@ function KanbanColumn({
   onAction,
   onReject,
   onWatch,
+  onMove,
   onDelete,
   onBan,
   ownerId,
@@ -88,7 +90,7 @@ function KanbanColumn({
             Nenhuma sugestão
           </div>
         ) : (
-          suggestions.map((s) => (
+          suggestions.map((s, index) => (
             <div
               key={s.id}
               className="group grid min-w-0 grid-cols-1 gap-2 border-b border-border/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-bg-secondary/70 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-4"
@@ -141,12 +143,14 @@ function KanbanColumn({
                   </button>
                 )}
                 {status === 'queued' && (
-                  <button
-                    onClick={() => onWatch?.(s.id)}
-                    className="text-xs text-status-watching hover:underline"
-                  >
-                    Assistir agora
-                  </button>
+                  <>
+                    <div className="inline-flex items-center rounded-lg border border-border bg-bg-secondary p-0.5" aria-label={`Posição ${index + 1} na fila`}>
+                      <button type="button" disabled={index === 0} onClick={() => onMove?.(s.id, index)} className="rounded-md p-1.5 text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Subir ${s.title} na fila`}><ArrowUp size={13} /></button>
+                      <span className="min-w-6 text-center text-[11px] font-semibold text-content-secondary">{index + 1}</span>
+                      <button type="button" disabled={index === suggestions.length - 1} onClick={() => onMove?.(s.id, index + 2)} className="rounded-md p-1.5 text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Descer ${s.title} na fila`}><ArrowDown size={13} /></button>
+                    </div>
+                    <button onClick={() => onWatch?.(s.id)} className="text-xs text-status-watching hover:underline">Assistir agora</button>
+                  </>
                 )}
                 {status === 'watching' && (
                   <button
@@ -366,10 +370,11 @@ export default function StreamerDashboard() {
   const [platformViewers, setPlatformViewers] = useState<PlatformViewer[]>([])
   const [platformStreamers, setPlatformStreamers] = useState<PlatformStreamer[]>([])
   const [promotingViewerId, setPromotingViewerId] = useState<string | null>(null)
+  const [queueActionLoading, setQueueActionLoading] = useState(false)
 
   const {
     suggestions, watching, queued, pending, approved,
-    completed, rejected, isLoading, updateStatus, remove
+    completed, rejected, isLoading, updateStatus, remove, refetch
   } = useSuggestions(streamerProfile?.id)
 
   useEffect(() => {
@@ -775,6 +780,43 @@ export default function StreamerDashboard() {
     await handleAction(id, 'watching')
   }
 
+  const handleMoveQueueItem = async (id: string, position: number) => {
+    if (!streamerProfile?.id || queueActionLoading) return
+    setQueueActionLoading(true)
+    try {
+      const { error } = await supabase.rpc('reorder_queue', {
+        p_streamer_id: streamerProfile.id,
+        p_suggestion_id: id,
+        p_new_position: position,
+      })
+      if (error) throw error
+      await refetch()
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível alterar a ordem da fila.')
+    } finally {
+      setQueueActionLoading(false)
+    }
+  }
+
+  const handleAdvanceQueue = async () => {
+    if (!streamerProfile?.id || queueActionLoading) return
+    setQueueActionLoading(true)
+    try {
+      const { data: nextId, error } = await supabase.rpc('advance_streamer_queue', {
+        p_streamer_id: streamerProfile.id,
+      })
+      if (error) throw error
+      await refetch()
+      toast.success(nextId ? 'Próximo conteúdo iniciado!' : 'Conteúdo concluído. A fila está vazia.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível avançar a fila.')
+    } finally {
+      setQueueActionLoading(false)
+    }
+  }
+
   const handleReject = async (id: string, reason: string) => {
     await updateStatus(id, 'rejected', { rejection_reason: reason || undefined })
     toast.success('Sugestão rejeitada.')
@@ -989,17 +1031,14 @@ export default function StreamerDashboard() {
               Adicionar ideia
             </Button>
           {/* Assistindo agora */}
-          {watching && (
-            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-status-watching/20 bg-status-watching/10 px-3 py-2 sm:px-4">
+          {(watching || queued.length > 0) && (
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-xl border border-status-watching/20 bg-status-watching/10 px-3 py-2 sm:px-4">
               <span className="live-dot" />
-              <span className="text-sm text-content-primary font-medium">Assistindo:</span>
-              <span className="truncate text-sm font-semibold text-status-watching">{watching.title}</span>
-              <button
-                onClick={() => handleAction(watching.id, 'completed')}
-                className="ml-2 text-xs text-content-muted hover:text-status-completed transition-colors"
-              >
-                Concluir
-              </button>
+              <span className="text-sm text-content-primary font-medium">{watching ? 'Assistindo:' : 'Fila pronta:'}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-status-watching">{watching?.title ?? queued[0]?.title}</span>
+              <Button size="sm" loading={queueActionLoading} onClick={handleAdvanceQueue} leftIcon={<SkipForward size={14} />}>
+                {watching ? 'Concluir e iniciar próximo' : 'Iniciar próximo'}
+              </Button>
             </div>
           )}
           </div>
@@ -1080,6 +1119,7 @@ export default function StreamerDashboard() {
                 onAction={handleAction}
                 onReject={setRejectTarget}
                 onWatch={handleWatch}
+                onMove={handleMoveQueueItem}
                 onDelete={handleDelete}
                 onBan={setBanTarget}
                 ownerId={streamerProfile.owner_id}
