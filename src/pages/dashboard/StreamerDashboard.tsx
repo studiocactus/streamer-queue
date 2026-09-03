@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -281,6 +281,14 @@ type ModeratorCandidate = { id: string; display_name: string; twitch_login: stri
 type PlatformViewer = ModeratorCandidate
 type PlatformStreamer = { id: string; owner_id: string; channel_name: string; slug: string; avatar_url: string | null }
 type BannedUser = { id: string; user_id: string; reason: string | null; created_at: string; profile?: ModeratorCandidate }
+type ChatHealth = {
+  pendingCount: number
+  failedCount: number
+  tokenStatus: string | null
+  tokenExpiresAt: string | null
+  lastDelivery: { status: string; error_message: string | null; created_at: string } | null
+  lastQueueError: string | null
+}
 
 const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
   suggestion_received: '🎬 {viewer} adicionou “{titulo}” à lista do canal! Envie sua sugestão também no WatchQueue.',
@@ -326,6 +334,16 @@ export default function StreamerDashboard() {
   const [chatConnected, setChatConnected] = useState(false)
   const [chatStatusLoading, setChatStatusLoading] = useState(true)
   const [chatDisconnecting, setChatDisconnecting] = useState(false)
+  const [chatRetrying, setChatRetrying] = useState(false)
+  const [chatHealthRefresh, setChatHealthRefresh] = useState(0)
+  const [chatHealth, setChatHealth] = useState<ChatHealth>({
+    pendingCount: 0,
+    failedCount: 0,
+    tokenStatus: null,
+    tokenExpiresAt: null,
+    lastDelivery: null,
+    lastQueueError: null,
+  })
   const [chatCommand, setChatCommand] = useState('!sugerir')
   const [chatCommandEnabled, setChatCommandEnabled] = useState(true)
   const [chatCommandSaving, setChatCommandSaving] = useState(false)
@@ -359,13 +377,24 @@ export default function StreamerDashboard() {
     let active = true
     const loadChatStatus = async () => {
       setChatStatusLoading(true)
-      const [{ data }, { data: chatSettings }] = await Promise.all([
-        supabase.from('twitch_connections').select('token_status, scopes').eq('streamer_id', streamerProfile.id).maybeSingle(),
+      const [{ data }, { data: chatSettings }, queueResult, logResult] = await Promise.all([
+        supabase.from('twitch_connections').select('token_status, token_expires_at, scopes').eq('streamer_id', streamerProfile.id).maybeSingle(),
         supabase.from('streamer_settings').select('chat_command, chat_command_enabled').eq('streamer_id', streamerProfile.id).maybeSingle(),
+        supabase.from('chat_delivery_queue').select('status, last_error, updated_at').eq('streamer_id', streamerProfile.id).in('status', ['pending', 'processing', 'failed']).order('updated_at', { ascending: false }),
+        supabase.from('chat_message_logs').select('status, error_message, created_at').eq('streamer_id', streamerProfile.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       ])
       if (active) {
         const requiredChatScopes = ['user:read:chat', 'user:write:chat', 'user:bot', 'channel:bot']
         setChatConnected(data?.token_status === 'active' && requiredChatScopes.every((scope) => (data.scopes ?? []).includes(scope)))
+        const queue = queueResult.data ?? []
+        setChatHealth({
+          pendingCount: queue.filter((item) => item.status === 'pending' || item.status === 'processing').length,
+          failedCount: queue.filter((item) => item.status === 'failed').length,
+          tokenStatus: data?.token_status ?? null,
+          tokenExpiresAt: data?.token_expires_at ?? null,
+          lastDelivery: logResult.data ?? null,
+          lastQueueError: queue.find((item) => item.status === 'failed')?.last_error ?? null,
+        })
         if (chatSettings?.chat_command) setChatCommand(chatSettings.chat_command)
         if (typeof chatSettings?.chat_command_enabled === 'boolean') setChatCommandEnabled(chatSettings.chat_command_enabled)
         setChatStatusLoading(false)
@@ -380,7 +409,23 @@ export default function StreamerDashboard() {
       window.history.replaceState({}, '', window.location.pathname)
     }
     return () => { active = false }
-  }, [streamerProfile?.id])
+  }, [streamerProfile?.id, chatHealthRefresh])
+
+  const handleRetryChatDeliveries = async () => {
+    if (!streamerProfile) return
+    setChatRetrying(true)
+    try {
+      const { data, error } = await supabase.rpc('retry_failed_chat_deliveries', { p_streamer_id: streamerProfile.id })
+      if (error) throw error
+      setChatHealthRefresh((current) => current + 1)
+      toast.success(data > 0 ? 'Vamos tentar enviar novamente.' : 'Nenhuma mensagem precisa ser reenviada.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível tentar novamente agora.')
+    } finally {
+      setChatRetrying(false)
+    }
+  }
 
   const loadModeratorData = async () => {
     if (!streamerProfile?.id) return
@@ -878,6 +923,32 @@ export default function StreamerDashboard() {
     ...(isPlatformAdmin ? [{ id: 'platform' as DashTab, label: 'Plataforma', icon: Crown }] : []),
   ]
 
+  const chatHealthState = !chatConnected
+    ? 'reconnect'
+    : chatHealth.failedCount > 0
+      ? 'attention'
+      : chatHealth.pendingCount > 0
+        ? 'retrying'
+        : 'healthy'
+  const chatHealthCopy = {
+    reconnect: {
+      title: 'Reconecte a Twitch',
+      description: 'Uma autorização rápida é suficiente para o WatchQueue voltar a cuidar das mensagens.',
+    },
+    attention: {
+      title: 'Precisamos tentar novamente',
+      description: 'Algumas mensagens não foram enviadas. Você pode retomar tudo com um toque.',
+    },
+    retrying: {
+      title: 'Tentando novamente',
+      description: 'Suas ações estão salvas. O WatchQueue está cuidando do envio automaticamente.',
+    },
+    healthy: {
+      title: 'Tudo certo',
+      description: 'Comandos e mensagens da Twitch estão prontos para a sua live.',
+    },
+  }[chatHealthState]
+
   return (
     <div className="min-h-screen page-section">
       <div className="app-shell space-y-6">
@@ -1134,27 +1205,58 @@ export default function StreamerDashboard() {
               </h2>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className={cn('rounded-xl border p-4 flex gap-3', chatConnected ? 'border-green-500/25 bg-green-500/10' : 'border-brand-purple/20 bg-brand-purple/10')}>
-                <CheckCircle size={18} className={cn('shrink-0 mt-0.5', chatConnected ? 'text-green-400' : 'text-brand-purple')} />
-                <div>
-                  <p className="text-sm font-medium text-content-primary mb-1">
-                    {chatConnected ? 'Chat conectado' : 'Conecte o chat da Twitch'}
-                  </p>
-                  <p className="text-xs text-content-secondary">
-                    {chatConnected
-                      ? 'O WatchQueue pode receber comandos e enviar respostas no chat do seu canal.'
-                      : 'Autorize a leitura de comandos e o envio das respostas. Viewers continuam usando apenas o login básico.'}
-                  </p>
-                  {!chatStatusLoading && (chatConnected ? (
-                    <Button className="mt-3" size="sm" variant="danger" loading={chatDisconnecting} onClick={handleDisconnectChat}>
-                      Desconectar chat
+              <div className={cn(
+                'rounded-2xl border p-4 sm:p-5',
+                chatHealthState === 'healthy' && 'border-green-500/25 bg-green-500/10',
+                chatHealthState === 'retrying' && 'border-amber-400/25 bg-amber-400/10',
+                (chatHealthState === 'attention' || chatHealthState === 'reconnect') && 'border-brand-purple/25 bg-brand-purple/10',
+              )}>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <span className={cn(
+                    'flex h-11 w-11 shrink-0 items-center justify-center rounded-full',
+                    chatHealthState === 'healthy' ? 'bg-green-400/15 text-green-400' : chatHealthState === 'retrying' ? 'bg-amber-400/15 text-amber-300' : 'bg-brand-purple/15 text-brand-purple',
+                  )}>
+                    {chatStatusLoading || chatHealthState === 'retrying'
+                      ? <Loader2 size={20} className="animate-spin" />
+                      : chatHealthState === 'healthy'
+                        ? <CheckCircle size={20} />
+                        : <AlertCircle size={20} />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-semibold text-content-primary">{chatStatusLoading ? 'Verificando conexão...' : chatHealthCopy.title}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-content-secondary">{chatStatusLoading ? 'Isso leva só um instante.' : chatHealthCopy.description}</p>
+                  </div>
+                  {!chatStatusLoading && chatHealthState === 'reconnect' && (
+                    <Button className="w-full sm:w-auto" size="sm" onClick={() => { window.location.href = getTwitchChatConnectUrl(streamerProfile.id) }}>
+                      Reconectar Twitch
                     </Button>
-                  ) : (
-                    <Button className="mt-3" size="sm" onClick={() => { window.location.href = getTwitchChatConnectUrl(streamerProfile.id) }}>
-                      Autorizar comandos no chat
+                  )}
+                  {!chatStatusLoading && chatHealthState === 'attention' && (
+                    <Button className="w-full sm:w-auto" size="sm" loading={chatRetrying} onClick={handleRetryChatDeliveries} leftIcon={<RefreshCw size={14} />}>
+                      Tentar novamente
                     </Button>
-                  ))}
+                  )}
                 </div>
+
+                {!chatStatusLoading && (
+                  <details className="mt-4 border-t border-white/10 pt-3 text-xs text-content-muted">
+                    <summary className="cursor-pointer select-none font-medium text-content-secondary">Ver detalhes da conexão</summary>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <p>Conexão: <span className="text-content-primary">{chatConnected ? 'Ativa' : 'Precisa reconectar'}</span></p>
+                      <p>Mensagens aguardando: <span className="text-content-primary">{chatHealth.pendingCount}</span></p>
+                      <p>Último envio: <span className="text-content-primary">{chatHealth.lastDelivery ? formatRelativeDate(chatHealth.lastDelivery.created_at) : 'Nenhum ainda'}</span></p>
+                      <p>Resultado: <span className="text-content-primary">{chatHealth.lastDelivery?.status === 'sent' ? 'Enviado' : chatHealth.lastDelivery?.status === 'failed' ? 'Não enviado' : 'Sem atividade'}</span></p>
+                    </div>
+                    {(chatHealth.lastQueueError || chatHealth.lastDelivery?.error_message) && (
+                      <p className="mt-3 rounded-lg bg-black/15 p-3 leading-relaxed">O WatchQueue encontrou um problema no último envio e continuará protegendo suas ações.</p>
+                    )}
+                    {chatConnected && (
+                      <Button className="mt-3" size="sm" variant="danger" loading={chatDisconnecting} onClick={handleDisconnectChat}>
+                        Desconectar chat
+                      </Button>
+                    )}
+                  </details>
+                )}
               </div>
 
               <div className="space-y-3 rounded-xl border border-brand-purple/20 bg-brand-purple/5 p-4">

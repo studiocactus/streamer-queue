@@ -120,6 +120,8 @@ function SuggestionCard({
           {canVote && onVote && suggestion.status !== 'completed' && suggestion.status !== 'rejected' && (
             <button
               onClick={() => onVote(suggestion.id, !!suggestion.user_voted)}
+              aria-label={`${suggestion.user_voted ? 'Remover voto de' : 'Votar em'} ${suggestion.title}. ${suggestion.vote_count ?? 0} votos`}
+              aria-pressed={!!suggestion.user_voted}
               className={cn(
                 'flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 sm:min-h-0',
                 suggestion.user_voted
@@ -508,12 +510,21 @@ export default function StreamerPage() {
         )}
 
         {/* Filtros de categoria */}
-        <div className="mobile-scroll mb-5 flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="mb-5 sm:hidden">
+          <Select
+            aria-label="Filtrar por categoria"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value as CategoryFilter)}
+            options={categories}
+          />
+        </div>
+        <div role="group" aria-label="Filtrar por categoria" className="mobile-scroll mb-5 hidden items-center gap-2 overflow-x-auto pb-1 sm:flex">
           <Filter size={14} className="text-content-muted shrink-0" />
           {categories.map((cat) => (
             <button
               key={cat.value}
               onClick={() => setCategoryFilter(cat.value)}
+              aria-pressed={categoryFilter === cat.value}
               className={cn(
                 'px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors',
                 categoryFilter === cat.value
@@ -527,20 +538,23 @@ export default function StreamerPage() {
         </div>
 
         {/* Tabs */}
-        <div className="mobile-scroll mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border bg-bg-secondary p-1">
+        <div role="tablist" aria-label="Visualizar sugestões" className="mobile-scroll mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border bg-bg-secondary p-1">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
+              role="tab"
+              aria-selected={tab === id}
+              aria-label={label}
               className={cn(
-                'flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200',
+                'flex min-h-11 min-w-[94px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-xs font-medium transition-all duration-200 sm:text-sm',
                 tab === id
                   ? 'bg-brand-purple/15 text-brand-purple shadow'
                   : 'text-content-muted hover:text-content-secondary'
               )}
             >
               <Icon size={14} />
-              <span className="hidden sm:block">{label}</span>
+              <span>{label}</span>
             </button>
           ))}
         </div>
@@ -556,19 +570,25 @@ export default function StreamerPage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-content-primary">
-                  {tab === 'completed'
+                  {suggestions.length === 0
+                    ? 'A fila deste canal ainda está vazia'
+                    : tab === 'completed'
                     ? 'Nenhum conteúdo concluído ainda'
                     : tab === 'queue'
                     ? 'A fila deste canal está vazia!'
                     : 'Nenhuma sugestão encontrada'}
                 </h3>
                 <p className="text-sm text-content-secondary max-w-md mx-auto mt-1">
-                  {tab === 'queue'
+                  {suggestions.length === 0
+                    ? `Envie a primeira sugestão para ${streamer.channel_name} e ajude a comunidade a começar.`
+                    : tab === 'queue'
                     ? `Envie a primeira sugestão de filme, série, anime, react ou música para ${streamer.channel_name}!`
-                    : 'Ajuste os filtros acima para ver outras sugestões.'}
+                    : categoryFilter !== 'all'
+                      ? 'Não há sugestões nesta categoria. Escolha outra para continuar.'
+                      : 'Ainda não há conteúdos nesta seção.'}
                 </p>
               </div>
-              {tab === 'queue' && (
+              {(suggestions.length === 0 || tab === 'queue') && (
                 <Button size="md" onClick={handleSuggest} leftIcon={<Send size={16} />}>
                   Sugerir conteúdo agora
                 </Button>

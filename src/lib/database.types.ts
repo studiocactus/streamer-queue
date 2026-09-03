@@ -344,6 +344,25 @@ export interface Database {
         }
         Update: Record<string, never>
       }
+      chat_delivery_queue: {
+        Row: {
+          id: string
+          streamer_id: string
+          suggestion_id: string
+          event_type: string
+          status: 'pending' | 'processing' | 'sent' | 'failed'
+          attempts: number
+          max_attempts: number
+          next_attempt_at: string
+          locked_at: string | null
+          processed_at: string | null
+          last_error: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -362,6 +381,10 @@ export interface Database {
       promote_viewer_to_streamer: {
         Args: { p_user_id: string }
         Returns: string
+      }
+      retry_failed_chat_deliveries: {
+        Args: { p_streamer_id: string }
+        Returns: number
       }
     }
     Enums: Record<string, never>
