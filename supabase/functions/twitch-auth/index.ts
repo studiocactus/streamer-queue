@@ -329,6 +329,14 @@ Deno.serve(async (req) => {
           token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
         }, { onConflict: 'streamer_id' })
         await adminClient.from('streamer_settings').update({ chat_notifications_enabled: true }).eq('streamer_id', streamer.id)
+        await Promise.all([
+          adminClient.from('streamer_notifications').update({ read_at: new Date().toISOString() })
+            .eq('streamer_id', streamer.id).eq('type', 'twitch_reconnect_required').is('read_at', null),
+          adminClient.from('chat_delivery_queue').update({
+            status: 'pending', attempts: 0, next_attempt_at: new Date().toISOString(),
+            locked_at: null, processed_at: null, last_error: null, updated_at: new Date().toISOString(),
+          }).eq('streamer_id', streamer.id).eq('status', 'failed'),
+        ])
         await subscribeToTwitchEvents(twitchUser.id)
         return Response.redirect(`${APP_URL}/dashboard/streamer?chat=connected`, 302)
       }

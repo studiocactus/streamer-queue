@@ -489,13 +489,13 @@ export default function StreamerPage() {
           <div className="grid w-full grid-cols-2 gap-2 pb-2 sm:w-[30rem] sm:grid-cols-3">
             {streamer.twitch_broadcaster_id && (
               <a
-                href={`https://twitch.tv/${streamer.slug}`}
+                href={`https://www.twitch.tv/${streamer.owner?.twitch_login || streamer.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full"
               >
                 <Button className="w-full" variant="outline" size="sm" leftIcon={<ExternalLink size={14} />}>
-                  Twitch
+                  {streamer.is_live ? 'Assistir ao vivo' : 'Twitch'}
                 </Button>
               </a>
             )}

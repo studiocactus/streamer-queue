@@ -20,6 +20,9 @@
   }
 
   :root[data-theme='light'] {
+    --theme-primary: 122 53 224;
+    --theme-primary-light: 145 70 255;
+    --theme-primary-dark: 95 37 190;
     --color-bg-primary: 248 247 251;
     --color-bg-secondary: 255 255 255;
     --color-bg-tertiary: 240 238 245;
@@ -407,6 +410,9 @@
 
   [data-theme='light'] header,
   [data-theme='light'] .landing-footer {
+    --theme-primary: 145 70 255;
+    --theme-primary-light: 169 112 255;
+    --theme-primary-dark: 122 53 224;
     --color-bg-primary: 13 13 18;
     --color-bg-secondary: 23 23 31;
     --color-bg-tertiary: 30 30 40;
@@ -472,6 +478,9 @@
   }
 
   [data-theme='light'] .landing-product {
+    --theme-primary: 145 70 255;
+    --theme-primary-light: 169 112 255;
+    --theme-primary-dark: 122 53 224;
     border-color: rgba(255,255,255,.18);
     background: linear-gradient(145deg, rgba(35,25,55,.97), rgba(16,13,23,.98));
   }
@@ -507,6 +516,18 @@
       radial-gradient(circle at 82% 110%, rgba(197,255,0,.1), transparent 20rem),
       linear-gradient(135deg, rgba(145,70,255,.12), rgba(255,255,255,.96));
     box-shadow: 0 30px 80px rgba(61,38,94,.12), inset 0 1px 0 rgba(255,255,255,.8);
+  }
+}
+
+@layer utilities {
+  [data-theme='light'] .text-brand-green {
+    color: #6b8c00;
+  }
+
+  [data-theme='light'] .landing-product .text-brand-green,
+  [data-theme='light'] header .text-brand-green,
+  [data-theme='light'] .landing-footer .text-brand-green {
+    color: #c5ff00;
   }
 }
 

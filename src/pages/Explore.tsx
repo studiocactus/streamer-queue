@@ -75,7 +75,7 @@ function StreamerCard({ streamer }: { streamer: Streamer }) {
                   'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[9px] font-semibold uppercase leading-none tracking-wide backdrop-blur-md',
                   streamer.is_live
                     ? 'border-red-400/30 bg-red-500/90 text-white shadow-[0_5px_18px_rgba(239,68,68,0.25)]'
-                    : 'border-white/10 bg-bg-tertiary/90 text-content-muted'
+                    : 'border-border bg-bg-tertiary/90 text-content-muted'
                 )}>
                   {streamer.is_live ? <Radio size={9} /> : <span className="h-1.5 w-1.5 rounded-full bg-content-muted" />}
                   {streamer.is_live ? 'Ao vivo' : 'Offline'}

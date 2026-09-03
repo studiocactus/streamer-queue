@@ -42,15 +42,16 @@ Deno.serve(async (req) => {
   if (messageType === 'webhook_callback_verification') {
     return new Response(payload.challenge, { status: 200, headers: { 'Content-Type': 'text/plain' } })
   }
-  if (messageType === 'revocation') {
-    console.warn('[twitch-eventsub] Subscription revoked:', payload.subscription?.status)
-    return new Response(null, { status: 204 })
-  }
-  if (messageType !== 'notification') return new Response(null, { status: 204 })
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+  if (messageType === 'revocation') {
+    console.warn('[twitch-eventsub] Subscription revoked:', payload.subscription?.status)
+    await handleRevocation(admin, payload)
+    return new Response(null, { status: 204 })
+  }
+  if (messageType !== 'notification') return new Response(null, { status: 204 })
 
   const { data: attempt, error: claimError } = await admin.rpc('claim_twitch_event', {
     p_message_id: messageId, p_event_type: payload.subscription.type,
@@ -74,6 +75,23 @@ Deno.serve(async (req) => {
     return new Response('Event processing unavailable', { status: 503 })
   }
 })
+
+async function handleRevocation(admin: SupabaseClient, payload: {
+  subscription?: { type?: string; status?: string; condition?: { broadcaster_user_id?: string } }
+}) {
+  const subscription = payload.subscription
+  if (subscription?.type !== 'channel.chat.message' || subscription.status !== 'authorization_revoked') return
+  const broadcasterId = subscription.condition?.broadcaster_user_id
+  if (!broadcasterId) return
+  const { data: streamer, error } = await admin.from('streamers')
+    .select('id').eq('twitch_broadcaster_id', broadcasterId).maybeSingle()
+  if (error) throw error
+  if (!streamer) return
+  const { error: markError } = await admin.rpc('mark_twitch_reconnect_required', {
+    p_streamer_id: streamer.id, p_status: 'revoked',
+  })
+  if (markError) throw markError
+}
 
 async function processNotification(
   admin: SupabaseClient,
@@ -280,7 +298,10 @@ async function sendChatMessage(admin: SupabaseClient, streamerId: string, broadc
           client_id: TWITCH_CLIENT_ID, client_secret: TWITCH_CLIENT_SECRET,
         }),
       })
-      if (!refreshResponse.ok) throw new Error('Falha ao renovar autorização')
+      if (!refreshResponse.ok) {
+        await markReconnectRequired(admin, streamerId, 'expired')
+        throw new Error('Falha ao renovar autorização')
+      }
       const refreshed = await refreshResponse.json()
       accessToken = refreshed.access_token
       const { error: saveError } = await admin.from('twitch_chat_credentials').update({
@@ -300,10 +321,20 @@ async function sendChatMessage(admin: SupabaseClient, streamerId: string, broadc
     })
     const result = await response.json().catch(() => null)
     if (!response.ok || result?.data?.[0]?.is_sent !== true) {
+      if (response.status === 401 || response.status === 403) {
+        await markReconnectRequired(admin, streamerId, 'expired')
+      }
       throw new Error(result?.data?.[0]?.drop_reason?.message ?? `Twitch respondeu ${response.status}`)
     }
     return { sent: true, error: null }
   } catch (error) {
     throw error
   }
+}
+
+async function markReconnectRequired(admin: SupabaseClient, streamerId: string, status: 'expired' | 'revoked') {
+  const { error } = await admin.rpc('mark_twitch_reconnect_required', {
+    p_streamer_id: streamerId, p_status: status,
+  })
+  if (error) throw error
 }

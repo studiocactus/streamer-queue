@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw, Copy, MonitorPlay, ArrowUp, ArrowDown, SkipForward, CirclePause
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw, Copy, MonitorPlay, ArrowUp, ArrowDown, SkipForward, CirclePause, Radio
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -19,7 +19,7 @@ import { Input, Textarea, Select } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { cn, formatRelativeDate, categoryLabel } from '@/lib/utils'
-import type { Suggestion, SuggestionStatus, SuggestionCategory } from '@/types'
+import type { Suggestion, SuggestionStatus, SuggestionCategory, Streamer } from '@/types'
 import { getTwitchChatConnectUrl } from '@/lib/supabase'
 import { streamerPath } from '@/lib/routes'
 import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
@@ -287,6 +287,11 @@ type ChatHealth = {
   lastDelivery: { status: string; error_message: string | null; created_at: string } | null
   lastQueueError: string | null
 }
+type IntegrationCheck = {
+  label: string
+  ready: boolean
+  guidance: string
+}
 
 const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
   suggestion_received: '🎬 {viewer} adicionou “{titulo}” à lista do canal! Envie sua sugestão também no WatchQueue.',
@@ -316,7 +321,7 @@ const PROFILE_THEME_OPTIONS = [
 ] as const
 
 export default function StreamerDashboard() {
-  const { streamerProfile, profile, refreshProfile } = useAuthStore()
+  const { streamerProfile, profile, refreshProfile, setStreamerProfile } = useAuthStore()
   const [activeTab, setActiveTab] = useState<DashTab>('kanban')
   const [rejectTarget, setRejectTarget] = useState<Suggestion | null>(null)
   const [channelName, setChannelName] = useState(streamerProfile?.channel_name ?? '')
@@ -334,6 +339,10 @@ export default function StreamerDashboard() {
   const [chatDisconnecting, setChatDisconnecting] = useState(false)
   const [chatRetrying, setChatRetrying] = useState(false)
   const [chatHealthRefresh, setChatHealthRefresh] = useState(0)
+  const [integrationTesting, setIntegrationTesting] = useState(false)
+  const [integrationChecks, setIntegrationChecks] = useState<IntegrationCheck[] | null>(null)
+  const [onboardingHidden, setOnboardingHidden] = useState(false)
+  const [overlayCopied, setOverlayCopied] = useState(false)
   const [chatHealth, setChatHealth] = useState<ChatHealth>({
     pendingCount: 0,
     failedCount: 0,
@@ -371,6 +380,44 @@ export default function StreamerDashboard() {
     suggestions, watching, queued, pending, approved,
     completed, rejected, isLoading, updateStatus, remove, refetch
   } = useSuggestions(streamerProfile?.id)
+
+  useEffect(() => {
+    if (!streamerProfile?.id) return
+    const streamerId = streamerProfile.id
+    let active = true
+    const mergeStreamerState = (updates: Partial<Streamer>) => {
+      if (!active) return
+      const current = useAuthStore.getState().streamerProfile
+      if (current?.id === streamerId) setStreamerProfile({ ...current, ...updates })
+    }
+
+    const refreshLiveStatus = async () => {
+      const login = profile?.twitch_login || streamerProfile.slug
+      const { data, error } = await supabase.functions.invoke('twitch-status', { body: { login } })
+      if (!error && typeof data?.is_live === 'boolean') {
+        mergeStreamerState({ is_live: data.is_live })
+      }
+    }
+    void refreshLiveStatus()
+
+    const channel = supabase
+      .channel(`streamer-dashboard-live-${streamerId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'streamers', filter: `id=eq.${streamerId}`,
+      }, (payload) => mergeStreamerState(payload.new as Partial<Streamer>))
+      .subscribe()
+
+    return () => {
+      active = false
+      void supabase.removeChannel(channel)
+    }
+  }, [streamerProfile?.id, streamerProfile?.slug, profile?.twitch_login, setStreamerProfile])
+
+  useEffect(() => {
+    if (!streamerProfile?.id) return
+    setOnboardingHidden(localStorage.getItem(`watchqueue:onboarding:${streamerProfile.id}`) === 'hidden')
+    setOverlayCopied(localStorage.getItem(`watchqueue:overlay-copied:${streamerProfile.id}`) === 'true')
+  }, [streamerProfile?.id])
 
   useEffect(() => {
     if (!streamerProfile?.id) return
@@ -427,14 +474,63 @@ export default function StreamerDashboard() {
     }
   }
 
+  const handleTestIntegration = async () => {
+    if (!streamerProfile) return
+    setIntegrationTesting(true)
+    try {
+      const [connectionResult, settingsResult, healthResult, queueResult] = await Promise.all([
+        supabase.from('twitch_connections').select('token_status, scopes').eq('streamer_id', streamerProfile.id).maybeSingle(),
+        supabase.from('streamer_settings').select('chat_command, chat_command_enabled').eq('streamer_id', streamerProfile.id).maybeSingle(),
+        supabase.rpc('get_platform_stats'),
+        supabase.from('chat_delivery_queue').select('id', { count: 'exact', head: true }).eq('streamer_id', streamerProfile.id).eq('status', 'failed'),
+      ])
+      const requiredScopes = ['user:read:chat', 'user:write:chat', 'user:bot', 'channel:bot']
+      const connectionReady = !connectionResult.error
+        && connectionResult.data?.token_status === 'active'
+        && requiredScopes.every((scope) => (connectionResult.data?.scopes ?? []).includes(scope))
+      const commandReady = !settingsResult.error
+        && settingsResult.data?.chat_command_enabled === true
+        && Boolean(settingsResult.data?.chat_command?.trim())
+      const servicesReady = !healthResult.error && healthResult.data?.[0]?.platform_status === 'operational'
+      const deliveriesReady = !queueResult.error && (queueResult.count ?? 0) === 0
+
+      setIntegrationChecks([
+        { label: 'Conta e permissões da Twitch', ready: connectionReady, guidance: 'Reconecte a Twitch para renovar as permissões.' },
+        { label: 'Serviços automáticos', ready: servicesReady, guidance: 'Aguarde alguns minutos e teste novamente.' },
+        { label: 'Comando no chat', ready: commandReady, guidance: 'Ative e salve um comando para receber sugestões.' },
+        { label: 'Envio de mensagens', ready: deliveriesReady, guidance: 'Use “Tentar novamente” nas mensagens pendentes.' },
+        { label: 'Overlay para o OBS', ready: Boolean(streamerProfile.slug), guidance: 'Salve o endereço público do canal.' },
+      ])
+      setChatHealthRefresh((current) => current + 1)
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível concluir o teste agora.')
+    } finally {
+      setIntegrationTesting(false)
+    }
+  }
+
   const handleCopyOverlayLink = async () => {
     if (!streamerProfile) return
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/overlay/${streamerProfile.slug}`)
+      localStorage.setItem(`watchqueue:overlay-copied:${streamerProfile.id}`, 'true')
+      setOverlayCopied(true)
       toast.success('Link do overlay copiado.', { description: 'Cole como Fonte do Navegador no OBS.' })
     } catch {
       toast.error('Não foi possível copiar o link.')
     }
+  }
+
+  const openTwitchSetting = (targetId?: string) => {
+    setActiveTab('twitch')
+    if (targetId) window.setTimeout(() => document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
+  }
+
+  const hideOnboarding = () => {
+    if (!streamerProfile) return
+    localStorage.setItem(`watchqueue:onboarding:${streamerProfile.id}`, 'hidden')
+    setOnboardingHidden(true)
   }
 
   const loadModeratorData = async () => {
@@ -1016,6 +1112,33 @@ export default function StreamerDashboard() {
       description: 'Comandos e mensagens da Twitch estão prontos para a sua live.',
     },
   }[chatHealthState]
+  const onboardingSteps = [
+    {
+      title: 'Conecte a Twitch',
+      description: 'Autorize comandos e avisos do canal.',
+      ready: chatConnected,
+      icon: Zap,
+      action: () => openTwitchSetting(),
+      actionLabel: chatConnected ? 'Ver conexão' : 'Conectar',
+    },
+    {
+      title: 'Confirme o comando',
+      description: `Use ${chatCommand || '!sugerir'} para receber ideias pelo chat.`,
+      ready: chatCommandEnabled && Boolean(chatCommand.trim()),
+      icon: Settings,
+      action: () => openTwitchSetting('chat-command-settings'),
+      actionLabel: 'Configurar',
+    },
+    {
+      title: 'Prepare o overlay',
+      description: 'Copie o link para usar no OBS, se quiser.',
+      ready: overlayCopied,
+      icon: MonitorPlay,
+      action: handleCopyOverlayLink,
+      actionLabel: overlayCopied ? 'Copiar novamente' : 'Copiar link',
+    },
+  ]
+  const onboardingReadyCount = onboardingSteps.filter((step) => step.ready).length
 
   return (
     <div className="min-h-screen page-section">
@@ -1031,7 +1154,18 @@ export default function StreamerDashboard() {
               size="md"
             />
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-bold text-content-primary">{streamerProfile.channel_name}</h1>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h1 className="truncate text-xl font-bold text-content-primary">{streamerProfile.channel_name}</h1>
+                <span className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold',
+                  streamerProfile.is_live
+                    ? 'border-red-500/30 bg-red-500/10 text-red-500'
+                    : 'border-border bg-bg-secondary text-content-muted',
+                )}>
+                  {streamerProfile.is_live ? <Radio size={12} /> : <span className="h-1.5 w-1.5 rounded-full bg-content-muted" />}
+                  {streamerProfile.is_live ? 'Ao vivo agora' : 'Canal offline'}
+                </span>
+              </div>
               <Link
                 to={streamerPath(streamerProfile.slug)}
                 className="flex max-w-[70vw] items-center gap-1 truncate text-xs text-brand-purple hover:underline sm:max-w-none"
@@ -1069,6 +1203,47 @@ export default function StreamerDashboard() {
           )}
           </div>
         </div>
+
+        {!chatStatusLoading && !onboardingHidden && (
+          <Card glow>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <Badge variant="purple" size="sm">Primeiros passos</Badge>
+                  <h2 className="mt-2 text-lg font-semibold text-content-primary">Prepare sua primeira live</h2>
+                  <p className="mt-1 text-sm text-content-secondary">Três passos rápidos. O overlay é opcional.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-content-muted">{onboardingReadyCount} de 3</span>
+                  <button type="button" onClick={hideOnboarding} className="min-h-10 rounded-full px-3 text-xs font-medium text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary">
+                    {onboardingReadyCount === 3 ? 'Concluir' : 'Ocultar'}
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                {onboardingSteps.map(({ title, description, ready, icon: Icon, action, actionLabel }, index) => (
+                  <div key={title} className="flex flex-col rounded-2xl border border-border bg-bg-tertiary/55 p-4">
+                    <div className="flex items-start gap-3">
+                      <span className={cn(
+                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-bold',
+                        ready ? 'border-green-500/30 bg-green-500/10 text-green-500' : 'border-brand-purple/25 bg-brand-purple/10 text-brand-purple',
+                      )}>
+                        {ready ? <CheckCircle size={17} /> : index + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-content-primary">{title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-content-secondary">{description}</p>
+                      </div>
+                    </div>
+                    <Button className="mt-4 w-full" size="sm" variant={ready ? 'ghost' : 'secondary'} onClick={action} leftIcon={<Icon size={14} />}>
+                      {actionLabel}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-1 min-[430px]:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
@@ -1274,13 +1449,51 @@ export default function StreamerDashboard() {
         {/* Integração Twitch */}
         {activeTab === 'twitch' && (
           <Card>
-            <CardHeader>
-              <h2 className="font-semibold text-content-primary flex items-center gap-2">
-                <Zap size={16} className="text-brand-purple" />
-                Integração Twitch
-              </h2>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 font-semibold text-content-primary">
+                  <Zap size={16} className="text-brand-purple" />
+                  Integração Twitch
+                </h2>
+                <p className="mt-1 text-xs text-content-muted">Confira sua configuração sem enviar mensagens ao chat.</p>
+              </div>
+              <Button className="w-full sm:w-auto" size="sm" variant="secondary" loading={integrationTesting} onClick={handleTestIntegration} leftIcon={<RefreshCw size={14} />}>
+                Testar integração
+              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
+              {integrationChecks && (
+                <div className={cn(
+                  'rounded-2xl border p-4 sm:p-5',
+                  integrationChecks.every((check) => check.ready)
+                    ? 'border-green-500/25 bg-green-500/10'
+                    : 'border-amber-400/25 bg-amber-400/10',
+                )}>
+                  <div className="flex items-start gap-3">
+                    {integrationChecks.every((check) => check.ready)
+                      ? <CheckCircle size={20} className="mt-0.5 shrink-0 text-green-500" />
+                      : <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-500" />}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-content-primary">
+                        {integrationChecks.every((check) => check.ready) ? 'Tudo pronto para a live' : 'Alguns ajustes são necessários'}
+                      </p>
+                      <div className="mt-3 space-y-2">
+                        {integrationChecks.map((check) => (
+                          <div key={check.label} className="flex items-start gap-2 text-xs">
+                            {check.ready
+                              ? <CheckCircle size={14} className="mt-0.5 shrink-0 text-green-500" />
+                              : <XCircle size={14} className="mt-0.5 shrink-0 text-amber-500" />}
+                            <p className="text-content-secondary">
+                              <span className="font-medium text-content-primary">{check.label}</span>
+                              {!check.ready && <> — {check.guidance}</>}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className={cn(
                 'rounded-2xl border p-4 sm:p-5',
                 chatHealthState === 'healthy' && 'border-green-500/25 bg-green-500/10',
@@ -1315,7 +1528,7 @@ export default function StreamerDashboard() {
                 </div>
 
                 {!chatStatusLoading && (
-                  <details className="mt-4 border-t border-white/10 pt-3 text-xs text-content-muted">
+                  <details className="mt-4 border-t border-border pt-3 text-xs text-content-muted">
                     <summary className="cursor-pointer select-none font-medium text-content-secondary">Ver detalhes da conexão</summary>
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
                       <p>Conexão: <span className="text-content-primary">{chatConnected ? 'Ativa' : 'Precisa reconectar'}</span></p>
@@ -1324,7 +1537,7 @@ export default function StreamerDashboard() {
                       <p>Resultado: <span className="text-content-primary">{chatHealth.lastDelivery?.status === 'sent' ? 'Enviado' : chatHealth.lastDelivery?.status === 'failed' ? 'Não enviado' : chatHealth.lastDelivery?.status === 'skipped' ? 'Aviso desativado — não enviado' : chatHealth.lastDelivery?.status === 'simulated' ? 'Simulado — não enviado' : 'Sem atividade'}</span></p>
                     </div>
                     {(chatHealth.lastQueueError || chatHealth.lastDelivery?.error_message) && (
-                      <p className="mt-3 rounded-lg bg-black/15 p-3 leading-relaxed">O WatchQueue encontrou um problema no último envio e continuará protegendo suas ações.</p>
+                      <p className="mt-3 rounded-lg bg-bg-primary/35 p-3 leading-relaxed">O WatchQueue encontrou um problema no último envio e continuará protegendo suas ações.</p>
                     )}
                     {chatConnected && (
                       <Button className="mt-3" size="sm" variant="danger" loading={chatDisconnecting} onClick={handleDisconnectChat}>
@@ -1354,7 +1567,7 @@ export default function StreamerDashboard() {
                 <p className="mt-3 text-[11px] text-content-muted">No OBS: Fontes → Navegador → cole o link. Tamanho recomendado: 1280 × 720.</p>
               </div>
 
-              <div className="space-y-3 rounded-xl border border-brand-purple/20 bg-brand-purple/5 p-4">
+              <div id="chat-command-settings" className="scroll-mt-24 space-y-3 rounded-xl border border-brand-purple/20 bg-brand-purple/5 p-4">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-medium text-content-primary">Comando para receber sugestões</p>

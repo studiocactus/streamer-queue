@@ -126,7 +126,7 @@ async function processDelivery(item: QueueItem): Promise<{ sent: boolean; skippe
     const errorMessage = sent ? null : body?.data?.[0]?.drop_reason?.message ?? `Twitch respondeu ${response.status}`
 
     if (response.status === 401 || response.status === 403) {
-      await admin.from('twitch_connections').update({ token_status: 'expired' }).eq('streamer_id', item.streamer_id)
+      await markReconnectRequired(item.streamer_id)
     }
     const { error: logError } = await admin.from('chat_message_logs').insert({
       streamer_id: item.streamer_id,
@@ -155,7 +155,10 @@ async function validAccessToken(credential: Record<string, string>, streamerId: 
       client_id: TWITCH_CLIENT_ID, client_secret: TWITCH_CLIENT_SECRET,
     }),
   })
-  if (!response.ok) return null
+  if (!response.ok) {
+    await markReconnectRequired(streamerId)
+    return null
+  }
   const refreshed = await response.json()
   const { error } = await admin.from('twitch_chat_credentials').update({
     access_token: refreshed.access_token,
@@ -165,6 +168,13 @@ async function validAccessToken(credential: Record<string, string>, streamerId: 
   }).eq('streamer_id', streamerId)
   if (error) throw error
   return refreshed.access_token as string
+}
+
+async function markReconnectRequired(streamerId: string) {
+  const { error } = await admin.rpc('mark_twitch_reconnect_required', {
+    p_streamer_id: streamerId, p_status: 'expired',
+  })
+  if (error) throw error
 }
 
 function defaultTemplate(eventType: string) {
