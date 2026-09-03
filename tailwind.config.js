@@ -8,9 +8,9 @@ export default {
     extend: {
       colors: {
         bg: {
-          primary: '#0D0D12',
-          secondary: '#17171F',
-          tertiary: '#1E1E28',
+          primary: 'rgb(var(--color-bg-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--color-bg-secondary) / <alpha-value>)',
+          tertiary: 'rgb(var(--color-bg-tertiary) / <alpha-value>)',
         },
         brand: {
           purple: 'rgb(var(--theme-primary) / <alpha-value>)',
@@ -20,13 +20,13 @@ export default {
           'green-dark': '#A8D900',
         },
         content: {
-          primary: '#F5F5F7',
-          secondary: '#A4A4B0',
-          muted: '#6B6B7A',
+          primary: 'rgb(var(--color-content-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--color-content-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--color-content-muted) / <alpha-value>)',
         },
         border: {
-          DEFAULT: '#2A2A36',
-          light: '#3A3A48',
+          DEFAULT: 'rgb(var(--color-border) / <alpha-value>)',
+          light: 'rgb(var(--color-border-light) / <alpha-value>)',
         },
         status: {
           pending: '#F59E0B',

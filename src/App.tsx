@@ -8,6 +8,7 @@ import { Footer } from '@/components/layout/Footer'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { streamerPath } from '@/lib/routes'
 import { Seo } from '@/components/Seo'
+import { useTheme } from '@/hooks/useTheme'
 
 // Error Boundary para capturar crashes e mostrar mensagem em vez de tela preta
 class ErrorBoundary extends Component<
@@ -154,6 +155,7 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { theme } = useTheme()
   return (
     <BrowserRouter>
       <Seo />
@@ -161,12 +163,12 @@ export default function App() {
         {/* Toast notifications */}
         <Toaster
           position="top-right"
-          theme="dark"
+          theme={theme}
           toastOptions={{
             style: {
-              background: '#17171F',
-              border: '1px solid #2A2A36',
-              color: '#F5F5F7',
+              background: 'rgb(var(--color-bg-secondary))',
+              border: '1px solid rgb(var(--color-border))',
+              color: 'rgb(var(--color-content-primary))',
             },
           }}
         />

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown, Bell, Trash2 } from 'lucide-react'
+import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown, Bell, Trash2, Moon, Sun } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { getTwitchAuthUrl } from '@/lib/supabase'
@@ -9,6 +9,7 @@ import { cn, formatRelativeDate } from '@/lib/utils'
 import { useStreamerNotifications } from '@/hooks/useStreamerNotifications'
 import { normalizeStreamerReturnPath, streamerPath } from '@/lib/routes'
 import { BrandLogo } from '@/components/ui/BrandLogo'
+import { useTheme } from '@/hooks/useTheme'
 
 export function Header() {
   const { user, profile, streamerProfile, logout } = useAuthStore()
@@ -20,6 +21,7 @@ export function Header() {
   const location = useLocation()
   const isLanding = location.pathname === '/'
   const { notifications, unreadCount, markAllRead, removeOne, removeAll } = useStreamerNotifications(streamerProfile?.id, user?.id)
+  const { theme, toggleTheme } = useTheme()
 
   const isActive = (path: string) => location.pathname === path
 
@@ -81,7 +83,7 @@ export function Header() {
     )}>
       <nav className={cn(
         'app-shell',
-        isLanding && 'rounded-2xl border border-white/10 bg-white/[0.045] px-4 shadow-[0_12px_45px_rgba(0,0,0,.24)] backdrop-blur-2xl sm:rounded-full sm:px-5'
+        isLanding && 'landing-header-nav rounded-2xl border border-white/10 bg-white/[0.045] px-4 shadow-[0_12px_45px_rgba(0,0,0,.24)] backdrop-blur-2xl sm:rounded-full sm:px-5'
       )}>
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -125,7 +127,16 @@ export function Header() {
           </div>
 
           {/* Auth */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+              className="focus-ring flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-bg-secondary text-content-secondary transition-colors hover:border-border-light hover:text-content-primary"
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
             {streamerProfile && (
               <div ref={notificationRef} className="relative">
                 <button
