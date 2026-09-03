@@ -213,20 +213,24 @@ export interface Database {
         Row: {
           id: string
           streamer_id: string
+          user_id: string | null
           suggestion_id: string | null
           type: string
           title: string
           message: string
+          target_path: string | null
           read_at: string | null
           created_at: string
         }
         Insert: {
           id?: string
           streamer_id: string
+          user_id?: string | null
           suggestion_id?: string | null
           type?: string
           title: string
           message: string
+          target_path?: string | null
           read_at?: string | null
           created_at?: string
         }

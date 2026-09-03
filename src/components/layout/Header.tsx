@@ -19,7 +19,7 @@ export function Header() {
   const notificationRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const isLanding = location.pathname === '/'
-  const { notifications, unreadCount, markAllRead, removeOne, removeAll } = useStreamerNotifications(streamerProfile?.id)
+  const { notifications, unreadCount, markAllRead, removeOne, removeAll } = useStreamerNotifications(streamerProfile?.id, user?.id)
 
   const isActive = (path: string) => location.pathname === path
 
@@ -111,7 +111,7 @@ export function Header() {
                 Minhas sugestões
               </Link>
             )}
-            {streamerProfile && (
+            {user && (
               <Link
                 to="/dashboard/streamer"
                 className={cn(
@@ -153,7 +153,7 @@ export function Header() {
                     <div className="flex items-center justify-between border-b border-border px-4 py-3">
                       <div>
                         <p className="text-sm font-semibold text-content-primary">Notificações</p>
-                        <p className="text-[11px] text-content-muted">Mensagens recebidas pelo canal</p>
+                        <p className="text-[11px] text-content-muted">Atualizações importantes para você</p>
                       </div>
                       {notifications.length > 0 && (
                         <button type="button" onClick={removeAll} className="text-xs font-medium text-status-rejected hover:underline">
@@ -166,7 +166,7 @@ export function Header() {
                         <p className="px-4 py-8 text-center text-sm text-content-muted">Nenhuma notificação.</p>
                       ) : notifications.map((notification) => (
                         <div key={notification.id} className="flex gap-3 border-b border-border/70 px-4 py-3 last:border-0 hover:bg-bg-tertiary/60">
-                          <Link to="/dashboard/streamer" onClick={() => setNotificationsOpen(false)} className="min-w-0 flex-1">
+                          <Link to={notification.target_path ?? (notification.user_id ? '/dashboard' : '/dashboard/streamer')} onClick={() => setNotificationsOpen(false)} className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium text-content-primary">{notification.title}</p>
                             <p className="mt-0.5 line-clamp-2 text-xs text-content-secondary">{notification.message}</p>
                             <p className="mt-1 text-[10px] text-content-muted">{formatRelativeDate(notification.created_at)}</p>
