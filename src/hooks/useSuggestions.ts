@@ -165,13 +165,12 @@ export function useSuggestions(streamerId: string | undefined) {
       if (!streamerId) return false
 
       try {
-        let posterUrl: string | null = null
-        if (data.source_url) {
-          const { data: metadata } = await supabase.functions.invoke('content-metadata', {
-            body: { url: data.source_url },
-          })
-          posterUrl = metadata?.thumbnail_url ?? null
-        }
+        const { data: metadata } = await supabase.functions.invoke('content-metadata', {
+          body: data.source_url
+            ? { url: data.source_url }
+            : { title: data.title, category: data.category, release_year: data.release_year },
+        })
+        const posterUrl: string | null = metadata?.thumbnail_url ?? null
 
         const { data: created, error: insertError } = await supabase.from('suggestions').insert({
           streamer_id: streamerId,

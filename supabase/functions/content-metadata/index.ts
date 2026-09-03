@@ -12,7 +12,27 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders })
 
   try {
-    const { url } = await req.json()
+    const { url, title, category, release_year } = await req.json()
+    if (!url && typeof title === 'string' && title.trim()) {
+      const cleanTitle = title.trim().slice(0, 200)
+      const searchKey = cleanTitle.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').toLowerCase()
+      const response = await fetch(`https://v3.sg.media-imdb.com/suggestion/x/${encodeURIComponent(searchKey)}.json`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WatchQueue/1.0)' },
+      })
+      if (!response.ok) throw new Error(`Catalog returned ${response.status}`)
+      const metadata = await response.json() as { d?: Array<{ l?: string; y?: number; qid?: string; i?: { imageUrl?: string } }> }
+      const allowedKinds = category === 'series' ? new Set(['tvSeries', 'tvMiniSeries']) : category === 'movie' ? new Set(['movie', 'tvMovie']) : null
+      const candidates = metadata.d?.slice(0, 3) ?? []
+      const match = candidates.find((item) => item.i?.imageUrl && (!allowedKinds || allowedKinds.has(item.qid ?? '')))
+        ?? candidates.find((item) => item.i?.imageUrl)
+      return new Response(JSON.stringify({
+        title: match?.l ?? cleanTitle,
+        release_year: match?.y ?? release_year ?? null,
+        thumbnail_url: match?.i?.imageUrl ?? null,
+        provider_name: 'IMDb',
+      }), { headers: { ...corsHeaders, 'Cache-Control': 'public, max-age=86400' } })
+    }
+
     const parsed = new URL(url)
     if (parsed.protocol !== 'https:' || !allowedHosts.has(parsed.hostname.toLowerCase())) {
       return new Response(JSON.stringify({ error: 'Unsupported content URL' }), { status: 400, headers: corsHeaders })

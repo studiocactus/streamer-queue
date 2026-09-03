@@ -41,7 +41,9 @@ interface KanbanColumnProps {
 }
 
 function SuggestionThumbnail({ suggestion }: { suggestion: Suggestion }) {
-  const thumbnail = useContentThumbnail(suggestion.source_url, suggestion.poster_url)
+  const thumbnail = useContentThumbnail(suggestion.source_url, suggestion.poster_url, {
+    title: suggestion.title, category: suggestion.category, releaseYear: suggestion.release_year,
+  })
 
   return (
     <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-bg-secondary">
@@ -708,13 +710,12 @@ export default function StreamerDashboard() {
     }
     setNewContentSaving(true)
     try {
-      let posterUrl: string | null = null
-      if (newContentUrl.trim()) {
-        const { data: metadata } = await supabase.functions.invoke('content-metadata', {
-          body: { url: newContentUrl.trim() },
-        })
-        posterUrl = metadata?.thumbnail_url ?? null
-      }
+      const { data: metadata } = await supabase.functions.invoke('content-metadata', {
+        body: newContentUrl.trim()
+          ? { url: newContentUrl.trim() }
+          : { title: newContentTitle, category: newContentCategory },
+      })
+      const posterUrl: string | null = metadata?.thumbnail_url ?? null
       const { data: created, error } = await supabase.from('suggestions').insert({
         streamer_id: streamerProfile.id,
         submitted_by: profile.id,

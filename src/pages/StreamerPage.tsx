@@ -68,7 +68,9 @@ function SuggestionCard({
   onVote?: (id: string, voted: boolean) => void
   canVote?: boolean
 }) {
-  const thumbnail = useContentThumbnail(suggestion.source_url, suggestion.poster_url)
+  const thumbnail = useContentThumbnail(suggestion.source_url, suggestion.poster_url, {
+    title: suggestion.title, category: suggestion.category, releaseYear: suggestion.release_year,
+  })
 
   return (
     <div className="flex gap-3 rounded-2xl border border-border bg-bg-secondary p-3 transition-colors hover:border-border-light sm:gap-4 sm:p-4">
@@ -95,8 +97,8 @@ function SuggestionCard({
         <div className="flex items-center gap-2 mb-2">
           <Badge variant="category" category={suggestion.category as SuggestionCategory} size="sm" />
           {(suggestion.submitter || suggestion.chat_display_name) && (
-            <span className="text-xs text-content-muted">
-              por <span className="text-content-secondary">{suggestion.submitter?.display_name ?? suggestion.chat_display_name}</span>
+            <span className="text-xs text-content-muted">por{' '}
+              {suggestion.submitter?.twitch_login ? <Link to={`/viewer/${suggestion.submitter.twitch_login}`} className="text-content-secondary hover:text-brand-purple hover:underline">{suggestion.submitter.display_name}</Link> : <span className="text-content-secondary">{suggestion.chat_display_name}</span>}
             </span>
           )}
         </div>

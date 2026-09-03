@@ -59,6 +59,7 @@ import AuthCallback from '@/pages/AuthCallback'
 import ViewerDashboard from '@/pages/dashboard/ViewerDashboard'
 import StreamerDashboard from '@/pages/dashboard/StreamerDashboard'
 import OverlayPage from '@/pages/Overlay'
+import ViewerProfile from '@/pages/ViewerProfile'
 
 // Layout com header e footer
 function AppLayout() {
@@ -174,6 +175,7 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/explore" element={<ExplorePage />} />
             <Route path="/streamer/:slug" element={<LegacyStreamerRedirect />} />
+            <Route path="/viewer/:login" element={<ViewerProfile />} />
             <Route path="/:slug" element={<StreamerPage />} />
           </Route>
 

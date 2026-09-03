@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Send, Clock, ThumbsUp, Tv2, LayoutDashboard, Plus, Search } from 'lucide-react'
+import { toast } from 'sonner'
+import { Send, Clock, ThumbsUp, Tv2, LayoutDashboard, Plus, Search, UserRound, Pencil, Save } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
 import { Avatar } from '@/components/ui/Avatar'
@@ -8,20 +9,73 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
+import { Modal } from '@/components/ui/Modal'
+import { Input, Textarea } from '@/components/ui/Input'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import { formatRelativeDate } from '@/lib/utils'
 import type { Suggestion } from '@/types'
 import { streamerPath } from '@/lib/routes'
+import { useContentThumbnail } from '@/hooks/useContentThumbnail'
 
 interface ViewerStats {
   suggestions: Suggestion[]
   votes_count: number
 }
 
+function ViewerSuggestionRow({ suggestion }: { suggestion: Suggestion }) {
+  const thumbnail = useContentThumbnail(suggestion.source_url, suggestion.poster_url, {
+    title: suggestion.title, category: suggestion.category, releaseYear: suggestion.release_year,
+  })
+  const joined = suggestion as unknown as { streamer: { channel_name: string; slug: string } | null; votes: { id: string }[] }
+  return (
+    <div className="flex items-center gap-3 p-3 transition-colors hover:bg-bg-tertiary/50 sm:gap-4 sm:p-4">
+      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-bg-tertiary">
+        {thumbnail ? <img src={thumbnail} alt={`Thumbnail de ${suggestion.title}`} className="h-full w-full object-cover" loading="lazy" /> : <Tv2 size={19} className="text-content-muted" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-medium text-content-primary">{suggestion.title}</p><Badge variant="status" status={suggestion.status} size="sm" /><Badge variant="category" category={suggestion.category as never} size="sm" /></div>
+        <div className="mt-1 flex items-center gap-2">{joined.streamer && <Link to={streamerPath(joined.streamer.slug)} className="text-xs text-brand-purple hover:underline">{joined.streamer.channel_name}</Link>}<span className="text-xs text-content-muted">· {formatRelativeDate(suggestion.submitted_at)}</span></div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1 text-xs text-content-muted"><ThumbsUp size={11} />{joined.votes?.length ?? 0}</div>
+    </div>
+  )
+}
+
 export default function ViewerDashboard() {
-  const { profile, streamerProfile } = useAuthStore()
+  const { profile, streamerProfile, refreshProfile } = useAuthStore()
   const [stats, setStats] = useState<ViewerStats>({ suggestions: [], votes_count: 0 })
   const [isLoading, setIsLoading] = useState(true)
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [viewerBio, setViewerBio] = useState(profile?.bio ?? '')
+  const [viewerSocialLinks, setViewerSocialLinks] = useState<Record<string, string>>(profile?.social_links ?? {})
+
+  useEffect(() => {
+    setViewerBio(profile?.bio ?? '')
+    setViewerSocialLinks(profile?.social_links ?? {})
+  }, [profile?.bio, profile?.social_links])
+
+  const handleSaveViewerProfile = async () => {
+    if (!profile) return
+    setProfileSaving(true)
+    try {
+      const normalizedLinks: Record<string, string> = Object.fromEntries(Object.entries(viewerSocialLinks).map(([network, value]): [string, string] => {
+        const trimmed = value.trim()
+        return [network, trimmed && !/^https?:\/\//i.test(trimmed) ? `https://${trimmed}` : trimmed]
+      }).filter(([, value]) => Boolean(value)))
+      if (Object.values(normalizedLinks).some((value) => !/^https?:\/\//i.test(value))) throw new Error('Link inválido')
+      const { error } = await supabase.from('profiles').update({ bio: viewerBio.trim() || null, social_links: normalizedLinks }).eq('id', profile.id)
+      if (error) throw error
+      await refreshProfile()
+      setProfileEditorOpen(false)
+      toast.success('Perfil público atualizado!')
+    } catch (error) {
+      console.error(error)
+      toast.error('Confira os links e tente novamente.')
+    } finally {
+      setProfileSaving(false)
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -94,8 +148,12 @@ export default function ViewerDashboard() {
             </div>
           </div>
 
-          {streamerProfile && (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-border">
+          <div className="flex w-full flex-wrap items-center gap-2.5 border-t border-border pt-3 sm:w-auto sm:border-t-0 sm:pt-0">
+              <Link to={`/viewer/${profile.twitch_login}`} className="min-w-[9rem] flex-1 sm:flex-none">
+                <Button className="w-full" variant="outline" size="sm" leftIcon={<UserRound size={14} />}>Ver meu perfil</Button>
+              </Link>
+              <Button className="min-w-[9rem] flex-1 sm:flex-none" variant="secondary" size="sm" onClick={() => setProfileEditorOpen(true)} leftIcon={<Pencil size={14} />}>Editar perfil</Button>
+            {streamerProfile && <>
               <Link to={streamerPath(streamerProfile.slug)} className="w-full sm:w-auto">
                 <Button className="w-full" variant="secondary" size="sm" leftIcon={<Tv2 size={14} />}>
                   Ver meu canal
@@ -106,9 +164,17 @@ export default function ViewerDashboard() {
                   Gerenciar minha fila
                 </Button>
               </Link>
-            </div>
-          )}
+            </>}
+          </div>
         </div>
+
+        <Modal isOpen={profileEditorOpen} onClose={() => setProfileEditorOpen(false)} title="Editar perfil de viewer" description="Tudo é opcional. Essas informações aparecerão no seu perfil público." size="md">
+          <div className="space-y-4">
+            <Textarea label="Sobre você" value={viewerBio} onChange={(event) => setViewerBio(event.target.value)} maxLength={500} rows={4} placeholder="Conte um pouco sobre você e o que gosta de assistir..." />
+            <div className="grid gap-3 sm:grid-cols-2">{['instagram', 'youtube', 'tiktok', 'discord'].map((network) => <Input key={network} label={network.charAt(0).toUpperCase() + network.slice(1)} value={viewerSocialLinks[network] ?? ''} onChange={(event) => setViewerSocialLinks((current) => ({ ...current, [network]: event.target.value }))} placeholder={`https://${network}.com/...`} />)}</div>
+            <Button className="w-full" loading={profileSaving} onClick={handleSaveViewerProfile} leftIcon={<Save size={15} />}>Salvar perfil</Button>
+          </div>
+        </Modal>
 
         {!streamerProfile && (
           <div className="rounded-2xl border border-brand-purple/20 bg-brand-purple/5 p-4 sm:p-5">
@@ -185,37 +251,7 @@ export default function ViewerDashboard() {
               />
             ) : (
               <div className="divide-y divide-border">
-                {stats.suggestions.map((s) => {
-                  const streamer = s as unknown as { streamer: { channel_name: string; slug: string } }
-                  return (
-                    <div key={s.id} className="flex items-center gap-4 p-4 hover:bg-bg-tertiary/50 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium text-sm text-content-primary truncate">{s.title}</p>
-                          <Badge variant="status" status={s.status} size="sm" />
-                          <Badge variant="category" category={s.category as never} size="sm" />
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          {streamer.streamer && (
-                            <Link
-                              to={streamerPath(streamer.streamer.slug)}
-                              className="text-xs text-brand-purple hover:underline"
-                            >
-                              {streamer.streamer.channel_name}
-                            </Link>
-                          )}
-                          <span className="text-xs text-content-muted">
-                            · {formatRelativeDate(s.submitted_at)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-xs text-content-muted flex items-center gap-1 shrink-0">
-                        <ThumbsUp size={11} />
-                        {(s as unknown as { votes: { id: string }[] }).votes?.length ?? 0}
-                      </div>
-                    </div>
-                  )
-                })}
+                {stats.suggestions.map((suggestion) => <ViewerSuggestionRow key={suggestion.id} suggestion={suggestion} />)}
               </div>
             )}
           </CardContent>

@@ -19,6 +19,8 @@ export interface Database {
           twitch_login: string
           display_name: string
           avatar_url: string | null
+          bio: string | null
+          social_links: Record<string, string>
           created_at: string
           updated_at: string
         }
@@ -28,6 +30,8 @@ export interface Database {
           twitch_login: string
           display_name: string
           avatar_url?: string | null
+          bio?: string | null
+          social_links?: Record<string, string>
           created_at?: string
           updated_at?: string
         }
@@ -37,6 +41,8 @@ export interface Database {
           twitch_login?: string
           display_name?: string
           avatar_url?: string | null
+          bio?: string | null
+          social_links?: Record<string, string>
           updated_at?: string
         }
       }
@@ -409,6 +415,18 @@ export interface Database {
       advance_streamer_queue: {
         Args: { p_streamer_id: string }
         Returns: string | null
+      }
+      get_public_viewer_profile: {
+        Args: { p_login: string }
+        Returns: {
+          id: string
+          twitch_login: string
+          display_name: string
+          avatar_url: string | null
+          bio: string | null
+          social_links: Record<string, string>
+          moderated_channels: { channel_name: string; slug: string; avatar_url: string | null }[]
+        }[]
       }
     }
     Enums: Record<string, never>
