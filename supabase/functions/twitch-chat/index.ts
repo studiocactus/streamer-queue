@@ -1,259 +1,62 @@
-// ============================================================
-// WatchQueue — Edge Function: twitch-chat
-// Envia mensagem ao chat do Twitch ou simula no dashboard
-// ============================================================
-// Deploy: supabase functions deploy twitch-chat
-// Variáveis: TWITCH_CLIENT_ID, SUPABASE_SERVICE_ROLE_KEY
-// ============================================================
-
+// The browser may wake a persisted delivery, never send an independent message.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { normalizeContentReference } from '../_shared/content-reference.ts'
 
-const TWITCH_CLIENT_ID = Deno.env.get('TWITCH_CLIENT_ID')
-const TWITCH_CLIENT_SECRET = Deno.env.get('TWITCH_CLIENT_SECRET')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-interface ChatEventPayload {
-  streamer_id: string
-  suggestion_id?: string
-  event_type: 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
-  viewer_name: string
-  title: string
+const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const WORKER_SECRET = Deno.env.get('CHAT_WORKER_SECRET')
+const headers = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers })
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    })
-  }
-
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
-  }
-
+  if (req.method === 'OPTIONS') return new Response(null, { headers })
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   try {
-    const payload: ChatEventPayload = await req.json()
-    const { streamer_id, suggestion_id, event_type } = payload
-    let viewerName = payload.viewer_name
-    let suggestionTitle = payload.title
-
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+    const token = req.headers.get('Authorization')
+    if (!token?.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401)
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+    const { data: auth, error: authError } = await admin.auth.getUser(token.slice(7))
+    if (authError || !auth.user) return json({ error: 'Unauthorized' }, 401)
+    const { streamer_id, suggestion_id, event_type } = await req.json()
+    if (!streamer_id || !suggestion_id || !event_type) return json({ error: 'Missing event' }, 400)
+    const { data: suggestion, error: suggestionError } = await admin.from('suggestions')
+      .select('submitted_by').eq('id', suggestion_id).eq('streamer_id', streamer_id).maybeSingle()
+    if (suggestionError) throw suggestionError
+    if (!suggestion) return json({ error: 'Not found' }, 404)
+    if (event_type !== 'suggestion_received' || suggestion.submitted_by !== auth.user.id) {
+      const { data: member, error } = await admin.from('streamer_members').select('role')
+        .eq('streamer_id', streamer_id).eq('user_id', auth.user.id).in('role', ['owner', 'moderator']).maybeSingle()
+      if (error) throw error
+      if (!member) return json({ error: 'Forbidden' }, 403)
     }
-
-    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
-
-    const { data: authData, error: authError } = await adminClient.auth.getUser(authHeader.slice(7))
-    if (authError || !authData.user || !suggestion_id) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
-    }
-
-    // Never trust chat text supplied by the browser. Resolve the suggestion and
-    // viewer from the database and confirm who is allowed to trigger the event.
-    const { data: suggestion } = await adminClient
-      .from('suggestions')
-      .select('id, streamer_id, submitted_by, title, category, chat_display_name, source_url, poster_url')
-      .eq('id', suggestion_id)
-      .eq('streamer_id', streamer_id)
-      .maybeSingle()
-
-    if (!suggestion) {
-      return new Response(JSON.stringify({ error: 'Suggestion not found' }), { status: 404 })
-    }
-
-    if (event_type === 'suggestion_received') {
-      if (suggestion.submitted_by !== authData.user.id) {
-        return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 })
-      }
-    } else {
-      const { data: member } = await adminClient
-        .from('streamer_members')
-        .select('role')
-        .eq('streamer_id', streamer_id)
-        .eq('user_id', authData.user.id)
-        .in('role', ['owner', 'moderator'])
-        .maybeSingle()
-      if (!member) {
-        return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 })
-      }
-    }
-
-    // A atualização do status acontece antes desta chamada. Se o navegador perder
-    // a resposta e repetir a solicitação, não publique a mesma mensagem novamente.
-    const { data: previousDelivery } = await adminClient
-      .from('chat_message_logs')
-      .select('message, status')
-      .eq('suggestion_id', suggestion_id)
-      .eq('event_type', event_type)
-      .eq('status', 'sent')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    if (previousDelivery) {
-      return new Response(
-        JSON.stringify({ success: true, message: previousDelivery.message, status: 'sent', duplicate: true }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const { data: viewer } = suggestion.submitted_by
-      ? await adminClient.from('profiles').select('display_name').eq('id', suggestion.submitted_by).maybeSingle()
-      : { data: null }
-    viewerName = viewer?.display_name ?? suggestion.chat_display_name ?? 'Viewer da Twitch'
-    const normalizedContent = await normalizeContentReference(suggestion.title)
-    suggestionTitle = normalizedContent.title
-    if (normalizedContent.sourceUrl) {
-      await adminClient.from('suggestions').update({
-        title: normalizedContent.title,
-        source_url: suggestion.source_url ?? normalizedContent.sourceUrl,
-        poster_url: suggestion.poster_url ?? normalizedContent.thumbnailUrl,
-      }).eq('id', suggestion.id)
-    }
-
-    // Buscar template de mensagem
-    const { data: template } = await adminClient
-      .from('chat_message_templates')
-      .select('*')
-      .eq('streamer_id', streamer_id)
-      .eq('event_type', event_type)
-      .eq('enabled', true)
-      .maybeSingle()
-
-    // Formatar mensagem
-    let message = template?.template ?? getDefaultTemplate(event_type)
-    if (!message.includes('{viewer}')) {
-      message = `${message.trim()} — sugestão de {viewer}`
-    }
-    message = message
-      .replaceAll('{viewer}', viewerName)
-      .replaceAll('{titulo}', suggestionTitle)
-      .replaceAll('{categoria}', getCategoryLabel(suggestion.category))
-
-    // Verificar se há integração Twitch configurada
-    const { data: connection } = await adminClient
-      .from('twitch_connections')
-      .select('broadcaster_id, token_status')
-      .eq('streamer_id', streamer_id)
-      .maybeSingle()
-
-    // Verificar settings
-    const { data: settings } = await adminClient
-      .from('streamer_settings')
-      .select('chat_notifications_enabled')
-      .eq('streamer_id', streamer_id)
-      .maybeSingle()
-
-    let status: 'sent' | 'failed' | 'simulated' = 'simulated'
-    let errorMessage: string | null = null
-
-    const isConfigured =
-      connection &&
-      connection.token_status === 'active' &&
-      TWITCH_CLIENT_ID &&
-      settings?.chat_notifications_enabled
-
-    if (isConfigured) {
-      const { data: credential } = await adminClient
-        .from('twitch_chat_credentials')
-        .select('*')
-        .eq('streamer_id', streamer_id)
-        .maybeSingle()
-
-      if (!credential || !TWITCH_CLIENT_SECRET) {
-        errorMessage = 'Conexão de chat ainda não autorizada'
-        status = 'failed'
-      } else {
-        let accessToken = credential.access_token
-        if (new Date(credential.expires_at).getTime() <= Date.now() + 60_000) {
-          const refreshResponse = await fetch('https://id.twitch.tv/oauth2/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              grant_type: 'refresh_token', refresh_token: credential.refresh_token,
-              client_id: TWITCH_CLIENT_ID!, client_secret: TWITCH_CLIENT_SECRET,
-            }),
-          })
-          if (!refreshResponse.ok) throw new Error('Falha ao renovar autorização do chat')
-          const refreshed = await refreshResponse.json()
-          accessToken = refreshed.access_token
-          await adminClient.from('twitch_chat_credentials').update({
-            access_token: refreshed.access_token,
-            refresh_token: refreshed.refresh_token ?? credential.refresh_token,
-            expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-            updated_at: new Date().toISOString(),
-          }).eq('streamer_id', streamer_id)
-        }
-
-        const chatResponse = await fetch('https://api.twitch.tv/helix/chat/messages', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${accessToken}`, 'Client-Id': TWITCH_CLIENT_ID!, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message: message.slice(0, 500) }),
+    const { data: delivery, error } = await admin.from('chat_delivery_queue').select('id,status,last_error')
+      .eq('streamer_id', streamer_id).eq('suggestion_id', suggestion_id).eq('event_type', event_type).maybeSingle()
+    if (error) throw error
+    // Only events actually produced by database transitions can be announced.
+    if (!delivery) return json({ error: 'Delivery not found' }, 404)
+    if (delivery.status === 'pending' && WORKER_SECRET) {
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/chat-delivery-worker`, {
+          method: 'POST', signal: AbortSignal.timeout(12000),
+          headers: { 'Content-Type': 'application/json', 'x-chat-worker-secret': WORKER_SECRET },
+          body: JSON.stringify({ delivery_id: delivery.id, limit: 1 }),
         })
-        const chatResult = await chatResponse.json().catch(() => null)
-        if (!chatResponse.ok) {
-          errorMessage = `Twitch respondeu ${chatResponse.status}: ${JSON.stringify(chatResult)}`
-          status = 'failed'
-          if (chatResponse.status === 401 || chatResponse.status === 403) {
-            await adminClient.from('twitch_connections').update({ token_status: 'expired' }).eq('streamer_id', streamer_id)
-          }
-        } else if (chatResult?.data?.[0]?.is_sent !== true) {
-          const dropReason = chatResult?.data?.[0]?.drop_reason
-          errorMessage = dropReason?.message ?? dropReason?.code ?? 'A Twitch descartou a mensagem'
-          status = 'failed'
-        } else {
-          status = 'sent'
-        }
+        if (!response.ok) console.error('[twitch-chat] Worker wake failed:', response.status)
+        await response.body?.cancel()
+      } catch {
+        console.warn('[twitch-chat] Worker wake unavailable; delivery remains durable')
       }
-    } else {
-      console.log(`[twitch-chat] Integração não configurada. Simulando: ${message}`)
-      status = 'simulated'
     }
-
-    // Registrar log
-    await adminClient.from('chat_message_logs').insert({
-      streamer_id,
-      suggestion_id: suggestion_id ?? null,
-      event_type,
-      message,
-      status,
-      error_message: errorMessage,
-    })
-
-    return new Response(
-      JSON.stringify({ success: status === 'sent', message, status, error: errorMessage }),
-      { status: status === 'failed' ? 502 : 200, headers: { 'Content-Type': 'application/json' } }
-    )
-  } catch (err) {
-    console.error('[twitch-chat] Erro:', err)
-    return new Response(
-      JSON.stringify({ success: false, error: String(err) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+    const { data: latest, error: latestError } = await admin.from('chat_delivery_queue')
+      .select('status,last_error').eq('id', delivery.id).single()
+    if (latestError) throw latestError
+    return json({ success: latest.status === 'sent', status: latest.status, error: latest.last_error })
+  } catch (error) {
+    console.error('[twitch-chat] Delivery lookup failed', error)
+    return json({ error: 'Não foi possível consultar o envio. A fila continua responsável pela entrega.' }, 500)
   }
 })
-
-function getDefaultTemplate(eventType: string): string {
-  const templates: Record<string, string> = {
-    suggestion_received: '🎬 {viewer} adicionou "{titulo}" à lista do canal!',
-    suggestion_approved: '✅ A sugestão "{titulo}" de {viewer} foi aprovada!',
-    watching_now: '🍿 O streamer começou a assistir "{titulo}", sugestão de {viewer}!',
-    completed: '🎉 Terminamos de assistir "{titulo}"! Obrigado, {viewer}!',
-    queued: '📋 “{titulo}”, ideia de {viewer}, entrou na fila do canal!',
-    rejected: 'ℹ️ A ideia “{titulo}”, enviada por {viewer}, não foi aprovada desta vez.',
-    streamer_added: '📌 {viewer} adicionou “{titulo}” em {categoria}. Vote na sua ideia favorita pelo WatchQueue!',
-  }
-  return templates[eventType] ?? '📺 Nova atividade no WatchQueue!'
-}
-
-function getCategoryLabel(category: string): string {
-  return ({ movie: 'Filmes', series: 'Séries', anime: 'Animes', react: 'Reacts', music: 'Músicas', other: 'Outros' } as Record<string, string>)[category] ?? 'Conteúdos'
-}

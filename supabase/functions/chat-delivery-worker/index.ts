@@ -1,5 +1,4 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { normalizeContentReference } from '../_shared/content-reference.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -12,6 +11,7 @@ type QueueItem = {
   streamer_id: string
   suggestion_id: string
   event_type: string
+  attempts: number
 }
 
 const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -24,28 +24,34 @@ Deno.serve(async (req) => {
     return json({ error: 'Unauthorized' }, 401)
   }
 
-  const requestedLimit = Number((await req.json().catch(() => ({})))?.limit ?? 20)
+  const payload = await req.json().catch(() => ({}))
+  const requestedLimit = Number(payload?.limit ?? 20)
   const limit = Math.max(1, Math.min(Number.isFinite(requestedLimit) ? requestedLimit : 20, 50))
-  const { data, error } = await admin.rpc('claim_chat_deliveries', { p_limit: limit })
-  if (error) return json({ error: error.message }, 500)
-
   const results = []
-  for (const item of (data ?? []) as QueueItem[]) {
+  const started = Date.now()
+  for (let index = 0; index < limit && Date.now() - started < 45000; index++) {
+    const { data, error } = await admin.rpc('claim_chat_delivery', { p_id: payload.delivery_id ?? null })
+    if (error) return json({ error: error.message }, 500)
+    const item = data?.[0] as QueueItem | undefined
+    if (!item) break
     const result = await processDelivery(item)
-    await admin.rpc('finish_chat_delivery', {
+    const { error: finishError, data: settled } = await admin.rpc('settle_chat_delivery', {
       p_id: item.id,
-      p_sent: result.sent,
+      p_attempt: item.attempts,
+      p_status: result.skipped ? 'skipped' : result.sent ? 'sent' : 'failed',
       p_error: result.error,
     })
+    if (finishError || !settled) return json({ error: 'Delivery settlement failed' }, 500)
     results.push({ id: item.id, sent: result.sent, error: result.error })
+    if (payload.delivery_id) break
   }
 
   return json({ processed: results.length, results })
 })
 
-async function processDelivery(item: QueueItem): Promise<{ sent: boolean; error: string | null }> {
+async function processDelivery(item: QueueItem): Promise<{ sent: boolean; skipped?: boolean; error: string | null }> {
   try {
-    const { data: previous } = await admin
+    const { data: previous, error: previousError } = await admin
       .from('chat_message_logs')
       .select('id')
       .eq('suggestion_id', item.suggestion_id)
@@ -53,37 +59,51 @@ async function processDelivery(item: QueueItem): Promise<{ sent: boolean; error:
       .eq('status', 'sent')
       .limit(1)
       .maybeSingle()
+    if (previousError) throw previousError
     if (previous) return { sent: true, error: null }
 
-    const { data: suggestion } = await admin
+    const { data: suggestion, error: suggestionError } = await admin
       .from('suggestions')
       .select('id, streamer_id, submitted_by, title, category, chat_display_name')
       .eq('id', item.suggestion_id)
       .eq('streamer_id', item.streamer_id)
       .maybeSingle()
+    if (suggestionError) throw suggestionError
     if (!suggestion) return { sent: false, error: 'Sugestão não encontrada' }
 
-    const [{ data: connection }, { data: settings }, { data: credential }, { data: template }] = await Promise.all([
+    const queries = await Promise.all([
       admin.from('twitch_connections').select('broadcaster_id, token_status').eq('streamer_id', item.streamer_id).maybeSingle(),
       admin.from('streamer_settings').select('chat_notifications_enabled').eq('streamer_id', item.streamer_id).maybeSingle(),
       admin.from('twitch_chat_credentials').select('*').eq('streamer_id', item.streamer_id).maybeSingle(),
       admin.from('chat_message_templates').select('template, enabled').eq('streamer_id', item.streamer_id).eq('event_type', item.event_type).maybeSingle(),
     ])
 
-    if (!settings?.chat_notifications_enabled) return { sent: true, error: null }
-    if (template && !template.enabled) return { sent: true, error: null }
+    for (const query of queries) if (query.error) throw query.error
+    const [{ data: connection }, { data: settings }, { data: credential }, { data: template }] = queries
+    if (!settings) throw new Error('Configurações do canal não encontradas')
+    if (!settings.chat_notifications_enabled || template?.enabled === false) {
+      const reason = !settings.chat_notifications_enabled ? 'Avisos do chat desativados no canal' : 'Este aviso está desativado'
+      const { error } = await admin.from('chat_message_logs').insert({
+        streamer_id: item.streamer_id, suggestion_id: item.suggestion_id,
+        event_type: item.event_type, message: '', status: 'skipped', error_message: reason,
+      })
+      if (error) throw error
+      return { sent: false, skipped: true, error: reason }
+    }
     if (!connection || connection.token_status !== 'active' || !credential) {
       return { sent: false, error: 'Conexão com o chat da Twitch indisponível' }
     }
 
-    const { data: viewer } = suggestion.submitted_by
+    const { data: viewer, error: viewerError } = suggestion.submitted_by
       ? await admin.from('profiles').select('display_name').eq('id', suggestion.submitted_by).maybeSingle()
-      : { data: null }
-    const content = await normalizeContentReference(suggestion.title)
+      : { data: null, error: null }
+    if (viewerError) throw viewerError
     const viewerName = viewer?.display_name ?? suggestion.chat_display_name ?? 'Viewer da Twitch'
-    const message = (template.template || defaultTemplate(item.event_type))
+    let messageTemplate = template?.template || defaultTemplate(item.event_type)
+    if (!messageTemplate.includes('{viewer}')) messageTemplate += ' — sugestão de {viewer}'
+    const message = messageTemplate
       .replaceAll('{viewer}', viewerName)
-      .replaceAll('{titulo}', content.title)
+      .replaceAll('{titulo}', suggestion.title)
       .replaceAll('{categoria}', categoryLabel(suggestion.category))
       .slice(0, 500)
 
@@ -92,6 +112,7 @@ async function processDelivery(item: QueueItem): Promise<{ sent: boolean; error:
 
     const response = await fetch('https://api.twitch.tv/helix/chat/messages', {
       method: 'POST',
+      signal: AbortSignal.timeout(10000),
       headers: { Authorization: `Bearer ${token}`, 'Client-Id': TWITCH_CLIENT_ID, 'Content-Type': 'application/json' },
       body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message }),
     })
@@ -102,7 +123,7 @@ async function processDelivery(item: QueueItem): Promise<{ sent: boolean; error:
     if (response.status === 401 || response.status === 403) {
       await admin.from('twitch_connections').update({ token_status: 'expired' }).eq('streamer_id', item.streamer_id)
     }
-    await admin.from('chat_message_logs').insert({
+    const { error: logError } = await admin.from('chat_message_logs').insert({
       streamer_id: item.streamer_id,
       suggestion_id: item.suggestion_id,
       event_type: item.event_type,
@@ -110,6 +131,8 @@ async function processDelivery(item: QueueItem): Promise<{ sent: boolean; error:
       status: sent ? 'sent' : 'failed',
       error_message: errorMessage,
     })
+    // Preserve confirmed delivery even if the auxiliary log write fails.
+    if (logError) console.error('[chat-delivery-worker] Log persistence failed', logError)
     return { sent, error: errorMessage }
   } catch (error) {
     return { sent: false, error: error instanceof Error ? error.message : String(error) }
@@ -120,6 +143,7 @@ async function validAccessToken(credential: Record<string, string>, streamerId: 
   if (new Date(credential.expires_at).getTime() > Date.now() + 60_000) return credential.access_token
   const response = await fetch('https://id.twitch.tv/oauth2/token', {
     method: 'POST',
+    signal: AbortSignal.timeout(10000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'refresh_token', refresh_token: credential.refresh_token,
@@ -128,12 +152,13 @@ async function validAccessToken(credential: Record<string, string>, streamerId: 
   })
   if (!response.ok) return null
   const refreshed = await response.json()
-  await admin.from('twitch_chat_credentials').update({
+  const { error } = await admin.from('twitch_chat_credentials').update({
     access_token: refreshed.access_token,
     refresh_token: refreshed.refresh_token ?? credential.refresh_token,
     expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
     updated_at: new Date().toISOString(),
   }).eq('streamer_id', streamerId)
+  if (error) throw error
   return refreshed.access_token as string
 }
 

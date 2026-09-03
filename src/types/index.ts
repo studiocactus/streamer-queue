@@ -7,7 +7,7 @@ export type SuggestionStatus = 'pending' | 'approved' | 'queued' | 'watching' | 
 export type SuggestionCategory = 'movie' | 'series' | 'anime' | 'react' | 'music' | 'other'
 export type MonetizationMode = 'free' | 'highlight' | 'skip_queue' | 'custom'
 export type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
-export type MessageStatus = 'sent' | 'failed' | 'simulated'
+export type MessageStatus = 'sent' | 'failed' | 'simulated' | 'skipped'
 
 // ============================================================
 // Profiles

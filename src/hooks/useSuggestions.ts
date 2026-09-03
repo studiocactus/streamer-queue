@@ -200,7 +200,7 @@ export function useSuggestions(streamerId: string | undefined) {
             title: data.title.trim(),
           },
         })
-        if (chatError || chatResult?.status !== 'sent') {
+        if (chatError || !['sent', 'pending', 'processing', 'skipped'].includes(chatResult?.status)) {
           console.error('Erro ao notificar chat:', chatError ?? chatResult)
           toast.warning('Sugestão salva. A mensagem para a Twitch ficou na fila.', {
             description: 'O WatchQueue tentará enviar novamente automaticamente.',
@@ -284,7 +284,7 @@ export function useSuggestions(streamerId: string | undefined) {
                 },
               })
               lastChatError = chatError ?? chatResult
-              chatDelivered = !chatError && chatResult?.status === 'sent'
+              chatDelivered = !chatError && ['sent', 'pending', 'processing', 'skipped'].includes(chatResult?.status)
             } catch (error) {
               lastChatError = error
             }

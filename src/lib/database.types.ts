@@ -372,7 +372,7 @@ export interface Database {
           streamer_id: string
           suggestion_id: string
           event_type: string
-          status: 'pending' | 'processing' | 'sent' | 'failed'
+          status: 'pending' | 'processing' | 'sent' | 'failed' | 'skipped'
           attempts: number
           max_attempts: number
           next_attempt_at: string

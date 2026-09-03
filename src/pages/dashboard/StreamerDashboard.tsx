@@ -738,12 +738,14 @@ export default function StreamerDashboard() {
           title: newContentTitle.trim(),
         },
       })
-      if (chatError || chatResult?.status !== 'sent') {
+      if (chatError || !['sent', 'pending', 'processing', 'skipped'].includes(chatResult?.status)) {
         toast.warning('Conteúdo adicionado. A mensagem para a Twitch ficou na fila.', {
           description: 'O WatchQueue tentará enviar novamente automaticamente.',
         })
-      } else {
+      } else if (chatResult?.status === 'sent') {
         toast.success('Conteúdo adicionado e anunciado no chat.')
+      } else {
+        toast.success('Conteúdo adicionado.')
       }
       setNewContentTitle('')
       setNewContentUrl('')
@@ -1326,8 +1328,8 @@ export default function StreamerDashboard() {
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
                       <p>Conexão: <span className="text-content-primary">{chatConnected ? 'Ativa' : 'Precisa reconectar'}</span></p>
                       <p>Mensagens aguardando: <span className="text-content-primary">{chatHealth.pendingCount}</span></p>
-                      <p>Último envio: <span className="text-content-primary">{chatHealth.lastDelivery ? formatRelativeDate(chatHealth.lastDelivery.created_at) : 'Nenhum ainda'}</span></p>
-                      <p>Resultado: <span className="text-content-primary">{chatHealth.lastDelivery?.status === 'sent' ? 'Enviado' : chatHealth.lastDelivery?.status === 'failed' ? 'Não enviado' : 'Sem atividade'}</span></p>
+                      <p>Última atividade: <span className="text-content-primary">{chatHealth.lastDelivery ? formatRelativeDate(chatHealth.lastDelivery.created_at) : 'Nenhuma ainda'}</span></p>
+                      <p>Resultado: <span className="text-content-primary">{chatHealth.lastDelivery?.status === 'sent' ? 'Enviado' : chatHealth.lastDelivery?.status === 'failed' ? 'Não enviado' : chatHealth.lastDelivery?.status === 'skipped' ? 'Aviso desativado — não enviado' : chatHealth.lastDelivery?.status === 'simulated' ? 'Simulado — não enviado' : 'Sem atividade'}</span></p>
                     </div>
                     {(chatHealth.lastQueueError || chatHealth.lastDelivery?.error_message) && (
                       <p className="mt-3 rounded-lg bg-black/15 p-3 leading-relaxed">O WatchQueue encontrou um problema no último envio e continuará protegendo suas ações.</p>
