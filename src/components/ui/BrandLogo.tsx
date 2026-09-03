@@ -6,8 +6,10 @@ interface BrandLogoProps {
 
 export function BrandLogo({ className }: BrandLogoProps) {
   return (
-    <span className={cn('block', className)}>
-      <img src="/watch-queue.svg" alt="WatchQueue" className="block h-auto w-full" />
-    </span>
+    <img
+      src="/watch-queue.svg?v=original-20260903"
+      alt="WatchQueue"
+      className={cn('block h-auto w-full', className)}
+    />
   )
 }

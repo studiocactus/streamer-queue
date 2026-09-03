@@ -86,7 +86,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" aria-label="Página inicial do WatchQueue" className="group block w-[116px] shrink-0 min-[390px]:w-[138px] sm:w-[154px]">
-            <BrandLogo className="transition-transform duration-300 group-hover:scale-[1.02]" />
+            <BrandLogo />
           </Link>
 
           {/* Nav Desktop */}
