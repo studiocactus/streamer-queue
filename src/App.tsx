@@ -58,6 +58,7 @@ import StreamerPage from '@/pages/StreamerPage'
 import AuthCallback from '@/pages/AuthCallback'
 import ViewerDashboard from '@/pages/dashboard/ViewerDashboard'
 import StreamerDashboard from '@/pages/dashboard/StreamerDashboard'
+import OverlayPage from '@/pages/Overlay'
 
 // Layout com header e footer
 function AppLayout() {
@@ -140,6 +141,7 @@ export default function App() {
 
         <ErrorBoundary>
         <Routes>
+          <Route path="/overlay/:slug" element={<OverlayPage />} />
           {/* Public routes with header+footer */}
           <Route element={<AppLayout />}>
             <Route path="/" element={<LandingPage />} />

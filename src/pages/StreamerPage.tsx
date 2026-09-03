@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Tv2, ThumbsUp, Send, Filter, Clock,
-  Trophy, History, Play, ExternalLink, AlertCircle, Link as LinkIcon
+  Trophy, History, Play, ExternalLink, AlertCircle, Link as LinkIcon, Share2, Copy
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { updateSeoContent } from '@/components/Seo'
@@ -17,6 +17,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input, Textarea, Select } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonSuggestion } from '@/components/ui/Skeleton'
+import { QRCode } from '@/components/ui/QRCode'
 import { formatRelativeDate, categoryLabel, cn } from '@/lib/utils'
 import type { Suggestion, SuggestionCategory } from '@/types'
 
@@ -282,6 +283,7 @@ export default function StreamerPage() {
   const [tab, setTab] = useState<TabType>('all')
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [suggestOpen, setSuggestOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(8)
   const { user } = useAuthStore()
 
@@ -309,6 +311,35 @@ export default function StreamerPage() {
       return
     }
     setSuggestOpen(true)
+  }
+
+  const channelUrl = `${window.location.origin}/${streamer?.slug ?? slug ?? ''}`
+  const handleShare = async () => {
+    if (!streamer) return
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${streamer.channel_name} no WatchQueue`,
+          text: `Participe da fila de ${streamer.channel_name}: sugira e vote no próximo conteúdo da live.`,
+          url: channelUrl,
+        })
+      } else {
+        await navigator.clipboard.writeText(channelUrl)
+        toast.success('Link do canal copiado.')
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      toast.error('Não foi possível compartilhar agora.')
+    }
+  }
+
+  const handleCopyChannelLink = async () => {
+    try {
+      await navigator.clipboard.writeText(channelUrl)
+      toast.success('Link copiado.')
+    } catch {
+      toast.error('Não foi possível copiar o link.')
+    }
   }
 
   if (streamerLoading) {
@@ -443,7 +474,7 @@ export default function StreamerPage() {
             </div>
           </div>
 
-          <div className="grid w-full grid-cols-2 gap-2 pb-2 sm:w-[22rem]">
+          <div className="grid w-full grid-cols-2 gap-2 pb-2 sm:w-[30rem] sm:grid-cols-3">
             {streamer.twitch_broadcaster_id && (
               <a
                 href={`https://twitch.tv/${streamer.slug}`}
@@ -456,6 +487,9 @@ export default function StreamerPage() {
                 </Button>
               </a>
             )}
+            <Button className="w-full" variant="outline" size="sm" onClick={() => setShareOpen(true)} leftIcon={<Share2 size={14} />}>
+              Compartilhar
+            </Button>
             <Button
               className="w-full"
               onClick={handleSuggest}
@@ -466,6 +500,23 @@ export default function StreamerPage() {
             </Button>
           </div>
         </div>
+
+        <Modal
+          isOpen={shareOpen}
+          onClose={() => setShareOpen(false)}
+          title={`Compartilhar ${streamer.channel_name}`}
+          description="Mostre o QR Code na live ou envie o link para a comunidade."
+          size="sm"
+        >
+          <div className="flex flex-col items-center text-center">
+            <QRCode value={channelUrl} size={220} className="h-auto w-full max-w-[220px]" />
+            <p className="mt-4 break-all text-xs text-content-muted">{channelUrl}</p>
+            <div className="mt-5 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+              <Button onClick={handleShare} leftIcon={<Share2 size={15} />}>Compartilhar</Button>
+              <Button variant="secondary" onClick={handleCopyChannelLink} leftIcon={<Copy size={15} />}>Copiar link</Button>
+            </div>
+          </div>
+        </Modal>
 
         {/* Bio */}
         {streamer.bio && (

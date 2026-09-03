@@ -28,7 +28,8 @@ export function Seo() {
   const { pathname } = useLocation()
 
   useEffect(() => {
-    const isPrivate = pathname.startsWith('/dashboard') || pathname.startsWith('/auth/')
+    const isOverlay = pathname.startsWith('/overlay/')
+    const isPrivate = pathname.startsWith('/dashboard') || pathname.startsWith('/auth/') || isOverlay
     const isExplore = pathname === '/explore'
     const isHome = pathname === '/'
     const isLegacyStreamer = pathname.startsWith('/streamer/')
@@ -48,7 +49,7 @@ export function Seo() {
         ? 'Veja a fila do canal, envie sugestões e vote no que a comunidade quer assistir.'
         : DEFAULT_DESCRIPTION
 
-    const canonicalPath = isPrivate ? '/' : pathname
+    const canonicalPath = isOverlay ? pathname.replace(/^\/overlay/, '') : isPrivate ? '/' : pathname
     const canonicalUrl = new URL(canonicalPath, SITE_URL).toString()
     let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
     if (!canonical) {
