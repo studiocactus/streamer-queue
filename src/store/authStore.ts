@@ -32,7 +32,11 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
       isInitialized: false,
 
-      setUser: (user) => set({ user }),
+      setUser: (user) => set((state) => (
+        state.user?.id !== user?.id
+          ? { user, profile: null, streamerProfile: null }
+          : { user }
+      )),
       setSession: (session) => set({ session }),
       setProfile: (profile) => set({ profile }),
       setStreamerProfile: (streamer) => set({ streamerProfile: streamer }),
@@ -58,30 +62,30 @@ export const useAuthStore = create<AuthState>()(
 
       refreshProfile: async () => {
         const { user } = get()
-        if (!user) return
+        if (!user) {
+          set({ profile: null, streamerProfile: null })
+          return
+        }
 
         try {
-          // Buscar perfil
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single()
+          const requestedUserId = user.id
+          const [{ data: profile }, { data: streamer }] = await Promise.all([
+            supabase.from('profiles').select('*').eq('id', requestedUserId).single(),
+            supabase
+              .from('streamers')
+              .select('*, settings:streamer_settings(*)')
+              .eq('owner_id', requestedUserId)
+              .eq('is_active', true)
+              .maybeSingle(),
+          ])
 
-          if (profile) {
-            set({ profile })
-          }
-
-          // Buscar perfil de streamer (se for dono de algum canal)
-          let { data: streamer } = await supabase
-            .from('streamers')
-            .select('*, settings:streamer_settings(*)')
-            .eq('owner_id', user.id)
-            .maybeSingle()
+          // Ignore a response if another account entered while these requests
+          // were running. This prevents permissions from leaking between sessions.
+          if (get().user?.id !== requestedUserId) return
 
           // A existência de um canal define o papel de streamer.
           // Novos usuários entram somente como viewers; canais são liberados por convite.
-          set({ streamerProfile: streamer })
+          set({ profile: profile ?? null, streamerProfile: streamer ?? null })
         } catch (error) {
           console.error('Erro ao carregar perfil:', error)
         }

@@ -92,7 +92,7 @@ function LegacyStreamerRedirect() {
 }
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
-  const { initialize, setSession, setUser } = useAuthStore()
+  const { initialize, setSession, setUser, user, refreshProfile } = useAuthStore()
 
   useEffect(() => {
     // Inicializar estado de autenticação
@@ -117,6 +117,33 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe()
   }, [initialize, setSession, setUser])
+
+  useEffect(() => {
+    if (!user?.id) return
+
+    const refreshAccess = () => void refreshProfile()
+    const channel = supabase
+      .channel(`account-role-${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'streamers',
+        filter: `owner_id=eq.${user.id}`,
+      }, refreshAccess)
+      .subscribe()
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refreshAccess()
+    }
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    window.addEventListener('focus', refreshAccess)
+
+    return () => {
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+      window.removeEventListener('focus', refreshAccess)
+      void supabase.removeChannel(channel)
+    }
+  }, [user?.id, refreshProfile])
 
   return <>{children}</>
 }

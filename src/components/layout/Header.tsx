@@ -119,7 +119,7 @@ export function Header() {
                   isActive('/dashboard/streamer') ? 'text-content-primary' : 'text-content-secondary'
                 )}
               >
-                Painel do streamer
+                Gerenciar meu canal
               </Link>
             )}
           </div>
@@ -231,7 +231,7 @@ export function Header() {
                             className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-content-secondary hover:text-content-primary hover:bg-bg-tertiary transition-colors"
                           >
                             <LayoutDashboard size={16} />
-                            Painel do streamer
+                            Gerenciar meu canal
                           </Link>
                           <Link
                             to={streamerPath(streamerProfile.slug)}
@@ -308,7 +308,7 @@ export function Header() {
                 className="flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-content-secondary transition-colors hover:bg-bg-secondary hover:text-content-primary"
               >
                 <Tv2 size={16} />
-                Painel do streamer
+                Gerenciar meu canal
               </Link>
             )}
           </div>
