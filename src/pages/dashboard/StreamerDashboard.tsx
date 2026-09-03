@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw, Copy, MonitorPlay, ArrowUp, ArrowDown, SkipForward
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw, Copy, MonitorPlay, ArrowUp, ArrowDown, SkipForward, CirclePause
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -371,6 +371,7 @@ export default function StreamerDashboard() {
   const [platformStreamers, setPlatformStreamers] = useState<PlatformStreamer[]>([])
   const [promotingViewerId, setPromotingViewerId] = useState<string | null>(null)
   const [queueActionLoading, setQueueActionLoading] = useState(false)
+  const [suggestionsToggleLoading, setSuggestionsToggleLoading] = useState(false)
 
   const {
     suggestions, watching, queued, pending, approved,
@@ -817,6 +818,26 @@ export default function StreamerDashboard() {
     }
   }
 
+  const handleToggleSuggestions = async () => {
+    if (!streamerProfile || suggestionsToggleLoading) return
+    const acceptingSuggestions = streamerProfile.accepting_suggestions !== false
+    setSuggestionsToggleLoading(true)
+    try {
+      const { error } = await supabase
+        .from('streamers')
+        .update({ accepting_suggestions: !acceptingSuggestions })
+        .eq('id', streamerProfile.id)
+      if (error) throw error
+      await refreshProfile()
+      toast.success(acceptingSuggestions ? 'Novas sugestões foram pausadas.' : 'Novas sugestões estão abertas!')
+    } catch (error) {
+      console.error(error)
+      toast.error('Não foi possível alterar o recebimento de sugestões.')
+    } finally {
+      setSuggestionsToggleLoading(false)
+    }
+  }
+
   const handleReject = async (id: string, reason: string) => {
     await updateStatus(id, 'rejected', { rejection_reason: reason || undefined })
     toast.success('Sugestão rejeitada.')
@@ -1027,6 +1048,16 @@ export default function StreamerDashboard() {
           </div>
 
           <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:justify-end">
+            <Button
+              className="w-full sm:w-auto"
+              size="sm"
+              variant={streamerProfile.accepting_suggestions !== false ? 'secondary' : 'outline'}
+              loading={suggestionsToggleLoading}
+              onClick={handleToggleSuggestions}
+              leftIcon={streamerProfile.accepting_suggestions !== false ? <CheckCircle size={15} /> : <CirclePause size={15} />}
+            >
+              {streamerProfile.accepting_suggestions !== false ? 'Sugestões abertas' : 'Sugestões pausadas'}
+            </Button>
             <Button className="w-full sm:w-auto" size="sm" onClick={() => setAddContentOpen(true)} leftIcon={<Send size={15} />}>
               Adicionar ideia
             </Button>

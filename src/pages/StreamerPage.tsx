@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Tv2, ThumbsUp, Send, Filter, Clock,
-  Trophy, History, Play, ExternalLink, AlertCircle, Link as LinkIcon, Share2, Copy
+  Trophy, History, Play, ExternalLink, AlertCircle, Link as LinkIcon, Share2, Copy, CirclePause, CheckCircle
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { updateSeoContent } from '@/components/Seo'
@@ -306,6 +306,10 @@ export default function StreamerPage() {
   }, [streamer])
 
   const handleSuggest = () => {
+    if (streamer?.accepting_suggestions === false) {
+      toast.info('As sugestões estão pausadas neste momento.')
+      return
+    }
     if (!user) {
       toast.error('Faça login com a Twitch para sugerir conteúdo.')
       return
@@ -462,6 +466,15 @@ export default function StreamerPage() {
                   <span className={cn('h-1.5 w-1.5 rounded-full', streamer.is_live ? 'bg-red-500 animate-pulse' : 'bg-content-muted')} />
                   {streamer.is_live ? 'Online' : 'Offline'}
                 </span>
+                <span className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+                  streamer.accepting_suggestions !== false
+                    ? 'border-status-completed/30 bg-status-completed/10 text-status-completed'
+                    : 'border-amber-400/30 bg-amber-400/10 text-amber-300'
+                )}>
+                  {streamer.accepting_suggestions !== false ? <CheckCircle size={11} /> : <CirclePause size={11} />}
+                  {streamer.accepting_suggestions !== false ? 'Sugestões abertas' : 'Sugestões pausadas'}
+                </span>
               </div>
               {watching && (
                 <div className="flex items-center gap-1.5 mt-1">
@@ -494,9 +507,10 @@ export default function StreamerPage() {
               className="w-full"
               onClick={handleSuggest}
               size="sm"
-              leftIcon={<Send size={14} />}
+              disabled={streamer.accepting_suggestions === false}
+              leftIcon={streamer.accepting_suggestions !== false ? <Send size={14} /> : <CirclePause size={14} />}
             >
-              Sugerir conteúdo
+              {streamer.accepting_suggestions !== false ? 'Sugerir conteúdo' : 'Sugestões pausadas'}
             </Button>
           </div>
         </div>
@@ -640,8 +654,8 @@ export default function StreamerPage() {
                 </p>
               </div>
               {(suggestions.length === 0 || tab === 'queue') && (
-                <Button size="md" onClick={handleSuggest} leftIcon={<Send size={16} />}>
-                  Sugerir conteúdo agora
+                <Button size="md" disabled={streamer.accepting_suggestions === false} onClick={handleSuggest} leftIcon={streamer.accepting_suggestions !== false ? <Send size={16} /> : <CirclePause size={16} />}>
+                  {streamer.accepting_suggestions !== false ? 'Sugerir conteúdo agora' : 'Sugestões pausadas'}
                 </Button>
               )}
             </div>

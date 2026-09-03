@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   const event = payload.event as ChatMessageEvent
   const { data: streamer } = await admin
     .from('streamers')
-    .select('id, is_active, settings:streamer_settings(chat_command, chat_command_enabled)')
+    .select('id, is_active, accepting_suggestions, settings:streamer_settings(chat_command, chat_command_enabled)')
     .eq('twitch_broadcaster_id', event.broadcaster_user_id)
     .maybeSingle()
 
@@ -91,6 +91,11 @@ Deno.serve(async (req) => {
     return new Response(null, { status: 204 })
   }
   if (command !== settings.chat_command.toLowerCase()) return new Response(null, { status: 204 })
+  if (streamer.accepting_suggestions === false && event.chatter_user_id !== event.broadcaster_user_id) {
+    await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
+      `@${event.chatter_user_login}, as sugestões estão pausadas neste momento.`)
+    return new Response(null, { status: 204 })
+  }
   if (!title) {
     await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
       `@${event.chatter_user_login}, use ${settings.chat_command} seguido do nome do conteúdo.`)

@@ -38,6 +38,7 @@ export interface Streamer {
   social_links?: Record<string, string>
   is_public: boolean
   is_active: boolean
+  accepting_suggestions?: boolean
   is_live?: boolean
   live_started_at?: string | null
   live_status_updated_at?: string | null
