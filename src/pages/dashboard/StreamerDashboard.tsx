@@ -22,6 +22,7 @@ import { cn, formatRelativeDate, categoryLabel } from '@/lib/utils'
 import type { Suggestion, SuggestionStatus, SuggestionCategory } from '@/types'
 import { getTwitchChatConnectUrl } from '@/lib/supabase'
 import { streamerPath } from '@/lib/routes'
+import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
 
 // ============================================================
 // Kanban Column
@@ -47,16 +48,7 @@ function SuggestionThumbnail({ suggestion }: { suggestion: Suggestion }) {
 
   return (
     <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-bg-secondary">
-      {thumbnail ? (
-        <img
-          src={thumbnail}
-          alt={`Thumbnail de ${suggestion.title}`}
-          className="h-full w-full object-cover"
-          loading="lazy"
-        />
-      ) : (
-        <Image size={18} className="text-content-muted" />
-      )}
+      <ContentThumbnail src={thumbnail} alt={`Thumbnail de ${suggestion.title}`} fallback={<Image size={18} className="text-content-muted" />} />
     </div>
   )
 }

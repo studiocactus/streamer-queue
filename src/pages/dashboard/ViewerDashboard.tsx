@@ -17,6 +17,7 @@ import type { Suggestion } from '@/types'
 import { streamerPath } from '@/lib/routes'
 import { useContentThumbnail } from '@/hooks/useContentThumbnail'
 import { normalizeProfileLink } from '@/lib/profileLinks'
+import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
 
 interface ViewerStats {
   suggestions: Suggestion[]
@@ -32,7 +33,7 @@ function ViewerSuggestionRow({ suggestion }: { suggestion: Suggestion }) {
   return (
     <div className="flex items-center gap-3 p-3 transition-colors hover:bg-bg-tertiary/50 sm:gap-4 sm:p-4">
       <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-bg-tertiary">
-        {thumbnail ? <img src={thumbnail} alt={`Thumbnail de ${suggestion.title}`} className="h-full w-full object-cover" loading="lazy" /> : <Tv2 size={19} className="text-content-muted" />}
+        <ContentThumbnail src={thumbnail} alt={`Thumbnail de ${suggestion.title}`} fallback={<Tv2 size={19} className="text-content-muted" />} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-medium text-content-primary">{suggestion.title}</p><Badge variant="status" status={suggestion.status} size="sm" /><Badge variant="category" category={suggestion.category as never} size="sm" /></div>

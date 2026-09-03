@@ -18,6 +18,7 @@ import { Input, Textarea, Select } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonSuggestion } from '@/components/ui/Skeleton'
 import { QRCode } from '@/components/ui/QRCode'
+import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
 import { formatRelativeDate, categoryLabel, cn } from '@/lib/utils'
 import type { Suggestion, SuggestionCategory } from '@/types'
 
@@ -76,11 +77,7 @@ function SuggestionCard({
     <div className="flex gap-3 rounded-2xl border border-border bg-bg-secondary p-3 transition-colors hover:border-border-light sm:gap-4 sm:p-4">
       {/* Thumbnail sempre quadrada */}
       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-bg-tertiary flex items-center justify-center">
-        {thumbnail ? (
-          <img src={thumbnail} alt={`Thumbnail de ${suggestion.title}`} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <Tv2 size={20} className="text-content-muted" />
-        )}
+        <ContentThumbnail src={thumbnail} alt={`Thumbnail de ${suggestion.title}`} fallback={<Tv2 size={20} className="text-content-muted" />} />
       </div>
 
       <div className="flex-1 min-w-0">
