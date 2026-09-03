@@ -20,7 +20,7 @@ export function Header() {
   const notificationRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const isLanding = location.pathname === '/'
-  const { notifications, unreadCount, markAllRead, removeOne, removeAll } = useStreamerNotifications(streamerProfile?.id, user?.id)
+  const { notifications, unreadCount, markAllRead, markOneRead, removeOne, removeAll } = useStreamerNotifications(streamerProfile?.id, user?.id)
   const { theme, toggleTheme } = useTheme()
 
   const isActive = (path: string) => location.pathname === path
@@ -113,7 +113,7 @@ export function Header() {
                 Minhas sugestões
               </Link>
             )}
-            {user && (
+            {streamerProfile && (
               <Link
                 to="/dashboard/streamer"
                 className={cn(
@@ -137,7 +137,7 @@ export function Header() {
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            {streamerProfile && (
+            {user && (
               <div ref={notificationRef} className="relative">
                 <button
                   type="button"
@@ -148,7 +148,6 @@ export function Header() {
                     const nextOpen = !notificationsOpen
                     setNotificationsOpen(nextOpen)
                     setUserMenuOpen(false)
-                    if (nextOpen) markAllRead()
                   }}
                   className="focus-ring relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-bg-secondary text-content-secondary transition-colors hover:text-content-primary"
                 >
@@ -166,19 +165,27 @@ export function Header() {
                         <p className="text-sm font-semibold text-content-primary">Notificações</p>
                         <p className="text-[11px] text-content-muted">Atualizações importantes para você</p>
                       </div>
-                      {notifications.length > 0 && (
-                        <button type="button" onClick={removeAll} className="text-xs font-medium text-status-rejected hover:underline">
-                          Limpar todas
-                        </button>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {unreadCount > 0 && (
+                          <button type="button" onClick={markAllRead} className="text-xs font-medium text-brand-purple hover:underline">
+                            Marcar lidas
+                          </button>
+                        )}
+                        {notifications.length > 0 && (
+                          <button type="button" onClick={removeAll} className="text-xs font-medium text-status-rejected hover:underline">
+                            Limpar
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
                         <p className="px-4 py-8 text-center text-sm text-content-muted">Nenhuma notificação.</p>
                       ) : notifications.map((notification) => (
-                        <div key={notification.id} className="flex gap-3 border-b border-border/70 px-4 py-3 last:border-0 hover:bg-bg-tertiary/60">
-                          <Link to={notification.target_path ?? (notification.user_id ? '/dashboard' : '/dashboard/streamer')} onClick={() => setNotificationsOpen(false)} className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-content-primary">{notification.title}</p>
+                        <div key={notification.id} className={cn('flex gap-3 border-b border-border/70 px-4 py-3 last:border-0 hover:bg-bg-tertiary/60', !notification.read_at && 'bg-brand-purple/[0.055]')}>
+                          <span aria-hidden="true" className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', notification.read_at ? 'bg-transparent' : 'bg-brand-purple')} />
+                          <Link to={notification.target_path ?? (notification.user_id ? '/dashboard' : '/dashboard/streamer')} onClick={() => { markOneRead(notification.id); setNotificationsOpen(false) }} className="min-w-0 flex-1">
+                            <p className={cn('truncate text-sm text-content-primary', notification.read_at ? 'font-medium' : 'font-semibold')}>{notification.title}</p>
                             <p className="mt-0.5 line-clamp-2 text-xs text-content-secondary">{notification.message}</p>
                             <p className="mt-1 text-[10px] text-content-muted">{formatRelativeDate(notification.created_at)}</p>
                           </Link>

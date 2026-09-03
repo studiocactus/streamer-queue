@@ -52,7 +52,11 @@ export function useStreamerNotifications(streamerId?: string, userId?: string) {
               detail: { streamerId: notification.streamer_id },
             }))
           }
-          toast.info(notification.title, { description: notification.message })
+          // New suggestions can arrive quickly during a live. Keep them in the
+          // inbox without covering the interface with repeated pop-ups.
+          if (notification.type !== 'new_suggestion') {
+            toast.info(notification.title, { description: notification.message })
+          }
         } else {
           refresh()
         }
@@ -78,6 +82,18 @@ export function useStreamerNotifications(streamerId?: string, userId?: string) {
     query = streamerId && userId ? query.or(`streamer_id.eq.${streamerId},user_id.eq.${userId}`) : streamerId ? query.eq('streamer_id', streamerId) : query.eq('user_id', userId!)
     await query
   }, [notifications, streamerId, userId])
+
+  const markOneRead = useCallback(async (id: string) => {
+    const notification = notifications.find((item) => item.id === id)
+    if (!notification || notification.read_at) return
+    const readAt = new Date().toISOString()
+    setNotifications((current) => current.map((item) => item.id === id ? { ...item, read_at: readAt } : item))
+    const { error } = await supabase.from('streamer_notifications').update({ read_at: readAt }).eq('id', id)
+    if (error) {
+      toast.error('Não foi possível marcar a notificação como lida.')
+      refresh()
+    }
+  }, [notifications, refresh])
 
   const removeOne = useCallback(async (id: string) => {
     setNotifications((current) => current.filter((item) => item.id !== id))
@@ -105,6 +121,7 @@ export function useStreamerNotifications(streamerId?: string, userId?: string) {
     notifications,
     unreadCount: notifications.filter((item) => !item.read_at).length,
     markAllRead,
+    markOneRead,
     removeOne,
     removeAll,
   }

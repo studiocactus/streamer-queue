@@ -20,6 +20,12 @@ test('header exposes an accessible theme toggle and light palette', async () => 
   assert.match(styles, /--color-bg-primary: 248 247 251/)
 })
 
+test('viewer navigation never exposes streamer management without an active channel', async () => {
+  const source = await readFile(new URL('../src/components/layout/Header.tsx', import.meta.url), 'utf8')
+  assert.doesNotMatch(source, /\{user && \(\s*<Link\s+to="\/dashboard\/streamer"/)
+  assert.match(source, /\{streamerProfile && \(\s*<Link\s+to="\/dashboard\/streamer"/)
+})
+
 test('streamer can run a safe integration check without sending chat messages', async () => {
   const dashboard = await readFile(new URL('../src/pages/dashboard/StreamerDashboard.tsx', import.meta.url), 'utf8')
   assert.match(dashboard, /Testar integração/)
@@ -36,4 +42,12 @@ test('streamer onboarding stays short, optional and local to the device', async 
   assert.match(dashboard, /watchqueue:onboarding:/)
   assert.match(dashboard, /watchqueue:overlay-copied:/)
   assert.match(dashboard, /onboardingReadyCount} de 3/)
+})
+
+test('footer credits idea and development without hiding authorship', async () => {
+  const source = await readFile(new URL('../src/components/layout/Footer.tsx', import.meta.url), 'utf8')
+  assert.match(source, /Ideia e Desenvolvimento/)
+  assert.match(source, /Thenees/)
+  assert.match(source, /Gatomipia/)
+  assert.match(source, /border-brand-purple\/25/)
 })

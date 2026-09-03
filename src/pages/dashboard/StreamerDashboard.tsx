@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw, Copy, MonitorPlay, ArrowUp, ArrowDown, SkipForward, CirclePause, Radio
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw, Copy, MonitorPlay, ArrowUp, ArrowDown, SkipForward, CirclePause, Radio, MoreHorizontal
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -110,30 +110,29 @@ function KanbanColumn({
               </div>
 
               {/* Ações por status */}
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 lg:shrink-0 lg:justify-end">
+              <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">
                 {status === 'pending' && (
                   <>
                     <button
                       onClick={() => onAction?.(s.id, 'approved')}
-                      className="text-xs text-status-completed hover:underline"
+                      className="inline-flex min-h-10 items-center justify-center rounded-full border border-status-completed/25 bg-status-completed/10 px-3 text-xs font-semibold text-status-completed transition-colors hover:bg-status-completed/15"
                     >
-                      Aprovar
+                      <CheckCircle size={13} className="mr-1.5" /> Aprovar
                     </button>
-                    <span className="text-content-muted text-xs">·</span>
                     <button
                       onClick={() => onReject?.(s)}
-                      className="text-xs text-status-rejected hover:underline"
+                      className="inline-flex min-h-10 items-center justify-center rounded-full border border-status-rejected/20 px-3 text-xs font-semibold text-status-rejected transition-colors hover:bg-status-rejected/10"
                     >
-                      Rejeitar
+                      <XCircle size={13} className="mr-1.5" /> Rejeitar
                     </button>
                   </>
                 )}
                 {status === 'approved' && (
                   <button
                     onClick={() => onAction?.(s.id, 'queued')}
-                    className="text-xs text-brand-purple hover:underline"
+                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-brand-purple/25 bg-brand-purple/10 px-3 text-xs font-semibold text-brand-purple transition-colors hover:bg-brand-purple/15"
                   >
-                    Adicionar à fila
+                    <List size={13} className="mr-1.5" /> Adicionar à fila
                   </button>
                 )}
                 {status === 'queued' && (
@@ -143,33 +142,38 @@ function KanbanColumn({
                       <span className="min-w-6 text-center text-[11px] font-semibold text-content-secondary">{index + 1}</span>
                       <button type="button" disabled={index === suggestions.length - 1} onClick={() => onMove?.(s.id, index + 2)} className="rounded-md p-1.5 text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Descer ${s.title} na fila`}><ArrowDown size={13} /></button>
                     </div>
-                    <button onClick={() => onWatch?.(s.id)} className="text-xs text-status-watching hover:underline">Assistir agora</button>
+                    <button onClick={() => onWatch?.(s.id)} className="inline-flex min-h-10 items-center justify-center rounded-full border border-status-watching/25 bg-status-watching/10 px-3 text-xs font-semibold text-status-watching transition-colors hover:bg-status-watching/15"><Play size={13} className="mr-1.5" /> Assistir agora</button>
                   </>
                 )}
                 {status === 'watching' && (
                   <button
                     onClick={() => onAction?.(s.id, 'completed')}
-                    className="text-xs text-status-completed hover:underline"
+                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-status-completed/25 bg-status-completed/10 px-3 text-xs font-semibold text-status-completed transition-colors hover:bg-status-completed/15"
                   >
-                    Marcar concluído
+                    <CheckCircle size={13} className="mr-1.5" /> Marcar concluído
                   </button>
                 )}
-                {s.submitted_by && s.submitted_by !== ownerId && <button
-                  onClick={() => onBan?.(s)}
-                  className="inline-flex items-center gap-1 text-xs text-content-muted transition-colors hover:text-status-rejected"
-                  aria-label={`Banir ${s.submitter?.display_name ?? 'usuário'}`}
-                >
-                  <ShieldBan size={11} />
-                  Banir usuário
-                </button>}
-                <button
-                  onClick={() => onDelete?.(s)}
-                  className="inline-flex items-center gap-1 text-xs text-content-muted transition-colors hover:text-status-rejected"
-                  aria-label={`Excluir ${s.title}`}
-                >
-                  <Trash2 size={11} />
-                  Excluir
-                </button>
+                <details className="group/actions w-full sm:w-auto">
+                  <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full px-3 text-xs font-medium text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary [&::-webkit-details-marker]:hidden">
+                    <MoreHorizontal size={14} /> Mais ações
+                  </summary>
+                  <div className="mt-1 flex flex-wrap gap-2 rounded-xl border border-border bg-bg-secondary p-2 sm:justify-end">
+                    {s.submitted_by && s.submitted_by !== ownerId && <button
+                      onClick={() => onBan?.(s)}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs text-content-muted transition-colors hover:bg-status-rejected/10 hover:text-status-rejected"
+                      aria-label={`Banir ${s.submitter?.display_name ?? 'usuário'}`}
+                    >
+                      <ShieldBan size={12} /> Banir usuário
+                    </button>}
+                    <button
+                      onClick={() => onDelete?.(s)}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs text-content-muted transition-colors hover:bg-status-rejected/10 hover:text-status-rejected"
+                      aria-label={`Excluir ${s.title}`}
+                    >
+                      <Trash2 size={12} /> Excluir
+                    </button>
+                  </div>
+                </details>
               </div>
             </div>
           ))
@@ -313,6 +317,10 @@ const CHAT_TEMPLATE_LABELS: Record<ChatEventType, string> = {
   streamer_added: 'Conteúdo adicionado pelo streamer',
 }
 
+const DEFAULT_CHAT_TEMPLATE_ENABLED = Object.fromEntries(
+  (Object.keys(DEFAULT_CHAT_TEMPLATES) as ChatEventType[]).map((eventType) => [eventType, true]),
+) as Record<ChatEventType, boolean>
+
 const PROFILE_THEME_OPTIONS = [
   { id: 'neon', name: 'Neon', description: 'Roxo vibrante e tecnológico', preview: 'from-violet-600 via-purple-900 to-slate-950' },
   { id: 'aurora', name: 'Aurora', description: 'Verde, turquesa e luminoso', preview: 'from-teal-400 via-cyan-900 to-slate-950' },
@@ -355,6 +363,7 @@ export default function StreamerDashboard() {
   const [chatCommandEnabled, setChatCommandEnabled] = useState(true)
   const [chatCommandSaving, setChatCommandSaving] = useState(false)
   const [chatTemplates, setChatTemplates] = useState<Record<ChatEventType, string>>(DEFAULT_CHAT_TEMPLATES)
+  const [chatTemplateEnabled, setChatTemplateEnabled] = useState<Record<ChatEventType, boolean>>(DEFAULT_CHAT_TEMPLATE_ENABLED)
   const [templatesSaving, setTemplatesSaving] = useState(false)
   const [moderators, setModerators] = useState<ModeratorMember[]>([])
   const [selectedModeratorId, setSelectedModeratorId] = useState('')
@@ -626,13 +635,20 @@ export default function StreamerDashboard() {
     const loadTemplates = async () => {
       const { data } = await supabase
         .from('chat_message_templates')
-        .select('event_type, template')
+        .select('event_type, template, enabled')
         .eq('streamer_id', streamerProfile.id)
       if (!data) return
       setChatTemplates((current) => {
         const next = { ...current }
         data.forEach((row) => {
           if (row.event_type in next) next[row.event_type as ChatEventType] = row.template
+        })
+        return next
+      })
+      setChatTemplateEnabled((current) => {
+        const next = { ...current }
+        data.forEach((row) => {
+          if (row.event_type in next) next[row.event_type as ChatEventType] = row.enabled !== false
         })
         return next
       })
@@ -670,14 +686,17 @@ export default function StreamerDashboard() {
           template += ' — sugestão de {viewer}'
           viewerVariableAdded = true
         }
-        return { streamer_id: streamerProfile.id, event_type: eventType, template, enabled: true }
+        return { streamer_id: streamerProfile.id, event_type: eventType, template, enabled: chatTemplateEnabled[eventType] }
       })
       const { error } = await supabase
         .from('chat_message_templates')
         .upsert(rows as never, { onConflict: 'streamer_id,event_type' })
       if (error) throw error
       setChatTemplates(Object.fromEntries(rows.map((row) => [row.event_type, row.template])) as Record<ChatEventType, string>)
-      toast.success(viewerVariableAdded
+      const enabledCount = rows.filter((row) => row.enabled).length
+      toast.success(enabledCount === 0
+        ? 'Mensagens automáticas desativadas.'
+        : viewerVariableAdded
         ? 'Mensagens salvas. A variável {viewer} foi mantida automaticamente.'
         : 'Mensagens automáticas salvas.')
     } catch (error) {
@@ -1190,19 +1209,56 @@ export default function StreamerDashboard() {
             <Button className="w-full sm:w-auto" size="sm" onClick={() => setAddContentOpen(true)} leftIcon={<Send size={15} />}>
               Adicionar ideia
             </Button>
-          {/* Assistindo agora */}
-          {(watching || queued.length > 0) && (
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-xl border border-status-watching/20 bg-status-watching/10 px-3 py-2 sm:px-4">
-              <span className="live-dot" />
-              <span className="text-sm text-content-primary font-medium">{watching ? 'Assistindo:' : 'Fila pronta:'}</span>
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-status-watching">{watching?.title ?? queued[0]?.title}</span>
-              <Button size="sm" loading={queueActionLoading} onClick={handleAdvanceQueue} leftIcon={<SkipForward size={14} />}>
-                {watching ? 'Concluir e iniciar próximo' : 'Iniciar próximo'}
-              </Button>
-            </div>
-          )}
           </div>
         </div>
+
+        {(streamerProfile.is_live || watching || queued.length > 0) && (
+          <Card glow={streamerProfile.is_live} aria-label="Central da live">
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn('h-2 w-2 rounded-full', streamerProfile.is_live ? 'animate-pulse bg-red-500' : 'bg-brand-purple')} />
+                    <h2 className="text-base font-semibold text-content-primary">
+                      {streamerProfile.is_live ? 'Central da live' : 'Prepare a próxima live'}
+                    </h2>
+                  </div>
+                  <p className="mt-1 text-xs text-content-muted">
+                    {pending.length} {pending.length === 1 ? 'sugestão aguarda' : 'sugestões aguardam'} sua análise
+                  </p>
+                </div>
+                <Badge variant={streamerProfile.accepting_suggestions !== false ? 'green' : 'default'} size="sm">
+                  {streamerProfile.accepting_suggestions !== false ? 'Recebendo sugestões' : 'Sugestões pausadas'}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 min-[520px]:grid-cols-2">
+                <div className="min-w-0 rounded-xl border border-border bg-bg-tertiary/60 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Agora</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-content-primary">{watching?.title ?? 'Nenhum conteúdo iniciado'}</p>
+                </div>
+                <div className="min-w-0 rounded-xl border border-border bg-bg-tertiary/60 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Próximo</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-content-primary">{queued[0]?.title ?? 'A fila está vazia'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 min-[520px]:grid-cols-3">
+                {(watching || queued.length > 0) && (
+                  <Button className="w-full" size="sm" loading={queueActionLoading} onClick={handleAdvanceQueue} leftIcon={<SkipForward size={14} />}>
+                    {watching ? 'Concluir e avançar' : 'Iniciar próximo'}
+                  </Button>
+                )}
+                <Link className="block" to={streamerPath(streamerProfile.slug)} target="_blank" rel="noopener noreferrer">
+                  <Button className="w-full" size="sm" variant="secondary" leftIcon={<ExternalLink size={14} />}>Página do canal</Button>
+                </Link>
+                <a className="block" href={`/overlay/${streamerProfile.slug}`} target="_blank" rel="noopener noreferrer">
+                  <Button className="w-full" size="sm" variant="outline" leftIcon={<MonitorPlay size={14} />}>Ver overlay</Button>
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {!chatStatusLoading && !onboardingHidden && (
           <Card glow>
@@ -1610,29 +1666,45 @@ export default function StreamerDashboard() {
               </div>
 
               <div className="space-y-2">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="text-sm font-medium text-content-primary">Mensagens automáticas</p>
-                    <p className="text-xs text-content-muted">Use {'{viewer}'} para o usuário e {'{titulo}'} para o conteúdo. O nome do viewer é obrigatório.</p>
+                    <p className="text-xs text-content-muted">Escolha exatamente quais momentos o bot anuncia. Você também pode desligar todas.</p>
                   </div>
-                  <Button size="sm" loading={templatesSaving} onClick={handleSaveChatTemplates} leftIcon={<Save size={14} />}>
-                    Salvar mensagens
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setChatTemplateEnabled(DEFAULT_CHAT_TEMPLATE_ENABLED)}>Ativar todas</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setChatTemplateEnabled(Object.fromEntries((Object.keys(DEFAULT_CHAT_TEMPLATES) as ChatEventType[]).map((eventType) => [eventType, false])) as Record<ChatEventType, boolean>)}>Desativar todas</Button>
+                    <Button size="sm" loading={templatesSaving} onClick={handleSaveChatTemplates} leftIcon={<Save size={14} />}>
+                      Salvar escolhas
+                    </Button>
+                  </div>
                 </div>
+                <p className="text-[11px] text-content-muted">
+                  {(Object.values(chatTemplateEnabled).filter(Boolean).length)} de {Object.keys(chatTemplateEnabled).length} mensagens ativas. Use {'{viewer}'} para o usuário e {'{titulo}'} para o conteúdo.
+                </p>
                 {(Object.keys(CHAT_TEMPLATE_LABELS) as ChatEventType[]).map((eventType) => (
-                  <div key={eventType} className="space-y-2 rounded-xl border border-border bg-bg-tertiary p-3">
+                  <div key={eventType} className={cn('space-y-2 rounded-xl border p-3 transition-colors', chatTemplateEnabled[eventType] ? 'border-border bg-bg-tertiary' : 'border-border/70 bg-bg-tertiary/40')}>
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs font-semibold text-content-primary">{CHAT_TEMPLATE_LABELS[eventType]}</p>
-                      <span className="text-[11px] text-content-muted">Enviada no chat da Twitch</span>
+                      <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-2 text-xs font-medium text-content-secondary">
+                        <input
+                          type="checkbox"
+                          checked={chatTemplateEnabled[eventType]}
+                          onChange={(event) => setChatTemplateEnabled((current) => ({ ...current, [eventType]: event.target.checked }))}
+                          className="h-4 w-4 accent-brand-purple"
+                        />
+                        {chatTemplateEnabled[eventType] ? 'Enviar' : 'Não enviar'}
+                      </label>
                     </div>
                     <Textarea
                       aria-label={`Mensagem de ${CHAT_TEMPLATE_LABELS[eventType]}`}
                       value={chatTemplates[eventType]}
                       onChange={(event) => setChatTemplates((current) => ({ ...current, [eventType]: event.target.value }))}
+                      disabled={!chatTemplateEnabled[eventType]}
                       rows={2}
                       maxLength={450}
                     />
-                    <p className="text-[11px] text-content-muted">Prévia: {chatTemplates[eventType].split('{viewer}').join(profile?.display_name ?? 'Viewer').split('{titulo}').join('Nome do conteúdo').split('{categoria}').join('Reacts')}</p>
+                    <p className="text-[11px] text-content-muted">{chatTemplateEnabled[eventType] ? `Prévia: ${chatTemplates[eventType].split('{viewer}').join(profile?.display_name ?? 'Viewer').split('{titulo}').join('Nome do conteúdo').split('{categoria}').join('Reacts')}` : 'O bot ficará em silêncio neste momento.'}</p>
                   </div>
                 ))}
               </div>

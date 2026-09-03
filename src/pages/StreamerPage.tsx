@@ -93,6 +93,11 @@ function SuggestionCard({
 
         <div className="flex items-center gap-2 mb-2">
           <Badge variant="category" category={suggestion.category as SuggestionCategory} size="sm" />
+          {suggestion.status === 'queued' && suggestion.queue_position != null && (
+            <span className="rounded-full border border-brand-purple/20 bg-brand-purple/10 px-2 py-0.5 text-xs font-semibold text-brand-purple">
+              #{suggestion.queue_position} na fila
+            </span>
+          )}
           {(suggestion.submitter || suggestion.chat_display_name) && (
             <span className="text-xs text-content-muted">por{' '}
               {suggestion.submitter?.twitch_login ? <Link to={`/viewer/${suggestion.submitter.twitch_login}`} className="text-content-secondary hover:text-brand-purple hover:underline">{suggestion.submitter.display_name}</Link> : <span className="text-content-secondary">{suggestion.chat_display_name}</span>}
@@ -345,6 +350,12 @@ export default function StreamerPage() {
     }
   }
 
+  const handleViewQueue = () => {
+    setCategoryFilter('all')
+    setTab('queue')
+    window.setTimeout(() => document.getElementById('channel-suggestions')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
+
   if (streamerLoading) {
     return (
       <div className="min-h-screen">
@@ -556,21 +567,45 @@ export default function StreamerPage() {
           </div>
         )}
 
-        {/* Assistindo agora */}
-        {watching && (
-          <div className="bg-status-watching/5 border border-status-watching/20 rounded-2xl p-4 mb-8 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-status-watching/10 flex items-center justify-center shrink-0">
-              <Play size={18} className="text-status-watching fill-status-watching" />
+        {/* Resumo simples da live e da fila */}
+        {(watching || queued.length > 0) && (
+          <section aria-live="polite" aria-label="Acontecendo no canal" className="mb-8 rounded-2xl border border-status-watching/20 bg-status-watching/5 p-4 sm:p-5">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <span className={cn('h-2 w-2 rounded-full', streamer.is_live ? 'animate-pulse bg-red-500' : 'bg-status-watching')} />
+                <h2 className="text-sm font-semibold text-content-primary">{streamer.is_live ? 'Acontecendo na live' : 'Fila preparada pelo canal'}</h2>
+              </div>
+              <span className="text-xs text-content-muted">{queued.length} {queued.length === 1 ? 'conteúdo na fila' : 'conteúdos na fila'}</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-content-muted mb-0.5">Assistindo agora</p>
-              <p className="font-semibold text-content-primary truncate">{watching.title}</p>
-              <p className="text-xs text-content-secondary">
-                {categoryLabel(watching.category as SuggestionCategory)} · sugestão de{' '}
-                <span className="font-medium">{watching.submitter?.display_name ?? watching.chat_display_name ?? 'viewer'}</span>
-              </p>
+
+            <div className="grid grid-cols-1 gap-3 min-[520px]:grid-cols-2">
+              <div className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-bg-secondary/80 p-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-watching/10">
+                  <Play size={16} className="fill-status-watching text-status-watching" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Agora</p>
+                  <p className="truncate text-sm font-semibold text-content-primary">{watching?.title ?? 'Aguardando o início'}</p>
+                </div>
+              </div>
+              <div className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-bg-secondary/80 p-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-purple/10 text-brand-purple">
+                  <span className="text-xs font-bold">#1</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Próximo</p>
+                  <p className="truncate text-sm font-semibold text-content-primary">{queued[0]?.title ?? 'A fila está vazia'}</p>
+                </div>
+              </div>
             </div>
-          </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+              <Button className="w-full" variant="secondary" size="sm" onClick={handleViewQueue} leftIcon={<Play size={14} />}>Ver fila completa</Button>
+              <Button className="w-full" size="sm" disabled={streamer.accepting_suggestions === false} onClick={handleSuggest} leftIcon={streamer.accepting_suggestions !== false ? <Send size={14} /> : <CirclePause size={14} />}>
+                {streamer.accepting_suggestions !== false ? 'Enviar uma sugestão' : 'Sugestões pausadas'}
+              </Button>
+            </div>
+          </section>
         )}
 
         {/* Filtros de categoria */}
@@ -602,7 +637,7 @@ export default function StreamerPage() {
         </div>
 
         {/* Tabs */}
-        <div role="tablist" aria-label="Visualizar sugestões" className="mobile-scroll mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border bg-bg-secondary p-1">
+        <div id="channel-suggestions" role="tablist" aria-label="Visualizar sugestões" className="mobile-scroll mb-6 flex scroll-mt-24 gap-1 overflow-x-auto rounded-xl border border-border bg-bg-secondary p-1">
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
