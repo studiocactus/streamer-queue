@@ -86,6 +86,17 @@ Deno.serve(async (req) => {
   const firstSpace = text.search(/\s/)
   const command = (firstSpace === -1 ? text : text.slice(0, firstSpace)).toLowerCase()
   const title = (firstSpace === -1 ? '' : text.slice(firstSpace + 1)).trim()
+  if (!['!fila', '!proximo', settings.chat_command.toLowerCase()].includes(command)) {
+    return new Response(null, { status: 204 })
+  }
+  const { data: commandAllowed, error: cooldownError } = await admin.rpc('claim_chat_command', {
+    p_streamer_id: streamer.id, p_twitch_user_id: event.chatter_user_id,
+  })
+  if (cooldownError) {
+    console.error('[twitch-eventsub] Failed to check command cooldown', cooldownError)
+    return new Response(null, { status: 204 })
+  }
+  if (!commandAllowed) return new Response(null, { status: 204 })
   if (command === '!fila' || command === '!proximo') {
     await answerQueueCommand(admin, streamer.id, event.broadcaster_user_id, event.chatter_user_login, command)
     return new Response(null, { status: 204 })
@@ -140,6 +151,11 @@ Deno.serve(async (req) => {
     chat_user_login: profile ? null : event.chatter_user_login,
     chat_display_name: profile ? null : event.chatter_user_name,
   }).select('id').single()
+  if (insertError?.message?.includes('SUGGESTION_ALREADY_ACTIVE')) {
+    await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
+      `@${event.chatter_user_login}, você já enviou essa sugestão e ela continua na lista. Não precisa enviar novamente.`)
+    return new Response(null, { status: 204 })
+  }
   if (insertError) throw insertError
 
   const confirmation = `@${event.chatter_user_login}, “${content.title}” foi enviado. O streamer irá revisar o conteúdo e visualizar quando puder. Usuários da plataforma têm prioridade.`

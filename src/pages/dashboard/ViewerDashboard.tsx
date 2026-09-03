@@ -24,6 +24,7 @@ interface ViewerStats {
 }
 
 function ViewerSuggestionRow({ suggestion }: { suggestion: Suggestion }) {
+  const viewerId = useAuthStore((state) => state.profile?.id)
   const thumbnail = useContentThumbnail(suggestion.source_url, suggestion.poster_url, {
     title: suggestion.title, category: suggestion.category, releaseYear: suggestion.release_year,
   })
@@ -36,6 +37,12 @@ function ViewerSuggestionRow({ suggestion }: { suggestion: Suggestion }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-medium text-content-primary">{suggestion.title}</p><Badge variant="status" status={suggestion.status} size="sm" /><Badge variant="category" category={suggestion.category as never} size="sm" /></div>
         <div className="mt-1 flex items-center gap-2">{joined.streamer && <Link to={streamerPath(joined.streamer.slug)} className="text-xs text-brand-purple hover:underline">{joined.streamer.channel_name}</Link>}<span className="text-xs text-content-muted">· {formatRelativeDate(suggestion.submitted_at)}</span></div>
+        {suggestion.status === 'rejected' && suggestion.submitted_by === viewerId && (
+          <div className="mt-3 rounded-xl border border-border bg-bg-tertiary/60 p-3 text-xs leading-relaxed text-content-secondary">
+            <p className="mb-1 font-medium text-content-primary">Retorno do canal</p>
+            <p className="whitespace-pre-line break-words">{suggestion.rejection_reason?.trim() || 'O canal não informou um motivo para esta decisão.'}</p>
+          </div>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-1 text-xs text-content-muted"><ThumbsUp size={11} />{joined.votes?.length ?? 0}</div>
     </div>
@@ -46,6 +53,8 @@ export default function ViewerDashboard() {
   const { profile, streamerProfile, refreshProfile } = useAuthStore()
   const [stats, setStats] = useState<ViewerStats>({ suggestions: [], votes_count: 0 })
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [retryLoad, setRetryLoad] = useState(0)
   const [profileEditorOpen, setProfileEditorOpen] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [viewerBio, setViewerBio] = useState(profile?.bio ?? '')
@@ -81,9 +90,17 @@ export default function ViewerDashboard() {
   }
 
   useEffect(() => {
+    const viewerId = profile?.id
+    let active = true
+    let loading = false
+    let queuedRefresh = false
+    setStats({ suggestions: [], votes_count: 0 })
+    setLoadError(false)
+    setIsLoading(true)
     const load = async () => {
-      if (!profile) return
-      setIsLoading(true)
+      if (!viewerId || !active) return
+      if (loading) { queuedRefresh = true; return }
+      loading = true
 
       try {
         const [suggestionsRes, votesRes] = await Promise.all([
@@ -94,28 +111,56 @@ export default function ViewerDashboard() {
               streamer:streamers!streamer_id(id, channel_name, slug, avatar_url),
               votes(id)
             `)
-            .eq('submitted_by', profile.id)
+            .eq('submitted_by', viewerId)
             .order('submitted_at', { ascending: false })
             .limit(20),
           supabase
             .from('votes')
             .select('id', { count: 'exact' })
-            .eq('user_id', profile.id),
+            .eq('user_id', viewerId),
         ])
-
+        if (suggestionsRes.error) throw suggestionsRes.error
+        if (votesRes.error) throw votesRes.error
+        if (!active) return
+        setLoadError(false)
         setStats({
           suggestions: (suggestionsRes.data ?? []) as unknown as Suggestion[],
           votes_count: votesRes.count ?? 0,
         })
       } catch (err) {
         console.error(err)
+        if (active) setLoadError(true)
       } finally {
-        setIsLoading(false)
+        loading = false
+        if (active) {
+          setIsLoading(false)
+          if (queuedRefresh) { queuedRefresh = false; void load() }
+        }
       }
     }
 
-    load()
-  }, [profile])
+    if (!viewerId) { setIsLoading(false); return }
+    void load()
+    const refresh = () => { void load() }
+    const refreshVisible = () => { if (document.visibilityState === 'visible') refresh() }
+    const channel = supabase.channel(`viewer-suggestions-${viewerId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'suggestions', filter: `submitted_by=eq.${viewerId}` }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes', filter: `user_id=eq.${viewerId}` }, refresh)
+      .subscribe((status) => { if (status === 'SUBSCRIBED') refresh() })
+    window.addEventListener('focus', refreshVisible)
+    window.addEventListener('online', refreshVisible)
+    document.addEventListener('visibilitychange', refreshVisible)
+    // Reconcile missed events (including deleted rows) without hiding the list.
+    const interval = window.setInterval(refreshVisible, 60000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+      window.removeEventListener('focus', refreshVisible)
+      window.removeEventListener('online', refreshVisible)
+      document.removeEventListener('visibilitychange', refreshVisible)
+      void supabase.removeChannel(channel)
+    }
+  }, [profile?.id, retryLoad])
 
   if (!profile) return null
 
@@ -210,7 +255,7 @@ export default function ViewerDashboard() {
                     <Icon size={16} className={color} />
                   </div>
                   <div>
-                    <p className="text-xl font-bold text-content-primary">{value}</p>
+                    <p className="text-xl font-bold text-content-primary">{isLoading || loadError ? '—' : value}</p>
                     <p className="text-xs text-content-muted">{label}</p>
                   </div>
                 </div>
@@ -239,6 +284,13 @@ export default function ViewerDashboard() {
               <div className="p-5 space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
               </div>
+            ) : loadError ? (
+              <EmptyState
+                icon={<Clock size={22} />}
+                title="Não foi possível atualizar suas sugestões"
+                description="Confira sua conexão e tente novamente. Isso não significa que sua lista está vazia."
+                action={<Button size="sm" onClick={() => setRetryLoad((value) => value + 1)}>Tentar novamente</Button>}
+              />
             ) : stats.suggestions.length === 0 ? (
               <EmptyState
                 icon={<Send size={22} />}

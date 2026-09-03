@@ -184,6 +184,10 @@ export function useSuggestions(streamerId: string | undefined) {
           status: 'pending',
         } as AnyRecord).select('id').single()
 
+        if (insertError?.message?.includes('SUGGESTION_ALREADY_ACTIVE')) {
+          toast.info('Você já enviou essa sugestão.', { description: 'Ela continua na lista deste canal. Não precisa enviar novamente.' })
+          return false
+        }
         if (insertError) throw insertError
 
         // Confirma o processamento no backend para não perder o envio ao fechar o modal.
