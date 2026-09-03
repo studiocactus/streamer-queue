@@ -16,6 +16,7 @@ import { formatRelativeDate } from '@/lib/utils'
 import type { Suggestion } from '@/types'
 import { streamerPath } from '@/lib/routes'
 import { useContentThumbnail } from '@/hooks/useContentThumbnail'
+import { normalizeProfileLink } from '@/lib/profileLinks'
 
 interface ViewerStats {
   suggestions: Suggestion[]
@@ -61,7 +62,9 @@ export default function ViewerDashboard() {
     try {
       const normalizedLinks: Record<string, string> = Object.fromEntries(Object.entries(viewerSocialLinks).map(([network, value]): [string, string] => {
         const trimmed = value.trim()
-        return [network, trimmed && !/^https?:\/\//i.test(trimmed) ? `https://${trimmed}` : trimmed]
+        const normalized = normalizeProfileLink(trimmed)
+        if (trimmed && !normalized) throw new Error('Link inválido')
+        return [network, normalized ?? '']
       }).filter(([, value]) => Boolean(value)))
       if (Object.values(normalizedLinks).some((value) => !/^https?:\/\//i.test(value))) throw new Error('Link inválido')
       const { error } = await supabase.from('profiles').update({ bio: viewerBio.trim() || null, social_links: normalizedLinks }).eq('id', profile.id)

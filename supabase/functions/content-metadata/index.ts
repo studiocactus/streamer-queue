@@ -1,3 +1,5 @@
+import { selectCatalogMatch } from '../_shared/catalog-match.ts'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -21,10 +23,8 @@ Deno.serve(async (req) => {
       })
       if (!response.ok) throw new Error(`Catalog returned ${response.status}`)
       const metadata = await response.json() as { d?: Array<{ l?: string; y?: number; qid?: string; i?: { imageUrl?: string } }> }
-      const allowedKinds = category === 'series' ? new Set(['tvSeries', 'tvMiniSeries']) : category === 'movie' ? new Set(['movie', 'tvMovie']) : null
-      const candidates = metadata.d?.slice(0, 3) ?? []
-      const match = candidates.find((item) => item.i?.imageUrl && (!allowedKinds || allowedKinds.has(item.qid ?? '')))
-        ?? candidates.find((item) => item.i?.imageUrl)
+      const match = selectCatalogMatch(metadata.d ?? [], cleanTitle, category,
+        Number.isInteger(release_year) ? release_year : undefined)
       return new Response(JSON.stringify({
         title: match?.l ?? cleanTitle,
         release_year: match?.y ?? release_year ?? null,
