@@ -677,7 +677,9 @@ export default function StreamerDashboard() {
         },
       })
       if (chatError || chatResult?.status !== 'sent') {
-        toast.warning('Conteúdo adicionado, mas a mensagem não chegou à Twitch.')
+        toast.warning('Conteúdo adicionado. A mensagem para a Twitch ficou na fila.', {
+          description: 'O WatchQueue tentará enviar novamente automaticamente.',
+        })
       } else {
         toast.success('Conteúdo adicionado e anunciado no chat.')
       }

@@ -1,3 +1,5 @@
 [functions.twitch-eventsub]
 verify_jwt = false
 
+[functions.chat-delivery-worker]
+verify_jwt = false

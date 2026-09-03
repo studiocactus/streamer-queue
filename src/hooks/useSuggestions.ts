@@ -199,8 +199,8 @@ export function useSuggestions(streamerId: string | undefined) {
         })
         if (chatError || chatResult?.status !== 'sent') {
           console.error('Erro ao notificar chat:', chatError ?? chatResult)
-          toast.warning('Sugestão salva, mas a mensagem não chegou à Twitch.', {
-            description: 'O streamer deve reconectar as mensagens na aba Twitch.',
+          toast.warning('Sugestão salva. A mensagem para a Twitch ficou na fila.', {
+            description: 'O WatchQueue tentará enviar novamente automaticamente.',
           })
         }
 
@@ -288,8 +288,8 @@ export function useSuggestions(streamerId: string | undefined) {
           }
           if (!chatDelivered) {
             console.error('Erro ao notificar chat:', lastChatError)
-            toast.warning('Status atualizado, mas a mensagem não chegou à Twitch.', {
-              description: 'Reconecte a integração na aba Twitch e tente novamente.',
+            toast.warning('Status atualizado. A mensagem para a Twitch ficou na fila.', {
+              description: 'O WatchQueue tentará enviar novamente automaticamente.',
             })
           }
         })()
