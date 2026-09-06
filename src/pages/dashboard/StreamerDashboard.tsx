@@ -1014,7 +1014,7 @@ export default function StreamerDashboard() {
       toast.success('Canal excluído com sucesso.', {
         description: 'O usuário foi rebaixado para viewer.'
       })
-      void loadPlatformData()
+      void loadPlatformViewers()
     } catch (err) {
       console.error(err)
       toast.error('Erro ao rebaixar streamer')
