@@ -129,10 +129,29 @@ export interface Database {
           permissions?: string[]
         }
       }
-      platform_admins: {
+          platform_admins: {
         Row: { user_id: string; created_at: string }
         Insert: { user_id: string; created_at?: string }
         Update: Record<string, never>
+      }
+      platform_feedback: {
+        Row: {
+          id: string
+          user_id: string | null
+          message: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          message: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          status?: string
+        }
       }
       suggestions: {
         Row: {
@@ -157,6 +176,7 @@ export interface Database {
           chat_user_id: string | null
           chat_user_login: string | null
           chat_display_name: string | null
+          is_favorite: boolean
         }
         Insert: {
           id?: string
@@ -180,6 +200,7 @@ export interface Database {
           chat_user_id?: string | null
           chat_user_login?: string | null
           chat_display_name?: string | null
+          is_favorite?: boolean
         }
         Update: {
           category?: string
@@ -199,6 +220,7 @@ export interface Database {
           chat_user_id?: string | null
           chat_user_login?: string | null
           chat_display_name?: string | null
+          is_favorite?: boolean
         }
       }
       votes: {
@@ -427,6 +449,16 @@ export interface Database {
           social_links: Record<string, string>
           moderated_channels: { channel_name: string; slug: string; avatar_url: string | null }[]
         }[]
+      }
+      admin_demote_streamer_account: {
+        Args: {
+          target_streamer_id: string
+        }
+        Returns: undefined
+      }
+      demote_own_streamer_account: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: Record<string, never>

@@ -94,6 +94,7 @@ export interface Suggestion {
   chat_user_id: string | null
   chat_user_login: string | null
   chat_display_name: string | null
+  is_favorite: boolean
   // Joined
   submitter?: Profile
   vote_count?: number

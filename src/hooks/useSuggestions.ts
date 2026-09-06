@@ -301,6 +301,25 @@ export function useSuggestions(streamerId: string | undefined) {
     [fetchSuggestions, streamerId, suggestions]
   )
 
+  const toggleFavorite = useCallback(
+    async (suggestionId: string, isFavorite: boolean) => {
+      const { error: updateError } = await supabase
+        .from('suggestions')
+        .update({ is_favorite: isFavorite } as AnyRecord)
+        .eq('id', suggestionId)
+
+      if (updateError) {
+        toast.error('Erro ao atualizar favorito')
+        throw updateError
+      }
+
+      setSuggestions((current) => current.map((item) => (
+        item.id === suggestionId ? { ...item, is_favorite: isFavorite } : item
+      )))
+    },
+    []
+  )
+
   const remove = useCallback(
     async (suggestionId: string) => {
       const { error: deleteError } = await supabase
@@ -351,7 +370,7 @@ export function useSuggestions(streamerId: string | undefined) {
     suggestions, watching, queued, pending,
     completed, rejected, approved,
     isLoading, error,
-    vote, submit, updateStatus, remove, checkDuplicates,
+    vote, submit, updateStatus, toggleFavorite, remove, checkDuplicates,
     refetch: fetchSuggestions,
   }
 }

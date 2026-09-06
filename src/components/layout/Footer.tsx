@@ -1,8 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, ArrowUpRight, Code2, Coffee, Gauge, Heart, LayoutDashboard, Radio, Search, Sparkles, Tv2, Users } from 'lucide-react'
+import { Activity, ArrowUpRight, Code2, Coffee, Gauge, Heart, LayoutDashboard, Radio, Search, Sparkles, Tv2, Users, MessageSquare } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { BrandLogo } from '@/components/ui/BrandLogo'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { useAuthStore } from '@/store/authStore'
 
 interface PlatformStats {
   usersCount: number | null
@@ -14,6 +18,10 @@ const supportUrl = 'https://livepix.gg/thenees'
 
 export function Footer() {
   const [stats, setStats] = useState<PlatformStats>({ usersCount: null, streamersCount: null, platformStatus: null })
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { user } = useAuthStore()
 
   useEffect(() => {
     let active = true
@@ -50,6 +58,31 @@ export function Footer() {
     loadStats()
     return () => { active = false }
   }, [])
+
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackMessage.trim()) return
+    
+    setIsSubmitting(true)
+    try {
+      const { error } = await supabase.from('platform_feedback').insert({
+        user_id: user?.id,
+        message: feedbackMessage.trim(),
+      })
+
+      if (error) throw error
+
+      toast.success('Feedback enviado!', {
+        description: 'Obrigado por ajudar a melhorar a plataforma.'
+      })
+      setIsFeedbackOpen(false)
+      setFeedbackMessage('')
+    } catch (error) {
+      console.error(error)
+      toast.error('Erro ao enviar feedback')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const formatTotal = (value: number | null) => value === null ? '—' : new Intl.NumberFormat('pt-BR').format(value)
 
@@ -100,6 +133,20 @@ export function Footer() {
             <ul className="space-y-3">
               <li><a href="https://twitch.tv" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-content-secondary transition-colors hover:text-content-primary"><Radio size={14} /> Twitch <ArrowUpRight size={12} /></a></li>
               <li><span className="flex items-center gap-2 text-sm text-content-secondary"><Gauge size={14} /> Status em tempo real</span></li>
+              <li>
+                <button
+                  onClick={() => {
+                    if (!user) {
+                      toast.error('Faça login para enviar feedback')
+                      return
+                    }
+                    setIsFeedbackOpen(true)
+                  }}
+                  className="flex items-center gap-2 text-sm text-content-secondary transition-colors hover:text-content-primary"
+                >
+                  <MessageSquare size={14} /> Sugestões p/ Plataforma
+                </button>
+              </li>
             </ul>
 
             <div className="mt-6">
@@ -109,7 +156,7 @@ export function Footer() {
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <span className="rounded-full border border-brand-purple/20 bg-bg-primary/55 px-3 py-1.5 text-sm font-semibold text-content-primary">Thenees</span>
-                <span className="rounded-full border border-brand-purple/20 bg-bg-primary/55 px-3 py-1.5 text-sm font-semibold text-content-primary">Gatomipia</span>
+                <span className="rounded-full border border-brand-purple/20 bg-bg-primary/55 px-3 py-1.5 text-sm font-semibold text-content-primary">Gatomiopia</span>
               </div>
             </div>
           </div>
@@ -120,6 +167,42 @@ export function Footer() {
           <p className="text-xs text-content-muted">© {new Date().getFullYear()} WatchQueue. Todos os direitos reservados.</p>
         </div>
       </div>
+
+      <Modal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        title="Sugestões para a Plataforma"
+        description="Encontrou um bug ou tem uma ideia para melhorar o WatchQueue? Conta pra gente!"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsFeedbackOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleFeedbackSubmit}
+              disabled={!feedbackMessage.trim() || isSubmitting}
+            >
+              {isSubmitting ? 'Enviando...' : 'Enviar Feedback'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="feedback-message" className="mb-1.5 block text-sm font-medium text-content-primary">
+              Sua mensagem
+            </label>
+            <textarea
+              id="feedback-message"
+              value={feedbackMessage}
+              onChange={(e) => setFeedbackMessage(e.target.value)}
+              placeholder="Descreva sua sugestão ou problema..."
+              className="min-h-[120px] w-full rounded-xl border border-border bg-bg-tertiary px-3 py-2 text-sm text-content-primary placeholder-content-muted outline-none transition-all focus:border-brand-purple focus:ring-1 focus:ring-brand-purple"
+            />
+          </div>
+        </div>
+      </Modal>
     </footer>
   )
 }

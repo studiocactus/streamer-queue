@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
   LayoutGrid, List, Settings, Users, Zap, ExternalLink,
-  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw, Copy, MonitorPlay, ArrowUp, ArrowDown, SkipForward, CirclePause, Radio, MoreHorizontal
+  ChevronRight, AlertCircle, Trash2, Image, Save, Link as LinkIcon, Upload, UserPlus, UserMinus, ShieldBan, Crown, Palette, Loader2, RefreshCw, Copy, MonitorPlay, ArrowUp, ArrowDown, SkipForward, CirclePause, Radio, MoreHorizontal, Star
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
@@ -37,6 +37,7 @@ interface KanbanColumnProps {
   onWatch?: (id: string) => void
   onMove?: (id: string, position: number) => void
   onDelete?: (suggestion: Suggestion) => void
+  onToggleFavorite?: (id: string, isFavorite: boolean) => void
   onBan?: (suggestion: Suggestion) => void
   ownerId?: string
 }
@@ -63,6 +64,7 @@ function KanbanColumn({
   onWatch,
   onMove,
   onDelete,
+  onToggleFavorite,
   onBan,
   ownerId,
 }: KanbanColumnProps) {
@@ -111,6 +113,13 @@ function KanbanColumn({
 
               {/* Ações por status */}
               <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">
+                <button
+                  onClick={() => onToggleFavorite?.(s.id, !s.is_favorite)}
+                  className={cn("p-2 text-content-muted hover:text-amber-400 transition-colors", s.is_favorite && "text-amber-400")}
+                  title={s.is_favorite ? "Remover dos favoritos" : "Favoritar"}
+                >
+                  <Star size={16} fill={s.is_favorite ? "currentColor" : "none"} />
+                </button>
                 {status === 'pending' && (
                   <>
                     <button
@@ -340,6 +349,7 @@ export default function StreamerDashboard() {
     streamerProfile?.social_links ?? { instagram: '', youtube: '', tiktok: '', discord: '' }
   )
   const [settingsSaving, setSettingsSaving] = useState(false)
+  const [adminDemotingId, setAdminDemotingId] = useState<string | null>(null)
   const [coverUploading, setCoverUploading] = useState(false)
   const [socialSavingNetwork, setSocialSavingNetwork] = useState<string | null>(null)
   const [chatConnected, setChatConnected] = useState(false)
@@ -387,7 +397,7 @@ export default function StreamerDashboard() {
 
   const {
     suggestions, watching, queued, pending, approved,
-    completed, rejected, isLoading, updateStatus, remove, refetch
+    completed, rejected, isLoading, updateStatus, toggleFavorite, remove, refetch
   } = useSuggestions(streamerProfile?.id)
 
   useEffect(() => {
@@ -987,9 +997,29 @@ export default function StreamerDashboard() {
       toast.success('Informações do canal atualizadas.')
     } catch (error) {
       console.error(error)
-      toast.error('Não foi possível salvar as informações do canal.')
+      toast.error('Erro ao salvar as configurações')
     } finally {
       setSettingsSaving(false)
+    }
+  }
+
+  const handleAdminDemoteStreamer = async (targetId: string) => {
+    setAdminDemotingId(targetId)
+    try {
+      const { error } = await supabase.rpc('admin_demote_streamer_account', {
+        target_streamer_id: targetId
+      })
+      if (error) throw error
+      
+      toast.success('Canal excluído com sucesso.', {
+        description: 'O usuário foi rebaixado para viewer.'
+      })
+      void loadPlatformData()
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao rebaixar streamer')
+    } finally {
+      setAdminDemotingId(null)
     }
   }
 
@@ -1353,6 +1383,7 @@ export default function StreamerDashboard() {
                 color="bg-status-pending"
                 onAction={handleAction}
                 onReject={setRejectTarget}
+                onToggleFavorite={toggleFavorite}
                 onDelete={handleDelete}
                 onBan={setBanTarget}
                 ownerId={streamerProfile.owner_id}
@@ -1364,6 +1395,7 @@ export default function StreamerDashboard() {
                 color="bg-status-approved"
                 onAction={handleAction}
                 onReject={setRejectTarget}
+                onToggleFavorite={toggleFavorite}
                 onDelete={handleDelete}
                 onBan={setBanTarget}
                 ownerId={streamerProfile.owner_id}
@@ -1377,6 +1409,7 @@ export default function StreamerDashboard() {
                 onReject={setRejectTarget}
                 onWatch={handleWatch}
                 onMove={handleMoveQueueItem}
+                onToggleFavorite={toggleFavorite}
                 onDelete={handleDelete}
                 onBan={setBanTarget}
                 ownerId={streamerProfile.owner_id}
@@ -1388,6 +1421,7 @@ export default function StreamerDashboard() {
                 color="bg-status-watching"
                 onAction={handleAction}
                 onReject={setRejectTarget}
+                onToggleFavorite={toggleFavorite}
                 onDelete={handleDelete}
                 onBan={setBanTarget}
                 ownerId={streamerProfile.owner_id}
@@ -1399,6 +1433,7 @@ export default function StreamerDashboard() {
                 color="bg-status-completed"
                 onAction={handleAction}
                 onReject={setRejectTarget}
+                onToggleFavorite={toggleFavorite}
                 onDelete={handleDelete}
                 onBan={setBanTarget}
                 ownerId={streamerProfile.owner_id}
@@ -1410,6 +1445,7 @@ export default function StreamerDashboard() {
                 color="bg-status-rejected"
                 onAction={handleAction}
                 onReject={setRejectTarget}
+                onToggleFavorite={toggleFavorite}
                 onDelete={handleDelete}
                 onBan={setBanTarget}
                 ownerId={streamerProfile.owner_id}
@@ -1748,6 +1784,18 @@ export default function StreamerDashboard() {
                       >
                         <ExternalLink size={15} />
                       </Link>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Tem certeza que deseja rebaixar ${channel.channel_name} para viewer? Todos os dados do canal serão perdidos.`)) {
+                            handleAdminDemoteStreamer(channel.id)
+                          }
+                        }}
+                        disabled={adminDemotingId === channel.id}
+                        className="rounded-lg p-2 text-status-rejected hover:bg-status-rejected/10 disabled:opacity-50"
+                        title="Rebaixar para Viewer"
+                      >
+                        {adminDemotingId === channel.id ? <Loader2 size={15} className="animate-spin" /> : <UserMinus size={15} />}
+                      </button>
                     </div>
                   ))}
                 </div>
