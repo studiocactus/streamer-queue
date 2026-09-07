@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown, Bell, Trash2, Moon, Sun } from 'lucide-react'
+import { Tv2, Search, LayoutDashboard, LogOut, Menu, X, ChevronDown, Bell, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { getTwitchAuthUrl } from '@/lib/supabase'
@@ -10,6 +10,7 @@ import { useStreamerNotifications } from '@/hooks/useStreamerNotifications'
 import { normalizeStreamerReturnPath, streamerPath } from '@/lib/routes'
 import { BrandLogo } from '@/components/ui/BrandLogo'
 import { useTheme } from '@/hooks/useTheme'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 export function Header() {
   const { user, profile, streamerProfile, logout } = useAuthStore()
@@ -21,7 +22,7 @@ export function Header() {
   const location = useLocation()
   const isLanding = location.pathname === '/'
   const { notifications, unreadCount, markAllRead, markOneRead, removeOne, removeAll } = useStreamerNotifications(streamerProfile?.id, user?.id)
-  const { theme, toggleTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
 
   const isActive = (path: string) => location.pathname === path
 
@@ -128,15 +129,7 @@ export function Header() {
 
           {/* Auth */}
           <div className="flex items-center gap-1 sm:gap-3">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
-              title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
-              className="focus-ring flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-bg-secondary text-content-secondary transition-colors hover:border-border-light hover:text-content-primary"
-            >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+            <ThemeToggle theme={theme} onThemeChange={setTheme} />
             {user && (
               <div ref={notificationRef} className="relative">
                 <button
