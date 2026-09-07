@@ -66,6 +66,14 @@ async function announceEndedFilmPolls() {
     .lte('ends_at', new Date().toISOString()).is('result_announced_at', null).limit(10)
   if (error) throw error
   for (const poll of polls ?? []) {
+    // The vote window ends at its scheduled time. If Twitch rejects the result
+    // message, a future worker run keeps retrying because result_announced_at
+    // remains null, while the streamer is free to schedule the next poll.
+    const { error: endError } = await admin.from('film_polls')
+      .update({ status: 'ended' })
+      .eq('id', poll.id)
+      .neq('status', 'ended')
+    if (endError) throw endError
     const options = (poll.film_poll_options ?? []).map((option: Record<string, unknown>) => ({
       ...option, votes: Number((option.film_poll_votes as { count?: number }[])?.[0]?.count ?? 0),
     })).sort((a: { votes: number; title: string }, b: { votes: number; title: string }) => b.votes - a.votes || a.title.localeCompare(b.title))
@@ -79,7 +87,7 @@ async function announceEndedFilmPolls() {
     const message = poll.result_message_template.replaceAll('{titulo}', winner.title).replaceAll('{votos}', String(winner.votes)).slice(0, 500)
     const response = await fetch('https://api.twitch.tv/helix/chat/messages', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Client-Id': TWITCH_CLIENT_ID, 'Content-Type': 'application/json' }, body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message }) })
     const body = await response.json().catch(() => null)
-    if (response.ok && body?.data?.[0]?.is_sent) await admin.from('film_polls').update({ status: 'ended', result_announced_at: new Date().toISOString() }).eq('id', poll.id).is('result_announced_at', null)
+    if (response.ok && body?.data?.[0]?.is_sent) await admin.from('film_polls').update({ result_announced_at: new Date().toISOString() }).eq('id', poll.id).is('result_announced_at', null)
   }
 }
 
