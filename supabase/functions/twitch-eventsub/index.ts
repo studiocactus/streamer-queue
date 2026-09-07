@@ -144,6 +144,11 @@ async function processNotification(
       await sendChatMessage(admin, streamer.id, event.broadcaster_user_id, message)
       return new Response(null, { status: 204 })
     }
+    const { data: incremented, error: counterError } = await admin.rpc('increment_chat_command_counter', {
+      p_streamer_id: streamer.id, p_command: command,
+    })
+    if (counterError) throw counterError
+    if (incremented) return new Response(null, { status: 204 })
     const { data: customCommand, error: customCommandError } = await admin.from('chat_custom_commands')
       .select('response').eq('streamer_id', streamer.id).eq('command', command).eq('enabled', true).maybeSingle()
     if (customCommandError) throw customCommandError
