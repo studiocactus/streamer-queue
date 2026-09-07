@@ -145,7 +145,7 @@ async function processNotification(
       return new Response(null, { status: 204 })
     }
     const { data: personalCounter, error: counterError } = await admin.rpc('increment_personal_chat_counter', {
-      p_streamer_id: streamer.id, p_command: command, p_target: title,
+      p_streamer_id: streamer.id, p_command: command, p_target: event.chatter_user_login,
     })
     if (counterError) throw counterError
     const counter = personalCounter?.[0]
