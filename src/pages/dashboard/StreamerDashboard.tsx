@@ -22,6 +22,7 @@ import { cn, formatRelativeDate, categoryLabel } from '@/lib/utils'
 import type { Suggestion, SuggestionStatus, SuggestionCategory, Streamer } from '@/types'
 import { getTwitchChatConnectUrl } from '@/lib/supabase'
 import { streamerPath } from '@/lib/routes'
+import { PlatformFeedback } from '@/components/PlatformFeedback'
 import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
 
 // ============================================================
@@ -114,6 +115,7 @@ function KanbanColumn({
               {/* Ações por status */}
               <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">
                 <button
+                  aria-pressed={s.is_favorite}
                   onClick={() => onToggleFavorite?.(s.id, !s.is_favorite)}
                   className={cn("p-2 text-content-muted hover:text-amber-400 transition-colors", s.is_favorite && "text-amber-400")}
                   title={s.is_favorite ? "Remover dos favoritos" : "Favoritar"}
@@ -279,7 +281,7 @@ function RejectModal({
 // ============================================================
 // Dashboard do Streamer
 // ============================================================
-type DashTab = 'kanban' | 'settings' | 'moderators' | 'twitch' | 'platform'
+type DashTab = 'favorites' | 'feedback' | 'kanban' | 'settings' | 'moderators' | 'twitch' | 'platform'
 type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
 type ModeratorMember = {
   id: string
@@ -340,6 +342,7 @@ const PROFILE_THEME_OPTIONS = [
 export default function StreamerDashboard() {
   const { streamerProfile, profile, refreshProfile, setStreamerProfile } = useAuthStore()
   const [activeTab, setActiveTab] = useState<DashTab>('kanban')
+  const [reusingFavorite, setReusingFavorite] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<Suggestion | null>(null)
   const [channelName, setChannelName] = useState(streamerProfile?.channel_name ?? '')
   const [bio, setBio] = useState(streamerProfile?.bio ?? '')
@@ -1130,6 +1133,8 @@ export default function StreamerDashboard() {
 
   const tabs: { id: DashTab; label: string; icon: typeof LayoutGrid }[] = [
     { id: 'kanban', label: 'Lista de Sugestões', icon: LayoutGrid },
+    { id: 'favorites', label: 'Favoritos', icon: Star },
+    ...(isPlatformAdmin ? [{ id: 'feedback' as DashTab, label: 'Melhorias recebidas', icon: Send }] : []),
     { id: 'moderators', label: 'Moderadores', icon: Users },
     { id: 'twitch', label: 'Twitch', icon: Zap },
     { id: 'settings', label: 'Configurações', icon: Settings },
@@ -1748,6 +1753,29 @@ export default function StreamerDashboard() {
           </Card>
         )}
 
+        {activeTab === 'feedback' && isPlatformAdmin && <PlatformFeedback />}
+        {activeTab === 'favorites' && (
+          <Card>
+            <CardHeader><div><h2 className="font-semibold text-content-primary">Sugestões favoritas</h2>
+              <p className="mt-1 text-sm text-content-secondary">Seus conteúdos salvos, mesmo depois de concluídos. Adicione à fila para usar novamente.</p></div></CardHeader>
+            <CardContent>
+              {suggestions.filter(item => item.is_favorite).length === 0 ? (
+                <p className="text-sm text-content-muted">Clique na estrela de uma sugestão para salvá-la aqui.</p>
+              ) : <div className="space-y-3">{suggestions.filter(item => item.is_favorite).map(item => (
+                <div key={item.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-4">
+                  <SuggestionThumbnail suggestion={item} />
+                  <p className="min-w-0 flex-1 break-words text-sm font-semibold">{item.title}</p>
+                  <Button size="sm" loading={reusingFavorite === item.id} disabled={reusingFavorite !== null || item.status === 'queued' || item.status === 'watching'} onClick={async () => {
+                    setReusingFavorite(item.id)
+                    try { await updateStatus(item.id, 'queued'); toast.success('Favorito adicionado à fila.') } catch { /* O hook apresenta o erro. */ }
+                    finally { setReusingFavorite(null) }
+                  }}>{item.status === 'queued' ? 'Na fila' : item.status === 'watching' ? 'Assistindo' : 'Adicionar à fila'}</Button>
+                  <button aria-label={'Remover ' + item.title + ' dos favoritos'} className="p-2 text-amber-400" onClick={() => { void toggleFavorite(item.id, false).catch(() => {}) }}><Star size={18} fill="currentColor" /></button>
+                </div>
+              ))}</div>}
+            </CardContent>
+          </Card>
+        )}
         {/* Administração da plataforma */}
         {activeTab === 'platform' && isPlatformAdmin && (
           <Card>
