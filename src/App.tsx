@@ -59,6 +59,7 @@ const StreamerPage = lazy(() => import('@/pages/StreamerPage'))
 const AuthCallback = lazy(() => import('@/pages/AuthCallback'))
 const ViewerDashboard = lazy(() => import('@/pages/dashboard/ViewerDashboard'))
 const StreamerDashboard = lazy(() => import('@/pages/dashboard/StreamerDashboard'))
+const ModeratorDashboard = lazy(() => import('@/pages/dashboard/ModeratorDashboard'))
 const OverlayPage = lazy(() => import('@/pages/Overlay'))
 const ViewerProfile = lazy(() => import('@/pages/ViewerProfile'))
 
@@ -205,6 +206,10 @@ export default function App() {
                   <StreamerDashboard />
                 </ProtectedRoute>
               }
+            />
+            <Route
+              path="/dashboard/moderator/:streamerId"
+              element={<ProtectedRoute><ModeratorDashboard /></ProtectedRoute>}
             />
           </Route>
 

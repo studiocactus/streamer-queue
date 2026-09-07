@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Send, Clock, ThumbsUp, Tv2, LayoutDashboard, Plus, Search, UserRound, Pencil, Save } from 'lucide-react'
+import { Send, Clock, ThumbsUp, Tv2, LayoutDashboard, Plus, Search, UserRound, Pencil, Save, Settings, ShieldCheck } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
 import { Avatar } from '@/components/ui/Avatar'
@@ -23,6 +23,7 @@ interface ViewerStats {
   suggestions: Suggestion[]
   votes_count: number
 }
+type ModeratedChannel = { id: string; channel_name: string; slug: string; avatar_url: string | null }
 
 function ViewerSuggestionRow({ suggestion }: { suggestion: Suggestion }) {
   const viewerId = useAuthStore((state) => state.profile?.id)
@@ -60,11 +61,22 @@ export default function ViewerDashboard() {
   const [profileSaving, setProfileSaving] = useState(false)
   const [viewerBio, setViewerBio] = useState(profile?.bio ?? '')
   const [viewerSocialLinks, setViewerSocialLinks] = useState<Record<string, string>>(profile?.social_links ?? {})
+  const [moderatedChannels, setModeratedChannels] = useState<ModeratedChannel[]>([])
 
   useEffect(() => {
     setViewerBio(profile?.bio ?? '')
     setViewerSocialLinks(profile?.social_links ?? {})
   }, [profile?.bio, profile?.social_links])
+
+  useEffect(() => {
+    let active = true
+    const loadModeratedChannels = async () => {
+      const { data } = await supabase.rpc('get_my_moderated_channels')
+      if (active) setModeratedChannels((data ?? []) as ModeratedChannel[])
+    }
+    void loadModeratedChannels()
+    return () => { active = false }
+  }, [profile?.id])
 
   const handleSaveViewerProfile = async () => {
     if (!profile) return
@@ -239,6 +251,13 @@ export default function ViewerDashboard() {
               </div>
             </div>
           </div>
+        )}
+
+        {moderatedChannels.length > 0 && (
+          <Card>
+            <CardHeader><div><h2 className="flex items-center gap-2 font-semibold text-content-primary"><ShieldCheck size={17} className="text-brand-purple" />Canais que você modera</h2><p className="mt-1 text-sm text-content-secondary">Você pode alterar as configurações apenas dos canais que escolheram você como moderador.</p></div></CardHeader>
+            <CardContent className="space-y-2">{moderatedChannels.map((channel) => <div key={channel.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-bg-tertiary/45 p-3"><Avatar src={channel.avatar_url} fallback={channel.channel_name} size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-content-primary">{channel.channel_name}</p><p className="text-xs text-content-muted">@{channel.slug}</p></div><Link to={`/dashboard/moderator/${channel.id}`}><Button size="sm" variant="secondary" leftIcon={<Settings size={14} />}>Abrir configurações</Button></Link></div>)}</CardContent>
+          </Card>
         )}
 
         {/* Stats */}

@@ -753,7 +753,7 @@ export default function StreamerDashboard() {
         streamer_id: streamerProfile.id,
         user_id: selectedModeratorId,
         role: 'moderator',
-        permissions: [],
+        permissions: ['approve', 'reject', 'manage_queue', 'manage_settings'],
       } as never, { onConflict: 'streamer_id,user_id' })
       if (error) throw error
       setSelectedModeratorId('')
@@ -1445,7 +1445,7 @@ export default function StreamerDashboard() {
             <CardContent className="space-y-5">
               <div className="rounded-xl border border-border bg-bg-tertiary p-4">
                 <p className="text-sm font-medium text-content-primary">Promover um viewer</p>
-                <p className="mt-1 text-xs text-content-muted">A lista mostra viewers que já enviaram sugestões para o seu canal. As permissões serão definidas em uma próxima etapa.</p>
+                <p className="mt-1 text-xs text-content-muted">O moderador poderá operar sugestões, fila, votações e configurações apenas deste canal. Cada alteração ficará registrada para você.</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <select
                     aria-label="Viewer para promover a moderador"
@@ -1478,7 +1478,7 @@ export default function StreamerDashboard() {
                       <Avatar src={member.profile?.avatar_url} fallback={member.profile?.display_name ?? 'M'} size="sm" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-content-primary">{member.profile?.display_name ?? 'Moderador'}</p>
-                        <p className="truncate text-xs text-content-muted">@{member.profile?.twitch_login ?? 'viewer'} · permissões a definir</p>
+                        <p className="truncate text-xs text-content-muted">@{member.profile?.twitch_login ?? 'viewer'} · sugestões, fila e configurações deste canal</p>
                       </div>
                       <Button variant="ghost" size="sm" disabled={moderatorsLoading} onClick={() => handleRemoveModerator(member)} leftIcon={<UserMinus size={14} />}>
                         Remover
