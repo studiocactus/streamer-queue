@@ -116,7 +116,7 @@ async function processNotification(
   const event = payload.event as ChatMessageEvent
   const { data: streamer, error: streamerError } = await admin
     .from('streamers')
-    .select('id, is_active, accepting_suggestions, settings:streamer_settings(chat_command, chat_command_enabled)')
+    .select('id, channel_name, is_active, accepting_suggestions, settings:streamer_settings(chat_command, chat_command_enabled)')
     .eq('twitch_broadcaster_id', event.broadcaster_user_id)
     .maybeSingle()
   if (streamerError) throw streamerError
@@ -128,6 +128,12 @@ async function processNotification(
   const firstSpace = text.search(/\s/)
   const command = (firstSpace === -1 ? text : text.slice(0, firstSpace)).toLowerCase()
   const title = (firstSpace === -1 ? '' : text.slice(firstSpace + 1)).trim()
+
+  if (command === '!command' || command === '!cmd') {
+    await handleChatCommandManagement(admin, streamer.id, event, title)
+    return new Response(null, { status: 204 })
+  }
+
   if (!['!fila', '!proximo', settings.chat_command.toLowerCase()].includes(command)) {
     // Poll commands are independent from the suggestion command and are resolved atomically in Postgres.
     const { data: pollVote, error: pollVoteError } = await admin.rpc('cast_film_poll_vote', {
@@ -154,12 +160,17 @@ async function processNotification(
         .replaceAll('{target}', counter.target_display_name).replaceAll('{count}', String(counter.count)))
       return new Response(null, { status: 204 })
     }
-    const { data: customCommand, error: customCommandError } = await admin.from('chat_custom_commands')
-      .select('response').eq('streamer_id', streamer.id).eq('command', command).eq('enabled', true).maybeSingle()
+    const { data: customCommand, error: customCommandError } = await admin.rpc('claim_chat_custom_command', {
+      p_streamer_id: streamer.id, p_command: command, p_twitch_user_id: event.chatter_user_id,
+    })
     if (customCommandError) throw customCommandError
-    if (customCommand?.response) {
+    const claimedCommand = customCommand?.[0]
+    if (claimedCommand?.response) {
       await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
-        customCommand.response.replaceAll('{viewer}', `@${event.chatter_user_login}`))
+        renderChatTemplate(String(claimedCommand.response), {
+          event, messageId, channelName: streamer.channel_name, command, argumentsText: title,
+          usageCount: Number(claimedCommand.usage_count ?? 0),
+        }))
     }
     return new Response(null, { status: 204 })
   }
@@ -271,6 +282,115 @@ async function processNotification(
   if (logError) throw logError
 
   return new Response(null, { status: 204 })
+}
+
+async function handleChatCommandManagement(
+  admin: SupabaseClient,
+  streamerId: string,
+  event: ChatMessageEvent,
+  content: string,
+) {
+  const { data: isManager, error: permissionError } = await admin.rpc('is_twitch_chat_manager', {
+    p_streamer_id: streamerId,
+    p_twitch_user_id: event.chatter_user_id,
+  })
+  if (permissionError) throw permissionError
+  if (!isManager) return
+
+  const [action = '', target = '', ...responseParts] = content.trim().split(/\s+/)
+  const normalizedAction = action.toLowerCase()
+  const response = responseParts.join(' ')
+  if (!action || !target || ((normalizedAction === 'add' || normalizedAction === 'edit' || normalizedAction === 'update') && !response)) {
+    await sendChatMessage(admin, streamerId, event.broadcaster_user_id,
+      `@${event.chatter_user_login}, use !command add !nome resposta, !command edit !nome nova resposta, !command remove !nome ou !command show !nome.`)
+    return
+  }
+
+  const { data, error } = await admin.rpc('manage_chat_command_from_twitch', {
+    p_streamer_id: streamerId,
+    p_twitch_user_id: event.chatter_user_id,
+    p_action: normalizedAction,
+    p_command: target,
+    p_response: response || null,
+  })
+  if (error) throw error
+  const result = data?.[0]
+  if (result?.message) {
+    await sendChatMessage(admin, streamerId, event.broadcaster_user_id, `@${event.chatter_user_login}, ${result.message}`)
+  }
+}
+
+function renderChatTemplate(template: string, context: {
+  event: ChatMessageEvent
+  messageId: string
+  channelName: string
+  command: string
+  argumentsText: string
+  usageCount: number
+}) {
+  const args = context.argumentsText ? context.argumentsText.split(/\s+/) : []
+  const words = [context.command, ...args]
+  const displayName = context.event.chatter_user_name || context.event.chatter_user_login
+  const target = args[0]?.replace(/^@/, '') || displayName
+
+  const argumentValue = (startRaw: string, endRaw: string | undefined, fallback: string | undefined) => {
+    const start = startRaw === '' ? 0 : Number(startRaw)
+    const end = endRaw === undefined ? start : endRaw === '' ? words.length - 1 : Number(endRaw)
+    const value = Number.isFinite(start) && Number.isFinite(end) && start <= end
+      ? words.slice(start, end + 1).join(' ')
+      : ''
+    return value || fallback || ''
+  }
+
+  let output = template
+    .replaceAll('{viewer}', `@${context.event.chatter_user_login}`)
+    .replace(/\$\((\d*)(?::(\d*)?)?(?:\|([^)]*))?\)|\$\{(\d*)(?::(\d*)?)?(?:\|([^}]*))?\}/g,
+      (_match, pStart, pEnd, pFallback, bStart, bEnd, bFallback) => argumentValue(
+        pStart ?? bStart, pEnd ?? bEnd, pFallback ?? bFallback,
+      ))
+
+  const replacements: Record<string, string> = {
+    sender: displayName,
+    'sender.name': context.event.chatter_user_login,
+    'sender.twitchid': context.event.chatter_user_id,
+    source: displayName,
+    user: target,
+    'user.name': target.toLowerCase(),
+    touser: target,
+    channel: context.channelName,
+    'channel.display_name': context.channelName,
+    'channel.provider': 'twitch',
+    'channel.provider_id': context.event.broadcaster_user_id,
+    provider: 'twitch',
+    msgid: context.messageId,
+    pointsname: 'pontos',
+    count: String(context.usageCount),
+    getcount: String(context.usageCount),
+  }
+  output = output.replace(/\$\((sender(?:\.(?:name|twitchid))?|source|user(?:\.(?:name))?|touser|channel(?:\.(?:display_name|provider|provider_id))?|provider|msgid|pointsname|count|getcount)\)|\$\{(sender(?:\.(?:name|twitchid))?|source|user(?:\.(?:name))?|touser|channel(?:\.(?:display_name|provider|provider_id))?|provider|msgid|pointsname|count|getcount)\}/gi,
+    (_match, parenthesized, braced) => replacements[String(parenthesized ?? braced).toLowerCase()] ?? '')
+
+  output = output
+    .replace(/\$\((?:random)\)|\$\{(?:random)\}/gi, () => String(Math.floor(Math.random() * 100) + 1))
+    .replace(/\$\((?:random|random\.number)\.(\d+)-(\d+)\)|\$\{(?:random|random\.number)\.(\d+)-(\d+)\}/gi,
+      (_match, fromA, toA, fromB, toB) => {
+        const from = Number(fromA ?? fromB)
+        const to = Number(toA ?? toB)
+        return Number.isFinite(from) && Number.isFinite(to) && to >= from
+          ? String(Math.floor(Math.random() * (to - from + 1)) + from)
+          : ''
+      })
+    .replace(/\$\((?:queryescape|queryencode) ([^)]+)\)|\$\{(?:queryescape|queryencode) ([^}]+)\}/gi,
+      (_match, a, b) => encodeURIComponent(String(a ?? b)).replace(/%20/g, '+'))
+    .replace(/\$\((?:pathescape|pathencode) ([^)]+)\)|\$\{(?:pathescape|pathencode) ([^}]+)\}/gi,
+      (_match, a, b) => encodeURIComponent(String(a ?? b)))
+    .replace(/\$\(repeat (\d+) ([^)]+)\)|\$\{repeat (\d+) ([^}]+)\}/gi,
+      (_match, countA, textA, countB, textB) => Array.from(
+        { length: Math.min(Number(countA ?? countB), 100) },
+        () => String(textA ?? textB),
+      ).join(' '))
+
+  return output.slice(0, 500)
 }
 
 async function isValidSignature(messageId: string, timestamp: string, body: string, signature: string) {

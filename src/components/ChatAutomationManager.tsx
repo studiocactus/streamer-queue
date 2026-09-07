@@ -389,9 +389,20 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
                     <h3 id="commands-title" className="text-base font-semibold text-content-primary">Comandos</h3>
                   </div>
                   <p className="mt-1 text-sm text-content-muted">
-                    Crie respostas para comandos enviados no chat. Use <code className="rounded bg-bg-tertiary px-1.5 py-0.5 text-content-secondary">{'{viewer}'}</code> para mencionar quem acionou.
+                    Crie respostas para comandos enviados no chat. A sintaxe do StreamElements também funciona aqui.
                   </p>
                 </div>
+
+                <details className="group rounded-xl border border-border/80 bg-bg-tertiary/25 px-4 py-3">
+                  <summary className="cursor-pointer text-sm font-medium text-content-primary marker:text-brand-purple">
+                    Variáveis e comandos pelo chat
+                  </summary>
+                  <div className="mt-3 grid gap-3 text-xs leading-relaxed text-content-muted sm:grid-cols-2">
+                    <p><strong className="text-content-primary">Pessoa e argumentos:</strong> <code>{'$(sender)'}</code>, <code>{'$(user)'}</code>, <code>{'$(touser)'}</code>, <code>{'$(1)'}</code>, <code>{'$(1:)'}</code>, <code>{'$(msgid)'}</code>.</p>
+                    <p><strong className="text-content-primary">Canal e utilidades:</strong> <code>{'$(channel)'}</code>, <code>{'$(provider)'}</code>, <code>{'$(random)'}</code>, <code>{'$(count)'}</code>, <code>{'$(queryescape ...)'}</code>.</p>
+                    <p className="sm:col-span-2"><strong className="text-content-primary">Moderadores autorizados:</strong> use <code>!command add !nome resposta</code>, <code>!command edit !nome nova resposta</code>, <code>!command remove !nome</code> ou <code>!command show !nome</code>. <code>!cmd</code> é um atalho.</p>
+                  </div>
+                </details>
 
                 <div className="rounded-2xl border border-border/80 bg-bg-tertiary/30 p-4">
                   <div className="grid gap-3 lg:grid-cols-[10rem_minmax(0,1fr)_auto] lg:items-end">
