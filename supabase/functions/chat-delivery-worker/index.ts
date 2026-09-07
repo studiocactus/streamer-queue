@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
   // A poll announcement must never delay or fail the established delivery queue.
   try {
     await announceEndedFilmPolls()
+    await sendTimedMessages()
   } catch (error) {
     console.error('[chat-delivery-worker] Film poll announcement failed', error)
   }
@@ -88,6 +89,31 @@ async function announceEndedFilmPolls() {
     const response = await fetch('https://api.twitch.tv/helix/chat/messages', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Client-Id': TWITCH_CLIENT_ID, 'Content-Type': 'application/json' }, body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message }) })
     const body = await response.json().catch(() => null)
     if (response.ok && body?.data?.[0]?.is_sent) await admin.from('film_polls').update({ result_announced_at: new Date().toISOString() }).eq('id', poll.id).is('result_announced_at', null)
+  }
+}
+
+async function sendTimedMessages() {
+  const { data: timers, error } = await admin.from('chat_timed_messages').select('*').eq('enabled', true).limit(30)
+  if (error) throw error
+  for (const timer of timers ?? []) {
+    if (timer.last_sent_at && Date.now() - new Date(timer.last_sent_at).getTime() < timer.interval_minutes * 60_000) continue
+    let message = timer.message
+    if (timer.kind === 'poll_leader') {
+      const { data: poll } = await admin.from('film_polls').select('id').eq('streamer_id', timer.streamer_id).lte('starts_at', new Date().toISOString()).gt('ends_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      if (!poll) continue
+      const { data: votes } = await admin.from('film_poll_votes').select('twitch_user_id').eq('poll_id', poll.id)
+      const totals = new Map<string, number>(); for (const vote of votes ?? []) totals.set(vote.twitch_user_id, (totals.get(vote.twitch_user_id) ?? 0) + 1)
+      const leader = [...totals.entries()].sort((a, b) => b[1] - a[1])[0]
+      if (!leader) continue
+      message = message.replaceAll('{viewer}', `@${leader[0]}`).replaceAll('{votos}', String(leader[1]))
+    }
+    const { data: connection } = await admin.from('twitch_connections').select('broadcaster_id').eq('streamer_id', timer.streamer_id).maybeSingle()
+    const { data: credential } = await admin.from('twitch_chat_credentials').select('*').eq('streamer_id', timer.streamer_id).maybeSingle()
+    if (!connection?.broadcaster_id || !credential) continue
+    const token = await validAccessToken(credential, timer.streamer_id); if (!token) continue
+    const response = await fetch('https://api.twitch.tv/helix/chat/messages', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Client-Id': TWITCH_CLIENT_ID, 'Content-Type': 'application/json' }, body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message: message.slice(0, 500) }) })
+    const body = await response.json().catch(() => null)
+    if (response.ok && body?.data?.[0]?.is_sent) await admin.from('chat_timed_messages').update({ last_sent_at: new Date().toISOString() }).eq('id', timer.id)
   }
 }
 

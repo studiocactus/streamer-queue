@@ -144,6 +144,13 @@ async function processNotification(
       await sendChatMessage(admin, streamer.id, event.broadcaster_user_id, message)
       return new Response(null, { status: 204 })
     }
+    const { data: customCommand, error: customCommandError } = await admin.from('chat_custom_commands')
+      .select('response').eq('streamer_id', streamer.id).eq('command', command).eq('enabled', true).maybeSingle()
+    if (customCommandError) throw customCommandError
+    if (customCommand?.response) {
+      await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
+        customCommand.response.replaceAll('{viewer}', `@${event.chatter_user_login}`))
+    }
     return new Response(null, { status: 204 })
   }
   if (!settings.chat_command_enabled) return new Response(null, { status: 204 })

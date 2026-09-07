@@ -25,6 +25,7 @@ import { streamerPath } from '@/lib/routes'
 import { PlatformFeedback } from '@/components/PlatformFeedback'
 import { FilmPollManager } from '@/components/FilmPollManager'
 import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
+import { ChatAutomationManager } from '@/components/ChatAutomationManager'
 
 // ============================================================
 // Kanban Column
@@ -1723,6 +1724,7 @@ export default function StreamerDashboard() {
                   </div>
                 ))}
               </div>
+              <ChatAutomationManager streamerId={streamerProfile.id} />
             </CardContent>
           </Card>
         )}
