@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import {
   Bot,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   Hash,
   MessageCircle,
   Pencil,
   Plus,
+  RefreshCw,
   Sparkles,
   Trash2,
   Trophy,
@@ -40,6 +43,13 @@ interface Counter {
   cooldown_seconds: number
 }
 
+interface CounterValue {
+  target_login: string
+  target_display_name: string
+  count: number
+  updated_at: string
+}
+
 const db: any = supabase
 const DEFAULT_COUNTER_MESSAGE = '@{target}, essa é a {count}ª vez registrada.'
 
@@ -54,6 +64,9 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
   const [timers, setTimers] = useState<Timer[]>([])
   const [commands, setCommands] = useState<ChatCommand[]>([])
   const [counters, setCounters] = useState<Counter[]>([])
+  const [counterValues, setCounterValues] = useState<Record<string, CounterValue[]>>({})
+  const [expandedCounterId, setExpandedCounterId] = useState<string | null>(null)
+  const [loadingCounterValues, setLoadingCounterValues] = useState<string | null>(null)
 
   const [timerMessage, setTimerMessage] = useState('')
   const [timerMinutes, setTimerMinutes] = useState('15')
@@ -80,6 +93,32 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
   useEffect(() => {
     void loadAutomations()
   }, [streamerId])
+
+  const loadCounterValues = async (counterId: string) => {
+    setLoadingCounterValues(counterId)
+    const { data, error } = await db
+      .from('chat_command_counter_values')
+      .select('target_login, target_display_name, count, updated_at')
+      .eq('counter_id', counterId)
+      .order('count', { ascending: false })
+      .order('updated_at', { ascending: false })
+
+    setLoadingCounterValues(null)
+    if (error) {
+      toast.error('Não foi possível carregar as contagens individuais.')
+      return
+    }
+    setCounterValues((current) => ({ ...current, [counterId]: data ?? [] }))
+  }
+
+  const toggleCounterDetails = (counterId: string) => {
+    if (expandedCounterId === counterId) {
+      setExpandedCounterId(null)
+      return
+    }
+    setExpandedCounterId(counterId)
+    void loadCounterValues(counterId)
+  }
 
   const normalizeCommand = (value: string) => `!${value.trim().replace(/^!+/, '').toLowerCase()}`
 
@@ -490,6 +529,58 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
                           </span>
                         </div>
                         <p className="mt-3 text-sm text-content-secondary">{counter.response_template}</p>
+                        <div className="mt-4 border-t border-border/70 pt-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleCounterDetails(counter.id)}
+                            className="inline-flex items-center gap-2 text-xs font-medium text-brand-purple transition-colors hover:text-brand-purple-light"
+                          >
+                            {expandedCounterId === counter.id ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                            {expandedCounterId === counter.id ? 'Ocultar contagem individual' : 'Ver contagem por pessoa'}
+                          </button>
+
+                          {expandedCounterId === counter.id && (
+                            <div className="mt-3 overflow-hidden rounded-xl border border-border/80 bg-bg-tertiary/30">
+                              <div className="flex items-center justify-between border-b border-border/70 px-3 py-2.5">
+                                <div>
+                                  <p className="text-xs font-semibold text-content-primary">Ativações por pessoa</p>
+                                  <p className="mt-0.5 text-[11px] text-content-muted">Cada pessoa começa sua própria contagem ao usar {counter.command}.</p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  loading={loadingCounterValues === counter.id}
+                                  onClick={() => {
+                                    void loadAutomations()
+                                    void loadCounterValues(counter.id)
+                                  }}
+                                  leftIcon={<RefreshCw size={14} />}
+                                >
+                                  Atualizar
+                                </Button>
+                              </div>
+                              {loadingCounterValues === counter.id ? (
+                                <p className="px-3 py-4 text-sm text-content-muted">Atualizando contagens…</p>
+                              ) : (counterValues[counter.id] ?? []).length > 0 ? (
+                                <div className="divide-y divide-border/70">
+                                  {(counterValues[counter.id] ?? []).map((value, index) => (
+                                    <div key={value.target_login} className="flex items-center gap-3 px-3 py-2.5">
+                                      <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-purple/10 text-[11px] font-semibold text-brand-purple">
+                                        {index + 1}
+                                      </span>
+                                      <span className="min-w-0 flex-1 truncate text-sm text-content-primary">{value.target_display_name}</span>
+                                      <span className="rounded-full bg-bg-secondary px-2.5 py-1 text-xs font-medium text-content-secondary">
+                                        {value.count} {value.count === 1 ? 'vez' : 'vezes'}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="px-3 py-4 text-sm text-content-muted">Ainda ninguém ativou este contador.</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </article>
                     ))}
                   </div>
