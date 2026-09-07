@@ -282,7 +282,7 @@ function RejectModal({
 // ============================================================
 // Dashboard do Streamer
 // ============================================================
-type DashTab = 'favorites' | 'poll' | 'feedback' | 'kanban' | 'settings' | 'moderators' | 'twitch' | 'platform'
+type DashTab = 'live' | 'favorites' | 'poll' | 'feedback' | 'kanban' | 'settings' | 'moderators' | 'twitch' | 'platform'
 type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
 type ModeratorMember = {
   id: string
@@ -342,7 +342,7 @@ const PROFILE_THEME_OPTIONS = [
 
 export default function StreamerDashboard() {
   const { streamerProfile, profile, refreshProfile, setStreamerProfile } = useAuthStore()
-  const [activeTab, setActiveTab] = useState<DashTab>('kanban')
+  const [activeTab, setActiveTab] = useState<DashTab>('live')
   const [reusingFavorite, setReusingFavorite] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<Suggestion | null>(null)
   const [channelName, setChannelName] = useState(streamerProfile?.channel_name ?? '')
@@ -1132,15 +1132,12 @@ export default function StreamerDashboard() {
     { label: 'Concluídas', value: completed.length, icon: CheckCircle, color: 'text-status-completed' },
   ]
 
-  const tabs: { id: DashTab; label: string; icon: typeof LayoutGrid }[] = [
-    { id: 'kanban', label: 'Lista de Sugestões', icon: LayoutGrid },
-    { id: 'favorites', label: 'Favoritos', icon: Star },
-    { id: 'poll', label: 'Votação de filme', icon: Play },
-    ...(isPlatformAdmin ? [{ id: 'feedback' as DashTab, label: 'Melhorias recebidas', icon: Send }] : []),
-    { id: 'moderators', label: 'Moderadores', icon: Users },
-    { id: 'twitch', label: 'Twitch', icon: Zap },
-    { id: 'settings', label: 'Configurações', icon: Settings },
-    ...(isPlatformAdmin ? [{ id: 'platform' as DashTab, label: 'Plataforma', icon: Crown }] : []),
+  const navigationGroups: { label: string; tabs: { id: DashTab; label: string; icon: typeof LayoutGrid }[] }[] = [
+    { label: 'Ao vivo', tabs: [{ id: 'live', label: 'Central', icon: Radio }, { id: 'poll', label: 'Votação', icon: Play }] },
+    { label: 'Conteúdo', tabs: [{ id: 'kanban', label: 'Sugestões', icon: LayoutGrid }, { id: 'favorites', label: 'Favoritos', icon: Star }] },
+    { label: 'Canal', tabs: [{ id: 'twitch', label: 'Twitch e overlay', icon: Zap }] },
+    { label: 'Gestão', tabs: [{ id: 'moderators', label: 'Moderadores', icon: Users }, { id: 'settings', label: 'Configurações', icon: Settings }] },
+    ...(isPlatformAdmin ? [{ label: 'Plataforma', tabs: [{ id: 'feedback' as DashTab, label: 'Melhorias', icon: Send }, { id: 'platform' as DashTab, label: 'Administração', icon: Crown }] }] : []),
   ]
 
   const chatHealthState = !chatConnected
@@ -1249,7 +1246,7 @@ export default function StreamerDashboard() {
           </div>
         </div>
 
-        {(streamerProfile.is_live || watching || queued.length > 0) && (
+        {activeTab === 'live' && (streamerProfile.is_live || watching || queued.length > 0) && (
           <Card glow={streamerProfile.is_live} aria-label="Central da live">
             <CardContent className="space-y-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1355,29 +1352,32 @@ export default function StreamerDashboard() {
           ))}
         </div>
 
-        {/* Tabs */}
-        <div className="mobile-scroll flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-bg-secondary p-1">
+        {/* Navegação organizada pela tarefa que o streamer quer executar. */}
+        <nav aria-label="Seções do painel" className="mobile-scroll flex max-w-full gap-3 overflow-x-auto pb-1">
           {platformAccessLoading ? (
             <div className="flex min-h-10 min-w-64 items-center justify-center gap-2 px-4 text-sm text-content-muted">
               <Loader2 size={15} className="animate-spin text-brand-purple" />
               Carregando menu...
             </div>
-          ) : tabs.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={cn(
-                'flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
-                activeTab === id
-                  ? 'bg-bg-primary text-content-primary shadow'
-                  : 'text-content-muted hover:text-content-secondary'
-              )}
-            >
-              <Icon size={15} />
-              {label}
-            </button>
-          ))}
-        </div>
+          ) : navigationGroups.map((group) => <div key={group.label} className="shrink-0 rounded-xl border border-border bg-bg-secondary p-1">
+            <div className="flex items-center gap-1">
+              <span className="hidden px-2 text-[11px] font-medium text-content-muted lg:inline">{group.label}</span>
+              {group.tabs.map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => setActiveTab(id)} aria-current={activeTab === id ? 'page' : undefined} className={cn(
+                'flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors',
+                activeTab === id ? 'bg-bg-primary text-content-primary shadow-sm' : 'text-content-muted hover:bg-bg-tertiary hover:text-content-primary',
+              )}><Icon size={15} />{label}</button>)}
+            </div>
+          </div>)}
+        </nav>
+
+        {activeTab === 'live' && !streamerProfile.is_live && !watching && queued.length === 0 && (
+          <Card className="border-brand-purple/20">
+            <CardContent className="flex flex-col gap-4 py-6 sm:flex-row sm:items-center sm:justify-between">
+              <div><h2 className="font-semibold text-content-primary">Sua mesa de controle está pronta</h2><p className="mt-1 text-sm text-content-secondary">Prepare a fila, programe uma votação ou conecte o chat antes de começar.</p></div>
+              <div className="flex flex-wrap gap-2"><Button size="sm" variant="secondary" onClick={() => setActiveTab('kanban')}>Ver sugestões</Button><Button size="sm" onClick={() => setActiveTab('poll')}>Criar votação</Button></div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Kanban */}
         {activeTab === 'kanban' && (
@@ -1388,18 +1388,6 @@ export default function StreamerDashboard() {
                 status="pending"
                 suggestions={pending}
                 color="bg-status-pending"
-                onAction={handleAction}
-                onReject={setRejectTarget}
-                onToggleFavorite={toggleFavorite}
-                onDelete={handleDelete}
-                onBan={setBanTarget}
-                ownerId={streamerProfile.owner_id}
-              />
-              <KanbanColumn
-                title="Aprovado"
-                status="approved"
-                suggestions={approved}
-                color="bg-status-approved"
                 onAction={handleAction}
                 onReject={setRejectTarget}
                 onToggleFavorite={toggleFavorite}
@@ -1433,30 +1421,14 @@ export default function StreamerDashboard() {
                 onBan={setBanTarget}
                 ownerId={streamerProfile.owner_id}
               />
-              <KanbanColumn
-                title="Concluído"
-                status="completed"
-                suggestions={completed.slice(0, 10)}
-                color="bg-status-completed"
-                onAction={handleAction}
-                onReject={setRejectTarget}
-                onToggleFavorite={toggleFavorite}
-                onDelete={handleDelete}
-                onBan={setBanTarget}
-                ownerId={streamerProfile.owner_id}
-              />
-              <KanbanColumn
-                title="Rejeitado"
-                status="rejected"
-                suggestions={rejected.slice(0, 5)}
-                color="bg-status-rejected"
-                onAction={handleAction}
-                onReject={setRejectTarget}
-                onToggleFavorite={toggleFavorite}
-                onDelete={handleDelete}
-                onBan={setBanTarget}
-                ownerId={streamerProfile.owner_id}
-              />
+              <details className="rounded-2xl border border-border bg-bg-secondary/45">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-content-secondary">Histórico e aprovadas — {approved.length + completed.length + rejected.length}</summary>
+                <div className="grid gap-4 border-t border-border p-4">
+                  <KanbanColumn title="Aprovadas" status="approved" suggestions={approved} color="bg-status-approved" onAction={handleAction} onReject={setRejectTarget} onToggleFavorite={toggleFavorite} onDelete={handleDelete} onBan={setBanTarget} ownerId={streamerProfile.owner_id} />
+                  <KanbanColumn title="Concluídas" status="completed" suggestions={completed.slice(0, 10)} color="bg-status-completed" onAction={handleAction} onReject={setRejectTarget} onToggleFavorite={toggleFavorite} onDelete={handleDelete} onBan={setBanTarget} ownerId={streamerProfile.owner_id} />
+                  <KanbanColumn title="Rejeitadas" status="rejected" suggestions={rejected.slice(0, 5)} color="bg-status-rejected" onAction={handleAction} onReject={setRejectTarget} onToggleFavorite={toggleFavorite} onDelete={handleDelete} onBan={setBanTarget} ownerId={streamerProfile.owner_id} />
+                </div>
+              </details>
             </div>
           </div>
         )}
@@ -1765,9 +1737,9 @@ export default function StreamerDashboard() {
               {suggestions.filter(item => item.is_favorite).length === 0 ? (
                 <p className="text-sm text-content-muted">Clique na estrela de uma sugestão para salvá-la aqui.</p>
               ) : <div className="space-y-3">{suggestions.filter(item => item.is_favorite).map(item => (
-                <div key={item.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-4">
+                <div key={item.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-bg-tertiary/30 p-4">
                   <SuggestionThumbnail suggestion={item} />
-                  <p className="min-w-0 flex-1 break-words text-sm font-semibold">{item.title}</p>
+                  <div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold text-content-primary">{item.title}</p><div className="mt-1 flex flex-wrap items-center gap-2"><Badge variant="status" status={item.status} size="sm" /><Badge variant="category" category={item.category as SuggestionCategory} size="sm" /><span className="text-xs text-content-muted">Salva {formatRelativeDate(item.submitted_at)}</span></div></div>
                   <Button size="sm" loading={reusingFavorite === item.id} disabled={reusingFavorite !== null || item.status === 'queued' || item.status === 'watching'} onClick={async () => {
                     setReusingFavorite(item.id)
                     try { await updateStatus(item.id, 'queued'); toast.success('Favorito adicionado à fila.') } catch { /* O hook apresenta o erro. */ }

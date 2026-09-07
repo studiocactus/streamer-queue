@@ -45,7 +45,12 @@ Deno.serve(async (req) => {
     results.push({ id: item.id, sent: result.sent, error: result.error })
     if (payload.delivery_id) break
   }
-  await announceEndedFilmPolls()
+  // A poll announcement must never delay or fail the established delivery queue.
+  try {
+    await announceEndedFilmPolls()
+  } catch (error) {
+    console.error('[chat-delivery-worker] Film poll announcement failed', error)
+  }
 
   const { error: heartbeatError } = await admin.rpc('record_system_heartbeat', {
     p_component: 'chat-delivery-worker',

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Film, Vote } from 'lucide-react'
+import { Clock3, Film, Vote } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -13,6 +13,12 @@ const db: any = supabase
 type Option = { id: string; title: string; command: string; votes?: number }
 type Poll = { id: string; starts_at: string; ends_at: string; status: string; vote_message_template: string; result_message_template: string; film_poll_options: Option[] }
 const localDate = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+const RESERVED_COMMANDS = new Set(['!fila', '!proximo', '!sugerir'])
+
+function remainingTime(endsAt: string, now: number) {
+  const totalSeconds = Math.max(0, Math.ceil((new Date(endsAt).getTime() - now) / 1000))
+  return `${String(Math.floor(totalSeconds / 3600)).padStart(2, '0')}:${String(Math.floor(totalSeconds % 3600 / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`
+}
 
 export function FilmPollManager({ streamerId }: { streamerId: string }) {
   const [poll, setPoll] = useState<Poll | null>(null)
@@ -22,6 +28,7 @@ export function FilmPollManager({ streamerId }: { streamerId: string }) {
   const [voteTemplate, setVoteTemplate] = useState('🎬 {viewer} votou em “{titulo}”! Agora são {votos} votos.')
   const [resultTemplate, setResultTemplate] = useState('🏁 A votação terminou! O filme escolhido foi “{titulo}” com {votos} votos.')
   const [saving, setSaving] = useState(false)
+  const [now, setNow] = useState(Date.now())
 
   const load = async () => {
     const { data, error } = await db.from('film_polls').select('*, film_poll_options(*)').eq('streamer_id', streamerId).order('created_at', { ascending: false }).limit(1).maybeSingle()
@@ -34,10 +41,16 @@ export function FilmPollManager({ streamerId }: { streamerId: string }) {
     }))
     setPoll({ ...raw, film_poll_options: voteRows })
   }
-  useEffect(() => { void load() }, [streamerId])
+  useEffect(() => {
+    void load()
+    const refresh = window.setInterval(() => { setNow(Date.now()); void load() }, 15_000)
+    return () => window.clearInterval(refresh)
+  }, [streamerId])
 
   const create = async () => {
+    const commands = options.map(option => option.command.trim().toLowerCase())
     if (options.some(option => !option.title.trim() || !/^![a-z0-9][a-z0-9_-]{1,30}$/.test(option.command))) { toast.error('Informe três filmes e comandos válidos, como !matrix.'); return }
+    if (new Set(commands).size !== 3 || commands.some(command => RESERVED_COMMANDS.has(command))) { toast.error('Cada filme precisa de um comando diferente que não seja reservado.'); return }
     if (new Date(endsAt) <= new Date(startsAt)) { toast.error('O término deve ser depois do início.'); return }
     setSaving(true)
     try {
@@ -50,13 +63,14 @@ export function FilmPollManager({ streamerId }: { streamerId: string }) {
       await load()
     } catch (error) { console.error(error); toast.error('Não foi possível criar a votação. Verifique se já há uma aberta.') } finally { setSaving(false) }
   }
-  const now = Date.now()
   const isOpen = poll && new Date(poll.starts_at).getTime() <= now && new Date(poll.ends_at).getTime() > now
+  const votePreview = voteTemplate.split('{viewer}').join('@mari').split('{titulo}').join(options[0].title || 'Nome do filme').split('{votos}').join('12').split('{comando}').join(options[0].command)
+  const resultPreview = resultTemplate.split('{titulo}').join(options[0].title || 'Nome do filme').split('{votos}').join('12')
   return <Card className="overflow-hidden">
     <CardHeader><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-purple/15 text-brand-purple"><Vote size={19} /></span><div><h2 className="font-semibold text-content-primary">Votação de filme no chat</h2><p className="mt-1 text-sm text-content-secondary">Três filmes, três comandos e um resultado anunciado pela Twitch.</p></div></div></CardHeader>
     <CardContent className="space-y-5">
-      {poll && <section className="rounded-xl border border-border bg-bg-tertiary/50 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium text-content-primary">{poll.status === 'ended' ? 'Votação encerrada' : isOpen ? 'Votação em andamento' : 'Votação programada'}</p><Button size="sm" variant="ghost" onClick={() => void load()}>Atualizar contagem</Button></div><p className="mt-1 text-xs text-content-muted">De {new Date(poll.starts_at).toLocaleString('pt-BR')} até {new Date(poll.ends_at).toLocaleString('pt-BR')}</p><div className="mt-4 grid gap-2 sm:grid-cols-3">{poll.film_poll_options.map(option => <div key={option.id} className="rounded-lg border border-border bg-bg-secondary p-3"><p className="truncate text-sm font-medium">{option.title}</p><p className="mt-1 text-xs text-brand-purple">{option.command}</p><p className="mt-3 text-lg font-semibold">{option.votes ?? 0} votos</p></div>)}</div></section>}
-      {!poll || poll.status === 'ended' ? <section className="space-y-4 border-t border-border pt-5"><div><h3 className="font-medium text-content-primary">Criar próxima votação</h3><p className="mt-1 text-xs text-content-muted">Cada viewer pode votar uma vez. Se votar novamente, o primeiro voto continua valendo.</p></div><div className="grid gap-3 sm:grid-cols-2"><Input label="Início" type="datetime-local" value={startsAt} onChange={event => setStartsAt(event.target.value)} /><Input label="Término" type="datetime-local" value={endsAt} onChange={event => setEndsAt(event.target.value)} /></div><div className="grid gap-3 md:grid-cols-3">{options.map((option, index) => <div key={index} className="space-y-2 rounded-xl border border-border p-3"><Input label={`Filme ${index + 1}`} value={option.title} onChange={event => setOptions(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))} placeholder="Nome do filme" /><Input label="Comando" value={option.command} onChange={event => setOptions(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, command: event.target.value.toLowerCase() } : item))} /></div>)}</div><Textarea label="Mensagem a cada voto" value={voteTemplate} onChange={event => setVoteTemplate(event.target.value)} hint="Use {viewer}, {titulo}, {votos} e {comando}." /><Textarea label="Mensagem de resultado" value={resultTemplate} onChange={event => setResultTemplate(event.target.value)} hint="Use {titulo} e {votos}." /><Button loading={saving} onClick={create} leftIcon={<Film size={15} />}>Programar votação</Button></section> : <p className="text-xs text-content-muted">A próxima votação poderá ser criada depois que esta encerrar.</p>}
+      {poll && <section className="rounded-xl border border-border bg-bg-tertiary/50 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-medium text-content-primary">{poll.status === 'ended' ? 'Votação encerrada' : isOpen ? 'Votação em andamento' : 'Votação programada'}</p><p className="mt-1 text-xs text-content-muted">De {new Date(poll.starts_at).toLocaleString('pt-BR')} até {new Date(poll.ends_at).toLocaleString('pt-BR')}</p></div>{isOpen && <span className="inline-flex items-center gap-2 rounded-full border border-brand-purple/30 bg-brand-purple/10 px-3 py-1.5 text-sm font-semibold text-brand-purple"><Clock3 size={15} />{remainingTime(poll.ends_at, now)}</span>}</div><div className="mt-4 grid gap-2 sm:grid-cols-3">{[...poll.film_poll_options].sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0)).map((option, index) => <div key={option.id} className="rounded-lg border border-border bg-bg-secondary p-3"><p className="truncate text-sm font-medium">{index === 0 && isOpen ? 'Na frente · ' : ''}{option.title}</p><p className="mt-1 text-xs text-brand-purple">{option.command}</p><p className="mt-3 text-lg font-semibold">{option.votes ?? 0} votos</p></div>)}</div><p className="mt-4 text-xs text-content-muted">A contagem é atualizada automaticamente a cada 15 segundos.</p></section>}
+      {!poll || poll.status === 'ended' ? <section className="space-y-4 border-t border-border pt-5"><div><h3 className="font-medium text-content-primary">Criar próxima votação</h3><p className="mt-1 text-xs text-content-muted">Cada viewer pode votar uma vez. Se votar novamente, o primeiro voto continua valendo.</p></div><div className="grid gap-3 sm:grid-cols-2"><Input label="Início" type="datetime-local" value={startsAt} onChange={event => setStartsAt(event.target.value)} /><Input label="Término" type="datetime-local" value={endsAt} onChange={event => setEndsAt(event.target.value)} /></div><div className="grid gap-3 md:grid-cols-3">{options.map((option, index) => <div key={index} className="space-y-2 rounded-xl border border-border p-3"><Input label={`Filme ${index + 1}`} value={option.title} onChange={event => setOptions(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))} placeholder="Nome do filme" /><Input label="Comando" value={option.command} onChange={event => setOptions(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, command: event.target.value.toLowerCase() } : item))} hint="Ex.: !matrix. Não use !fila, !proximo ou !sugerir." /></div>)}</div><Textarea label="Mensagem a cada voto" value={voteTemplate} onChange={event => setVoteTemplate(event.target.value)} hint="Use {viewer}, {titulo}, {votos} e {comando}." /><p className="rounded-lg border border-border bg-bg-secondary px-3 py-2 text-xs text-content-secondary">Prévia: {votePreview}</p><Textarea label="Mensagem de resultado" value={resultTemplate} onChange={event => setResultTemplate(event.target.value)} hint="Use {titulo} e {votos}." /><p className="rounded-lg border border-border bg-bg-secondary px-3 py-2 text-xs text-content-secondary">Prévia: {resultPreview}</p><Button loading={saving} onClick={create} leftIcon={<Film size={15} />}>Programar votação</Button></section> : <p className="text-xs text-content-muted">A próxima votação poderá ser criada depois que esta encerrar.</p>}
     </CardContent>
   </Card>
 }
