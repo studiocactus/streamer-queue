@@ -15,6 +15,14 @@ type Poll = { id: string; starts_at: string; ends_at: string; status: string; vo
 const localDate = (date: Date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 const RESERVED_COMMANDS = new Set(['!fila', '!proximo', '!sugerir'])
 
+function pollCreationError(error: unknown) {
+  const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
+  if (code === '23505') return 'Já existe uma votação programada ou em andamento neste canal.'
+  if (code === '42501') return 'Sua conta não tem permissão para criar uma votação neste canal.'
+  if (code === '42P01' || code === 'PGRST205') return 'O sistema de votações ainda está sendo configurado. Tente novamente em instantes.'
+  return 'Não foi possível criar a votação agora. Tente novamente.'
+}
+
 function remainingTime(endsAt: string, now: number) {
   const totalSeconds = Math.max(0, Math.ceil((new Date(endsAt).getTime() - now) / 1000))
   return `${String(Math.floor(totalSeconds / 3600)).padStart(2, '0')}:${String(Math.floor(totalSeconds % 3600 / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`
@@ -63,7 +71,7 @@ export function FilmPollManager({ streamerId }: { streamerId: string }) {
       if (optionsError) throw optionsError
       toast.success('Votação programada.')
       await load()
-    } catch (error) { console.error(error); toast.error('Não foi possível criar a votação. Verifique se já há uma aberta.') } finally { setSaving(false) }
+    } catch (error) { console.error(error); toast.error(pollCreationError(error)) } finally { setSaving(false) }
   }
   const isOpen = poll && new Date(poll.starts_at).getTime() <= now && new Date(poll.ends_at).getTime() > now
   const votePreview = voteTemplate.split('{viewer}').join('@mari').split('{titulo}').join(options[0].title || 'Nome do filme').split('{votos}').join('12').split('{comando}').join(options[0].command)
