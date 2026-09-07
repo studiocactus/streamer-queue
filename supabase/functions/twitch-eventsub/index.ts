@@ -122,12 +122,28 @@ async function processNotification(
   if (streamerError) throw streamerError
 
   const settings = Array.isArray(streamer?.settings) ? streamer.settings[0] : streamer?.settings
-  if (!streamer?.is_active || !settings?.chat_command_enabled) return new Response(null, { status: 204 })
+  if (!streamer?.is_active || !settings) return new Response(null, { status: 204 })
 
   const text = event.message?.text?.trim() ?? ''
   const firstSpace = text.search(/\s/)
   const command = (firstSpace === -1 ? text : text.slice(0, firstSpace)).toLowerCase()
   const title = (firstSpace === -1 ? '' : text.slice(firstSpace + 1)).trim()
+  // Poll commands are independent from the suggestion command and are resolved atomically in Postgres.
+  const { data: pollVote, error: pollVoteError } = await admin.rpc('cast_film_poll_vote', {
+    p_streamer_id: streamer.id, p_twitch_user_id: event.chatter_user_id, p_command: command,
+  })
+  if (pollVoteError) throw pollVoteError
+  const vote = pollVote?.[0]
+  if (vote?.accepted) {
+    const message = String(vote.viewer_template)
+      .replaceAll('{viewer}', `@${event.chatter_user_login}`)
+      .replaceAll('{titulo}', vote.title)
+      .replaceAll('{votos}', String(vote.votes))
+      .replaceAll('{comando}', vote.command)
+    await sendChatMessage(admin, streamer.id, event.broadcaster_user_id, message)
+    return new Response(null, { status: 204 })
+  }
+  if (!settings.chat_command_enabled) return new Response(null, { status: 204 })
   if (!['!fila', '!proximo', settings.chat_command.toLowerCase()].includes(command)) {
     return new Response(null, { status: 204 })
   }

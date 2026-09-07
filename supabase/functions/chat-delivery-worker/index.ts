@@ -45,6 +45,7 @@ Deno.serve(async (req) => {
     results.push({ id: item.id, sent: result.sent, error: result.error })
     if (payload.delivery_id) break
   }
+  await announceEndedFilmPolls()
 
   const { error: heartbeatError } = await admin.rpc('record_system_heartbeat', {
     p_component: 'chat-delivery-worker',
@@ -53,6 +54,29 @@ Deno.serve(async (req) => {
 
   return json({ processed: results.length, results })
 })
+
+async function announceEndedFilmPolls() {
+  const { data: polls, error } = await admin.from('film_polls')
+    .select('id, streamer_id, result_message_template, film_poll_options(id, title, command, film_poll_votes(count))')
+    .lte('ends_at', new Date().toISOString()).is('result_announced_at', null).limit(10)
+  if (error) throw error
+  for (const poll of polls ?? []) {
+    const options = (poll.film_poll_options ?? []).map((option: Record<string, unknown>) => ({
+      ...option, votes: Number((option.film_poll_votes as { count?: number }[])?.[0]?.count ?? 0),
+    })).sort((a: { votes: number; title: string }, b: { votes: number; title: string }) => b.votes - a.votes || a.title.localeCompare(b.title))
+    const winner = options[0]
+    if (!winner) continue
+    const { data: connection } = await admin.from('twitch_connections').select('broadcaster_id').eq('streamer_id', poll.streamer_id).maybeSingle()
+    const { data: credential } = await admin.from('twitch_chat_credentials').select('*').eq('streamer_id', poll.streamer_id).maybeSingle()
+    if (!connection?.broadcaster_id || !credential) continue
+    const token = await validAccessToken(credential, poll.streamer_id)
+    if (!token) continue
+    const message = poll.result_message_template.replaceAll('{titulo}', winner.title).replaceAll('{votos}', String(winner.votes)).slice(0, 500)
+    const response = await fetch('https://api.twitch.tv/helix/chat/messages', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Client-Id': TWITCH_CLIENT_ID, 'Content-Type': 'application/json' }, body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message }) })
+    const body = await response.json().catch(() => null)
+    if (response.ok && body?.data?.[0]?.is_sent) await admin.from('film_polls').update({ status: 'ended', result_announced_at: new Date().toISOString() }).eq('id', poll.id).is('result_announced_at', null)
+  }
+}
 
 async function processDelivery(item: QueueItem): Promise<{ sent: boolean; skipped?: boolean; error: string | null }> {
   try {

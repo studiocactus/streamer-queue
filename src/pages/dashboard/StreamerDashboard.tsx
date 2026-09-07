@@ -23,6 +23,7 @@ import type { Suggestion, SuggestionStatus, SuggestionCategory, Streamer } from 
 import { getTwitchChatConnectUrl } from '@/lib/supabase'
 import { streamerPath } from '@/lib/routes'
 import { PlatformFeedback } from '@/components/PlatformFeedback'
+import { FilmPollManager } from '@/components/FilmPollManager'
 import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
 
 // ============================================================
@@ -281,7 +282,7 @@ function RejectModal({
 // ============================================================
 // Dashboard do Streamer
 // ============================================================
-type DashTab = 'favorites' | 'feedback' | 'kanban' | 'settings' | 'moderators' | 'twitch' | 'platform'
+type DashTab = 'favorites' | 'poll' | 'feedback' | 'kanban' | 'settings' | 'moderators' | 'twitch' | 'platform'
 type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
 type ModeratorMember = {
   id: string
@@ -1134,6 +1135,7 @@ export default function StreamerDashboard() {
   const tabs: { id: DashTab; label: string; icon: typeof LayoutGrid }[] = [
     { id: 'kanban', label: 'Lista de Sugestões', icon: LayoutGrid },
     { id: 'favorites', label: 'Favoritos', icon: Star },
+    { id: 'poll', label: 'Votação de filme', icon: Play },
     ...(isPlatformAdmin ? [{ id: 'feedback' as DashTab, label: 'Melhorias recebidas', icon: Send }] : []),
     { id: 'moderators', label: 'Moderadores', icon: Users },
     { id: 'twitch', label: 'Twitch', icon: Zap },
@@ -1754,6 +1756,7 @@ export default function StreamerDashboard() {
         )}
 
         {activeTab === 'feedback' && isPlatformAdmin && <PlatformFeedback />}
+        {activeTab === 'poll' && streamerProfile && <FilmPollManager streamerId={streamerProfile.id} />}
         {activeTab === 'favorites' && (
           <Card>
             <CardHeader><div><h2 className="font-semibold text-content-primary">Sugestões favoritas</h2>
