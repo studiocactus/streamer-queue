@@ -1,10 +1,504 @@
 import { useEffect, useState } from 'react'
-import { Bot, Plus, Trash2 } from 'lucide-react'
+import {
+  Bot,
+  Clock3,
+  Hash,
+  MessageCircle,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  Trophy,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Input, Textarea } from '@/components/ui/Input'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db:any=supabase
-export function ChatAutomationManager({streamerId}:{streamerId:string}) { const [timers,setTimers]=useState<any[]>([]),[commands,setCommands]=useState<any[]>([]),[counters,setCounters]=useState<any[]>([]); const [tm,setTm]=useState(''),[mins,setMins]=useState('15'),[cmd,setCmd]=useState(''),[reply,setReply]=useState(''),[cc,setCc]=useState(''),[label,setLabel]=useState(''),[text,setText]=useState('@{target}, essa é a {count}ª vez registrada.'),[cool,setCool]=useState('60'),[edit,setEdit]=useState<any>(null); const load=async()=>{const [a,b,c]=await Promise.all([db.from('chat_timed_messages').select('*').eq('streamer_id',streamerId),db.from('chat_custom_commands').select('*').eq('streamer_id',streamerId),db.from('chat_command_counters').select('*').eq('streamer_id',streamerId)]);setTimers(a.data??[]);setCommands(b.data??[]);setCounters(c.data??[])};useEffect(()=>{void load()},[streamerId]);const bang=(v:string)=>`!${v.trim().replace(/^!+/,'').toLowerCase()}`;const del=async(t:string,id:string)=>{await db.from(t).delete().eq('id',id);void load()};const saveCounter=async()=>{const payload={label:label.trim(),response_template:text.trim(),cooldown_seconds:Number(cool)};const r=edit?await db.from('chat_command_counters').update(payload).eq('id',edit.id):await db.from('chat_command_counters').insert({streamer_id:streamerId,command:bang(cc),...payload});if(r.error)return toast.error('Não foi possível salvar.');setEdit(null);setCc('');setLabel('');void load()};return <Card className="mt-6"><CardHeader><div><h2 className="flex items-center gap-2 font-semibold"><Bot size={17}/>Automações do chat</h2><p className="text-xs text-content-muted">Timers, comandos e contadores.</p></div></CardHeader><CardContent className="space-y-6"><section><h3 className="font-semibold">Timers</h3><div className="mt-2 grid gap-2 sm:grid-cols-[1fr_8rem_auto]"><Textarea value={tm} onChange={e=>setTm(e.target.value)} placeholder="Mensagem do timer"/><Input type="number" value={mins} onChange={e=>setMins(e.target.value)} hint="Cooldown (min)"/><Button onClick={async()=>{if(!tm.trim())return;await db.from('chat_timed_messages').insert({streamer_id:streamerId,kind:'message',message:tm,interval_minutes:Number(mins)});setTm('');void load()}}>Novo timer</Button></div>{timers.map(x=><p key={x.id} className="mt-2 text-xs">{x.message} · {x.interval_minutes} min <button onClick={()=>del('chat_timed_messages',x.id)}>Remover</button></p>)}</section><section className="border-t pt-5"><h3 className="font-semibold">Comandos personalizados</h3><p className="text-xs text-content-muted">Use {'{viewer}'} para quem acionou.</p><div className="mt-2 grid gap-2 sm:grid-cols-[9rem_1fr_auto]"><Input value={cmd} onChange={e=>setCmd(e.target.value)} placeholder="!discord"/><Input value={reply} onChange={e=>setReply(e.target.value)} placeholder="Resposta do bot"/><Button onClick={async()=>{if(!cmd||!reply)return;await db.from('chat_custom_commands').insert({streamer_id:streamerId,command:bang(cmd),response:reply});setCmd('');setReply('');void load()}}>Novo comando</Button></div>{commands.map(x=><p key={x.id} className="mt-2 text-xs">{x.command}: {x.response} <button onClick={()=>del('chat_custom_commands',x.id)}>Remover</button></p>)}</section><section className="border-t pt-5"><h3 className="font-semibold">Contadores por pessoa</h3><div className="mt-2 grid gap-2 sm:grid-cols-[9rem_1fr_8rem]"><Input value={cc} onChange={e=>setCc(e.target.value)} placeholder="!lurker" disabled={!!edit}/><Input value={label} onChange={e=>setLabel(e.target.value)} placeholder="Nome"/><Input type="number" value={cool} onChange={e=>setCool(e.target.value)} hint="Cooldown (seg)"/></div><Textarea className="mt-2" value={text} onChange={e=>setText(e.target.value)} hint="Use {target} e {count}."/><Button className="mt-2" onClick={saveCounter}>{edit?'Salvar':'Novo contador'}</Button>{counters.map(x=><div key={x.id} className="mt-2 rounded border p-2 text-xs"><code>{x.command}</code> {x.label}: {x.count}<Button size="sm" onClick={()=>{setEdit(x);setLabel(x.label);setText(x.response_template);setCool(String(x.cooldown_seconds))}}>Editar</Button><Button size="sm" variant="danger" onClick={()=>del('chat_command_counters',x.id)}><Trash2 size={12}/></Button><p>{x.response_template}</p></div>)}</section></CardContent></Card> }
+
+type AutomationTab = 'timers' | 'commands' | 'counters'
+
+interface Timer {
+  id: string
+  kind: 'message' | 'poll_leader'
+  message: string
+  interval_minutes: number
+}
+
+interface ChatCommand {
+  id: string
+  command: string
+  response: string
+}
+
+interface Counter {
+  id: string
+  command: string
+  label: string
+  count: number
+  response_template: string
+  cooldown_seconds: number
+}
+
+const db: any = supabase
+const DEFAULT_COUNTER_MESSAGE = '@{target}, essa é a {count}ª vez registrada.'
+
+const tabs: Array<{ id: AutomationTab; label: string; icon: typeof Clock3 }> = [
+  { id: 'timers', label: 'Timers', icon: Clock3 },
+  { id: 'commands', label: 'Comandos', icon: MessageCircle },
+  { id: 'counters', label: 'Contadores', icon: Hash },
+]
+
+export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
+  const [activeTab, setActiveTab] = useState<AutomationTab>('timers')
+  const [timers, setTimers] = useState<Timer[]>([])
+  const [commands, setCommands] = useState<ChatCommand[]>([])
+  const [counters, setCounters] = useState<Counter[]>([])
+
+  const [timerMessage, setTimerMessage] = useState('')
+  const [timerMinutes, setTimerMinutes] = useState('15')
+  const [command, setCommand] = useState('')
+  const [commandResponse, setCommandResponse] = useState('')
+  const [counterCommand, setCounterCommand] = useState('')
+  const [counterLabel, setCounterLabel] = useState('')
+  const [counterMessage, setCounterMessage] = useState(DEFAULT_COUNTER_MESSAGE)
+  const [counterCooldown, setCounterCooldown] = useState('60')
+  const [editingCounter, setEditingCounter] = useState<Counter | null>(null)
+
+  const loadAutomations = async () => {
+    const [timersResult, commandsResult, countersResult] = await Promise.all([
+      db.from('chat_timed_messages').select('*').eq('streamer_id', streamerId).order('created_at'),
+      db.from('chat_custom_commands').select('*').eq('streamer_id', streamerId).order('created_at'),
+      db.from('chat_command_counters').select('*').eq('streamer_id', streamerId).order('created_at'),
+    ])
+
+    setTimers(timersResult.data ?? [])
+    setCommands(commandsResult.data ?? [])
+    setCounters(countersResult.data ?? [])
+  }
+
+  useEffect(() => {
+    void loadAutomations()
+  }, [streamerId])
+
+  const normalizeCommand = (value: string) => `!${value.trim().replace(/^!+/, '').toLowerCase()}`
+
+  const removeAutomation = async (table: string, id: string) => {
+    const { error } = await db.from(table).delete().eq('id', id)
+    if (error) {
+      toast.error('Não foi possível remover este item.')
+      return
+    }
+    toast.success('Item removido.')
+    void loadAutomations()
+  }
+
+  const addTimer = async () => {
+    const minutes = Number(timerMinutes)
+    if (!timerMessage.trim() || !Number.isFinite(minutes) || minutes < 1) {
+      toast.error('Defina a mensagem e um intervalo válido para o timer.')
+      return
+    }
+
+    const { error } = await db.from('chat_timed_messages').insert({
+      streamer_id: streamerId,
+      kind: 'message',
+      message: timerMessage.trim(),
+      interval_minutes: minutes,
+    })
+    if (error) {
+      toast.error('Não foi possível criar o timer.')
+      return
+    }
+
+    setTimerMessage('')
+    toast.success('Timer criado.')
+    void loadAutomations()
+  }
+
+  const addLeaderTimer = async () => {
+    const { error } = await db.from('chat_timed_messages').insert({
+      streamer_id: streamerId,
+      kind: 'poll_leader',
+      message: '🏆 {viewer} é quem mais participou desta votação, com {votos} votos!',
+      interval_minutes: 15,
+    })
+    if (error) {
+      toast.error('Não foi possível criar o timer do líder.')
+      return
+    }
+
+    toast.success('Timer do líder criado.')
+    void loadAutomations()
+  }
+
+  const addCommand = async () => {
+    if (!command.trim() || !commandResponse.trim()) {
+      toast.error('Preencha o comando e a resposta do bot.')
+      return
+    }
+
+    const { error } = await db.from('chat_custom_commands').insert({
+      streamer_id: streamerId,
+      command: normalizeCommand(command),
+      response: commandResponse.trim(),
+    })
+    if (error) {
+      toast.error('Não foi possível criar o comando. Ele pode já existir.')
+      return
+    }
+
+    setCommand('')
+    setCommandResponse('')
+    toast.success('Comando criado.')
+    void loadAutomations()
+  }
+
+  const resetCounterForm = () => {
+    setEditingCounter(null)
+    setCounterCommand('')
+    setCounterLabel('')
+    setCounterMessage(DEFAULT_COUNTER_MESSAGE)
+    setCounterCooldown('60')
+  }
+
+  const saveCounter = async () => {
+    const cooldown = Number(counterCooldown)
+    if (
+      (!editingCounter && !counterCommand.trim()) ||
+      !counterLabel.trim() ||
+      !counterMessage.trim() ||
+      !Number.isFinite(cooldown) ||
+      cooldown < 0
+    ) {
+      toast.error('Preencha todos os campos e informe um cooldown válido.')
+      return
+    }
+
+    const payload = {
+      label: counterLabel.trim(),
+      response_template: counterMessage.trim(),
+      cooldown_seconds: cooldown,
+    }
+    const { error } = editingCounter
+      ? await db.from('chat_command_counters').update(payload).eq('id', editingCounter.id)
+      : await db.from('chat_command_counters').insert({
+          streamer_id: streamerId,
+          command: normalizeCommand(counterCommand),
+          ...payload,
+        })
+
+    if (error) {
+      toast.error('Não foi possível salvar o contador. O comando pode já existir.')
+      return
+    }
+
+    resetCounterForm()
+    toast.success(editingCounter ? 'Contador atualizado.' : 'Contador criado.')
+    void loadAutomations()
+  }
+
+  const previewCounterMessage = counterMessage
+    .split('{target}')
+    .join('Thenees')
+    .split('{count}')
+    .join('10')
+
+  const tabCount = (tab: AutomationTab) => {
+    if (tab === 'timers') return timers.length
+    if (tab === 'commands') return commands.length
+    return counters.length
+  }
+
+  return (
+    <Card className="mt-6 overflow-hidden">
+      <CardHeader className="border-b border-border/80 bg-gradient-to-r from-bg-secondary to-bg-tertiary/20">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-purple/25 bg-brand-purple/10 text-brand-purple">
+            <Bot size={17} />
+          </span>
+          <div>
+            <h2 className="font-semibold text-content-primary">Automações do chat</h2>
+            <p className="mt-0.5 text-xs text-content-muted">
+              Configure respostas, mensagens recorrentes e contadores do seu canal.
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-0">
+        <div className="grid min-h-[420px] md:grid-cols-[13.5rem_minmax(0,1fr)]">
+          <aside className="border-b border-border/80 bg-bg-tertiary/25 p-3 md:border-b-0 md:border-r">
+            <p className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-content-muted">
+              Chat
+            </p>
+            <nav className="flex gap-2 overflow-x-auto md:flex-col md:overflow-visible" aria-label="Automações do chat">
+              {tabs.map((tab) => {
+                const Icon = tab.icon
+                const selected = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`group flex min-w-[9.5rem] items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition-all md:min-w-0 ${
+                      selected
+                        ? 'bg-brand-purple text-white shadow-lg shadow-brand-purple/20'
+                        : 'text-content-secondary hover:bg-bg-secondary hover:text-content-primary'
+                    }`}
+                  >
+                    <Icon size={17} className={selected ? 'text-white' : 'text-content-muted group-hover:text-brand-purple'} />
+                    <span className="flex-1 font-medium">{tab.label}</span>
+                    <span
+                      className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[10px] font-semibold ${
+                        selected ? 'bg-white/15 text-white' : 'bg-bg-secondary text-content-muted'
+                      }`}
+                    >
+                      {tabCount(tab.id)}
+                    </span>
+                  </button>
+                )
+              })}
+            </nav>
+            <div className="mt-5 hidden rounded-xl border border-border/80 bg-bg-secondary/70 p-3 md:block">
+              <Sparkles size={15} className="mb-2 text-brand-purple" />
+              <p className="text-xs font-medium text-content-primary">Tudo no seu ritmo</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-content-muted">
+                As alterações ficam disponíveis para o bot no chat do canal.
+              </p>
+            </div>
+          </aside>
+
+          <div className="p-4 sm:p-6">
+            {activeTab === 'timers' && (
+              <section className="space-y-5" aria-labelledby="timers-title">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Clock3 size={18} className="text-brand-purple" />
+                    <h3 id="timers-title" className="text-base font-semibold text-content-primary">Timers</h3>
+                  </div>
+                  <p className="mt-1 text-sm text-content-muted">
+                    Envie uma mensagem automaticamente em um intervalo definido.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-border/80 bg-bg-tertiary/30 p-4">
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_9rem_auto] lg:items-end">
+                    <Textarea
+                      label="Mensagem do timer"
+                      value={timerMessage}
+                      onChange={(event) => setTimerMessage(event.target.value)}
+                      placeholder="Ex.: Siga o canal para não perder a próxima votação!"
+                      rows={2}
+                    />
+                    <Input
+                      label="Intervalo"
+                      type="number"
+                      min="1"
+                      value={timerMinutes}
+                      onChange={(event) => setTimerMinutes(event.target.value)}
+                      hint="Em minutos"
+                    />
+                    <Button onClick={addTimer} leftIcon={<Plus size={16} />}>Adicionar timer</Button>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addLeaderTimer}
+                  className="flex w-full items-start gap-3 rounded-xl border border-brand-purple/25 bg-brand-purple/[0.05] p-4 text-left transition-colors hover:bg-brand-purple/[0.09]"
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-purple/15 text-brand-purple">
+                    <Trophy size={16} />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-medium text-content-primary">Adicionar timer do líder da votação</span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-content-muted">
+                      A cada 15 minutos, o bot destaca quem mais participou da votação ativa.
+                    </span>
+                  </span>
+                </button>
+
+                {timers.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-content-muted">Timers ativos</p>
+                    {timers.map((timer) => (
+                      <div key={timer.id} className="flex items-center gap-3 rounded-xl border border-border/80 bg-bg-secondary/60 px-4 py-3">
+                        <Clock3 size={16} className="shrink-0 text-brand-purple" />
+                        <p className="min-w-0 flex-1 truncate text-sm text-content-primary">
+                          {timer.kind === 'poll_leader' ? 'Líder da votação' : timer.message}
+                        </p>
+                        <span className="rounded-full bg-bg-tertiary px-2.5 py-1 text-xs text-content-secondary">
+                          {timer.interval_minutes} min
+                        </span>
+                        <Button size="sm" variant="ghost" onClick={() => removeAutomation('chat_timed_messages', timer.id)}>
+                          <Trash2 size={14} />
+                          <span className="sr-only">Remover timer</span>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeTab === 'commands' && (
+              <section className="space-y-5" aria-labelledby="commands-title">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <MessageCircle size={18} className="text-brand-purple" />
+                    <h3 id="commands-title" className="text-base font-semibold text-content-primary">Comandos</h3>
+                  </div>
+                  <p className="mt-1 text-sm text-content-muted">
+                    Crie respostas para comandos enviados no chat. Use <code className="rounded bg-bg-tertiary px-1.5 py-0.5 text-content-secondary">{'{viewer}'}</code> para mencionar quem acionou.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-border/80 bg-bg-tertiary/30 p-4">
+                  <div className="grid gap-3 lg:grid-cols-[10rem_minmax(0,1fr)_auto] lg:items-end">
+                    <Input
+                      label="Comando"
+                      value={command}
+                      onChange={(event) => setCommand(event.target.value)}
+                      placeholder="!discord"
+                    />
+                    <Input
+                      label="Resposta do bot"
+                      value={commandResponse}
+                      onChange={(event) => setCommandResponse(event.target.value)}
+                      placeholder="Entre no Discord: ..."
+                    />
+                    <Button onClick={addCommand} leftIcon={<Plus size={16} />}>Novo comando</Button>
+                  </div>
+                </div>
+
+                {commands.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-content-muted">Comandos ativos</p>
+                    {commands.map((item) => (
+                      <div key={item.id} className="flex items-center gap-3 rounded-xl border border-border/80 bg-bg-secondary/60 px-4 py-3">
+                        <code className="rounded-lg bg-brand-purple/10 px-2 py-1 text-xs font-semibold text-brand-purple">{item.command}</code>
+                        <p className="min-w-0 flex-1 truncate text-sm text-content-secondary">{item.response}</p>
+                        <Button size="sm" variant="ghost" onClick={() => removeAutomation('chat_custom_commands', item.id)}>
+                          <Trash2 size={14} />
+                          <span className="sr-only">Remover comando</span>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeTab === 'counters' && (
+              <section className="space-y-5" aria-labelledby="counters-title">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Hash size={18} className="text-brand-purple" />
+                      <h3 id="counters-title" className="text-base font-semibold text-content-primary">Contadores</h3>
+                    </div>
+                    <p className="mt-1 text-sm text-content-muted">
+                      Cada pessoa acumula sua própria contagem ao usar o comando no chat.
+                    </p>
+                  </div>
+                  {editingCounter && (
+                    <Button size="sm" variant="ghost" onClick={resetCounterForm}>Cancelar edição</Button>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-border/80 bg-bg-tertiary/30 p-4">
+                  <div className="grid gap-3 lg:grid-cols-[10rem_minmax(0,1fr)_9rem]">
+                    <Input
+                      label="Comando"
+                      value={counterCommand}
+                      onChange={(event) => setCounterCommand(event.target.value)}
+                      placeholder="!lurker"
+                      disabled={Boolean(editingCounter)}
+                    />
+                    <Input
+                      label="Nome interno"
+                      value={counterLabel}
+                      onChange={(event) => setCounterLabel(event.target.value)}
+                      placeholder="Modo lurker"
+                    />
+                    <Input
+                      label="Cooldown"
+                      type="number"
+                      min="0"
+                      value={counterCooldown}
+                      onChange={(event) => setCounterCooldown(event.target.value)}
+                      hint="Em segundos"
+                    />
+                  </div>
+
+                  <div className="mt-4 rounded-xl border border-border/80 bg-bg-secondary/70 p-3">
+                    <Textarea
+                      label="Mensagem enviada pelo bot"
+                      value={counterMessage}
+                      onChange={(event) => setCounterMessage(event.target.value)}
+                      placeholder={DEFAULT_COUNTER_MESSAGE}
+                      rows={2}
+                    />
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-content-muted">
+                      <span>Variáveis:</span>
+                      <code className="rounded-md bg-bg-tertiary px-2 py-1 text-brand-purple">{'{target}'}</code>
+                      <code className="rounded-md bg-bg-tertiary px-2 py-1 text-brand-purple">{'{count}'}</code>
+                    </div>
+                    <div className="mt-3 rounded-lg border border-brand-purple/15 bg-brand-purple/[0.05] px-3 py-2.5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-brand-purple">Prévia no chat</p>
+                      <p className="mt-1 text-sm text-content-primary">{previewCounterMessage || 'Escreva a mensagem que o bot deverá enviar.'}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <Button onClick={saveCounter} leftIcon={editingCounter ? <Pencil size={16} /> : <Plus size={16} />}>
+                      {editingCounter ? 'Salvar alterações' : 'Novo contador'}
+                    </Button>
+                  </div>
+                </div>
+
+                {counters.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-content-muted">Contadores configurados</p>
+                    {counters.map((counter) => (
+                      <article key={counter.id} className="rounded-xl border border-border/80 bg-bg-secondary/60 p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <code className="rounded-lg bg-brand-purple/10 px-2 py-1 text-xs font-semibold text-brand-purple">{counter.command}</code>
+                          <span className="text-sm font-medium text-content-primary">{counter.label}</span>
+                          <span className="rounded-full bg-bg-tertiary px-2.5 py-1 text-xs text-content-secondary">{counter.count} usos</span>
+                          <span className="rounded-full bg-bg-tertiary px-2.5 py-1 text-xs text-content-secondary">{counter.cooldown_seconds}s de cooldown</span>
+                          <span className="ml-auto flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingCounter(counter)
+                                setCounterCommand(counter.command)
+                                setCounterLabel(counter.label)
+                                setCounterMessage(counter.response_template)
+                                setCounterCooldown(String(counter.cooldown_seconds))
+                              }}
+                              leftIcon={<Pencil size={14} />}
+                            >
+                              Editar
+                            </Button>
+                            <Button size="sm" variant="danger" onClick={() => removeAutomation('chat_command_counters', counter.id)}>
+                              <Trash2 size={14} />
+                              <span className="sr-only">Remover contador</span>
+                            </Button>
+                          </span>
+                        </div>
+                        <p className="mt-3 text-sm text-content-secondary">{counter.response_template}</p>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
