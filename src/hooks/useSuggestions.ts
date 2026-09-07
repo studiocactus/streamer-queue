@@ -7,6 +7,13 @@ import { useAuthStore } from '@/store/authStore'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = any
 
+function suggestionUpdateError(error: unknown) {
+  const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
+  if (code === '42501') return 'Sua conta não tem permissão para alterar esta sugestão.'
+  if (code === '23514') return 'Esta alteração de status não é válida para a sugestão.'
+  return 'Não foi possível atualizar a sugestão agora. Tente novamente.'
+}
+
 /**
  * Busca TODAS as sugestões de um canal (sem filtros server-side).
  * A filtragem por categoria/status é feita no componente para evitar
@@ -245,7 +252,7 @@ export function useSuggestions(streamerId: string | undefined) {
         .eq('id', suggestionId)
 
       if (updateError) {
-        toast.error('Erro ao atualizar sugestão')
+        toast.error(suggestionUpdateError(updateError))
         throw updateError
       }
 
