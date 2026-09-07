@@ -1352,22 +1352,22 @@ export default function StreamerDashboard() {
           ))}
         </div>
 
-        {/* Navegação organizada pela tarefa que o streamer quer executar. */}
-        <nav aria-label="Seções do painel" className="mobile-scroll flex max-w-full gap-3 overflow-x-auto pb-1">
+        {/* A grade permite que todos os destinos permaneçam visíveis em qualquer largura. */}
+        <nav aria-label="Seções do painel" className={cn('grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4', navigationGroups.length === 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-5')}>
           {platformAccessLoading ? (
-            <div className="flex min-h-10 min-w-64 items-center justify-center gap-2 px-4 text-sm text-content-muted">
+            <div className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-bg-secondary px-4 text-sm text-content-muted">
               <Loader2 size={15} className="animate-spin text-brand-purple" />
               Carregando menu...
             </div>
-          ) : navigationGroups.map((group) => <div key={group.label} className="shrink-0 rounded-xl border border-border bg-bg-secondary p-1">
-            <div className="flex items-center gap-1">
-              <span className="hidden px-2 text-[11px] font-medium text-content-muted lg:inline">{group.label}</span>
+          ) : navigationGroups.map((group) => <section key={group.label} className="min-w-0 rounded-xl border border-border bg-bg-secondary p-1.5">
+            <p className="px-2 pb-1 text-[11px] font-medium text-content-muted">{group.label}</p>
+            <div className={cn('grid gap-1', group.tabs.length === 1 ? 'grid-cols-1' : 'grid-cols-2')}>
               {group.tabs.map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => setActiveTab(id)} aria-current={activeTab === id ? 'page' : undefined} className={cn(
-                'flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors',
+                'flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg px-2 py-2 text-center text-sm font-medium leading-tight transition-colors',
                 activeTab === id ? 'bg-bg-primary text-content-primary shadow-sm' : 'text-content-muted hover:bg-bg-tertiary hover:text-content-primary',
-              )}><Icon size={15} />{label}</button>)}
+              )}><Icon size={15} className="shrink-0" /><span className="break-words">{label}</span></button>)}
             </div>
-          </div>)}
+          </section>)}
         </nav>
 
         {activeTab === 'live' && !streamerProfile.is_live && !watching && queued.length === 0 && (
