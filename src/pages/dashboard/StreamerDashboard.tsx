@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Send, Clock, ThumbsUp, Play, CheckCircle, XCircle,
@@ -26,6 +26,8 @@ import { PlatformFeedback } from '@/components/PlatformFeedback'
 import { FilmPollManager } from '@/components/FilmPollManager'
 import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
 import { ChatAutomationManager } from '@/components/ChatAutomationManager'
+import { SuggestionSourceLink } from '@/components/ui/SuggestionSourceLink'
+import { IconAction } from '@/components/ui/IconAction'
 
 // ============================================================
 // Kanban Column
@@ -115,83 +117,67 @@ function KanbanColumn({
               </div>
 
               {/* Ações por status */}
-              <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">
-                <button
+              <div className="flex min-w-0 items-center gap-1 overflow-x-auto py-1 lg:justify-end">
+                <SuggestionSourceLink url={s.source_url} title={s.title} iconOnly />
+                <IconAction label={s.is_favorite ? "Remover dos favoritos" : "Favoritar"}
                   aria-pressed={s.is_favorite}
                   onClick={() => onToggleFavorite?.(s.id, !s.is_favorite)}
                   className={cn("p-2 text-content-muted hover:text-amber-400 transition-colors", s.is_favorite && "text-amber-400")}
-                  title={s.is_favorite ? "Remover dos favoritos" : "Favoritar"}
-                >
-                  <Star size={16} fill={s.is_favorite ? "currentColor" : "none"} />
-                </button>
+
+                ><Star size={16} fill={s.is_favorite ? "currentColor" : "none"} /></IconAction>
                 {status === 'pending' && (
                   <>
-                    <button
+                    <IconAction label="Aprovar"
                       onClick={() => onAction?.(s.id, 'approved')}
-                      className="inline-flex min-h-10 items-center justify-center rounded-full border border-status-completed/25 bg-status-completed/10 px-3 text-xs font-semibold text-status-completed transition-colors hover:bg-status-completed/15"
-                    >
-                      <CheckCircle size={13} className="mr-1.5" /> Aprovar
-                    </button>
-                    <button
+                      className="inline-flex items-center justify-center rounded-full border border-status-completed/25 bg-status-completed/10 text-xs font-semibold text-status-completed transition-colors hover:bg-status-completed/15"
+                    ><CheckCircle size={15} /></IconAction>
+                    <IconAction label="Rejeitar"
                       onClick={() => onReject?.(s)}
-                      className="inline-flex min-h-10 items-center justify-center rounded-full border border-status-rejected/20 px-3 text-xs font-semibold text-status-rejected transition-colors hover:bg-status-rejected/10"
-                    >
-                      <XCircle size={13} className="mr-1.5" /> Rejeitar
-                    </button>
+                      className="inline-flex items-center justify-center rounded-full border border-status-rejected/20 text-xs font-semibold text-status-rejected transition-colors hover:bg-status-rejected/10"
+                    ><XCircle size={15} /></IconAction>
                   </>
                 )}
                 {status === 'approved' && (
-                  <button
+                  <IconAction label="Adicionar à fila"
                     onClick={() => onAction?.(s.id, 'queued')}
-                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-brand-purple/25 bg-brand-purple/10 px-3 text-xs font-semibold text-brand-purple transition-colors hover:bg-brand-purple/15"
-                  >
-                    <List size={13} className="mr-1.5" /> Adicionar à fila
-                  </button>
+                    className="inline-flex items-center justify-center rounded-full border border-brand-purple/25 bg-brand-purple/10 text-xs font-semibold text-brand-purple transition-colors hover:bg-brand-purple/15"
+                  ><List size={15} /></IconAction>
                 )}
                 {status === 'queued' && (
                   <>
                     <div className="inline-flex items-center rounded-lg border border-border bg-bg-secondary p-0.5" aria-label={`Posição ${index + 1} na fila`}>
-                      <button type="button" disabled={index === 0} onClick={() => onMove?.(s.id, index)} className="rounded-md p-1.5 text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Subir ${s.title} na fila`}><ArrowUp size={13} /></button>
+                      <IconAction label={`Subir ${s.title} na fila`} type="button" disabled={index === 0} onClick={() => onMove?.(s.id, index)} className="rounded-md p-1.5 text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-30" ><ArrowUp size={15} /></IconAction>
                       <span className="min-w-6 text-center text-[11px] font-semibold text-content-secondary">{index + 1}</span>
-                      <button type="button" disabled={index === suggestions.length - 1} onClick={() => onMove?.(s.id, index + 2)} className="rounded-md p-1.5 text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Descer ${s.title} na fila`}><ArrowDown size={13} /></button>
+                      <IconAction label={`Descer ${s.title} na fila`} type="button" disabled={index === suggestions.length - 1} onClick={() => onMove?.(s.id, index + 2)} className="rounded-md p-1.5 text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-30" ><ArrowDown size={15} /></IconAction>
                     </div>
-                    <button onClick={() => onWatch?.(s.id)} className="inline-flex min-h-10 items-center justify-center rounded-full border border-status-watching/25 bg-status-watching/10 px-3 text-xs font-semibold text-status-watching transition-colors hover:bg-status-watching/15"><Play size={13} className="mr-1.5" /> Assistir agora</button>
+                    <IconAction label="Assistir agora" onClick={() => onWatch?.(s.id)} className="inline-flex items-center justify-center rounded-full border border-status-watching/25 bg-status-watching/10 text-xs font-semibold text-status-watching transition-colors hover:bg-status-watching/15"><Play size={15} /></IconAction>
                   </>
                 )}
                 {status === 'watching' && (
-                  <button
+                  <IconAction label="Marcar concluído"
                     onClick={() => onAction?.(s.id, 'completed')}
-                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-status-completed/25 bg-status-completed/10 px-3 text-xs font-semibold text-status-completed transition-colors hover:bg-status-completed/15"
-                  >
-                    <CheckCircle size={13} className="mr-1.5" /> Marcar concluído
-                  </button>
+                    className="inline-flex items-center justify-center rounded-full border border-status-completed/25 bg-status-completed/10 text-xs font-semibold text-status-completed transition-colors hover:bg-status-completed/15"
+                  ><CheckCircle size={15} /></IconAction>
                 )}
-                <details className="group/actions w-full sm:w-auto">
-                  <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full px-3 text-xs font-medium text-content-muted transition-colors hover:bg-bg-tertiary hover:text-content-primary [&::-webkit-details-marker]:hidden">
-                    <MoreHorizontal size={14} /> Mais ações
-                  </summary>
-                  <div className="mt-1 flex flex-wrap gap-2 rounded-xl border border-border bg-bg-secondary p-2 sm:justify-end">
-                    {s.submitted_by && s.submitted_by !== ownerId && <button
-                      onClick={() => onBan?.(s)}
-                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs text-content-muted transition-colors hover:bg-status-rejected/10 hover:text-status-rejected"
-                      aria-label={`Banir ${s.submitter?.display_name ?? 'usuário'}`}
-                    >
-                      <ShieldBan size={12} /> Banir usuário
-                    </button>}
-                    <button
-                      onClick={() => onDelete?.(s)}
-                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs text-content-muted transition-colors hover:bg-status-rejected/10 hover:text-status-rejected"
-                      aria-label={`Excluir ${s.title}`}
-                    >
-                      <Trash2 size={12} /> Excluir
-                    </button>
-                  </div>
-                </details>
+                <MoreSuggestionActions suggestion={s} ownerId={ownerId} onBan={onBan} onDelete={onDelete} />
               </div>
             </div>
           ))
         )}
       </div>
+    </div>
+  )
+}
+
+function MoreSuggestionActions({ suggestion, ownerId, onBan, onDelete }: Pick<KanbanColumnProps, 'ownerId' | 'onBan' | 'onDelete'> & { suggestion: Suggestion }) {
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <IconAction label={expanded ? 'Menos ações' : 'Mais ações'} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}><MoreHorizontal size={16} /></IconAction>
+      {expanded && <div className="flex items-center gap-1 border-l border-border pl-1 animate-fade-in motion-reduce:animate-none">
+        {suggestion.submitted_by && suggestion.submitted_by !== ownerId && <IconAction label="Banir usuário" onClick={() => onBan?.(suggestion)} className="text-status-rejected hover:bg-status-rejected/10 hover:text-status-rejected"><ShieldBan size={15} /></IconAction>}
+        <IconAction label="Excluir sugestão" onClick={() => onDelete?.(suggestion)} className="text-status-rejected hover:bg-status-rejected/10 hover:text-status-rejected"><Trash2 size={15} /></IconAction>
+      </div>}
     </div>
   )
 }
@@ -341,8 +327,14 @@ const PROFILE_THEME_OPTIONS = [
   { id: 'midnight', name: 'Midnight', description: 'Azul profundo e minimalista', preview: 'from-blue-600 via-slate-800 to-slate-950' },
 ] as const
 
-export default function StreamerDashboard() {
-  const { streamerProfile, profile, refreshProfile, setStreamerProfile } = useAuthStore()
+export default function StreamerDashboard({ managedStreamer, onManagedStreamerChange, onManagedRefresh }: { managedStreamer?: Streamer; onManagedStreamerChange?: (streamer: Streamer | null) => void; onManagedRefresh?: () => Promise<void> } = {}) {
+  const auth = useAuthStore()
+  const streamerProfile = managedStreamer ?? auth.streamerProfile
+  const profile = auth.profile
+  const refreshProfile = onManagedRefresh ?? auth.refreshProfile
+  const setStreamerProfile = onManagedStreamerChange ?? auth.setStreamerProfile
+  const currentStreamer = useRef(streamerProfile)
+  currentStreamer.current = streamerProfile
   const [activeTab, setActiveTab] = useState<DashTab>('live')
   const [reusingFavorite, setReusingFavorite] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<Suggestion | null>(null)
@@ -411,12 +403,12 @@ export default function StreamerDashboard() {
     let active = true
     const mergeStreamerState = (updates: Partial<Streamer>) => {
       if (!active) return
-      const current = useAuthStore.getState().streamerProfile
+      const current = currentStreamer.current
       if (current?.id === streamerId) setStreamerProfile({ ...current, ...updates })
     }
 
     const refreshLiveStatus = async () => {
-      const login = profile?.twitch_login || streamerProfile.slug
+      const login = managedStreamer ? streamerProfile.slug : profile?.twitch_login || streamerProfile.slug
       const { data, error } = await supabase.functions.invoke('twitch-status', { body: { login } })
       if (!error && typeof data?.is_live === 'boolean') {
         mergeStreamerState({ is_live: data.is_live })
@@ -855,7 +847,7 @@ export default function StreamerDashboard() {
         body: {
           streamer_id: streamerProfile.id,
           suggestion_id: created?.id,
-          event_type: 'streamer_added',
+          event_type: profile.id === streamerProfile.owner_id ? 'streamer_added' : 'suggestion_received',
           viewer_name: profile.display_name,
           title: newContentTitle.trim(),
         },
@@ -1015,7 +1007,7 @@ export default function StreamerDashboard() {
         target_streamer_id: targetId
       })
       if (error) throw error
-      
+
       toast.success('Canal excluído com sucesso.', {
         description: 'O usuário foi rebaixado para viewer.'
       })
@@ -1588,7 +1580,7 @@ export default function StreamerDashboard() {
                     <p className="mt-1 text-sm leading-relaxed text-content-secondary">{chatStatusLoading ? 'Isso leva só um instante.' : chatHealthCopy.description}</p>
                   </div>
                   {!chatStatusLoading && chatHealthState === 'reconnect' && (
-                    <Button className="w-full sm:w-auto" size="sm" onClick={() => { window.location.href = getTwitchChatConnectUrl(streamerProfile.id) }}>
+                    <Button disabled={Boolean(managedStreamer)} className="w-full sm:w-auto" size="sm" onClick={() => { window.location.href = getTwitchChatConnectUrl(streamerProfile.id) }}>
                       Reconectar Twitch
                     </Button>
                   )}
@@ -1777,6 +1769,7 @@ export default function StreamerDashboard() {
                   {platformStreamers.map((channel) => (
                     <div key={channel.id} className="flex items-center gap-3 rounded-xl border border-border bg-bg-tertiary/60 p-3">
                       <Avatar src={channel.avatar_url} alt={channel.channel_name} fallback={channel.channel_name} size="sm" />
+                      <Link to={`/dashboard/admin/${channel.id}`} className="text-sm text-brand-purple">Gerenciar</Link>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-content-primary">{channel.channel_name}</p>
                         <p className="truncate text-xs text-content-muted">{window.location.host}/{channel.slug}</p>

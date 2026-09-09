@@ -60,6 +60,7 @@ const AuthCallback = lazy(() => import('@/pages/AuthCallback'))
 const ViewerDashboard = lazy(() => import('@/pages/dashboard/ViewerDashboard'))
 const StreamerDashboard = lazy(() => import('@/pages/dashboard/StreamerDashboard'))
 const ModeratorDashboard = lazy(() => import('@/pages/dashboard/ModeratorDashboard'))
+const AdminChannelDashboard = lazy(() => import('@/pages/dashboard/AdminChannelDashboard'))
 const OverlayPage = lazy(() => import('@/pages/Overlay'))
 const ViewerProfile = lazy(() => import('@/pages/ViewerProfile'))
 
@@ -107,23 +108,38 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
     // Escutar mudanças de sessão
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        const previousUserId = useAuthStore.getState().user?.id
         setSession(session)
         setUser(session?.user ?? null)
 
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          await initialize()
+        // Supabase also emits SIGNED_IN when returning to an existing tab.
+        // Only a different account needs the blocking authentication loader.
+        if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+          const userId = session.user.id
+          const accountChanged = previousUserId !== userId
+          if (accountChanged) useAuthStore.getState().setLoading(true)
+          // Run database requests outside the auth callback's session lock.
+          window.setTimeout(() => {
+            if (useAuthStore.getState().user?.id !== userId) return
+            void refreshProfile().finally(() => {
+              if (accountChanged && useAuthStore.getState().user?.id === userId) {
+                useAuthStore.getState().setLoading(false)
+              }
+            })
+          }, 0)
         }
 
         if (event === 'SIGNED_OUT') {
           setSession(null)
           setUser(null)
+          useAuthStore.getState().setLoading(false)
         }
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [initialize, setSession, setUser])
+  }, [initialize, setSession, setUser, refreshProfile])
 
   useEffect(() => {
     if (!user?.id) return
@@ -211,6 +227,7 @@ export default function App() {
               path="/dashboard/moderator/:streamerId"
               element={<ProtectedRoute><ModeratorDashboard /></ProtectedRoute>}
             />
+            <Route path="/dashboard/admin/:streamerId" element={<ProtectedRoute><AdminChannelDashboard /></ProtectedRoute>} />
           </Route>
 
           {/* 404 */}

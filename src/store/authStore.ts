@@ -69,7 +69,7 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           const requestedUserId = user.id
-          const [{ data: profile }, { data: streamer }] = await Promise.all([
+          const [{ data: profile, error: profileError }, { data: streamer, error: streamerError }] = await Promise.all([
             supabase.from('profiles').select('*').eq('id', requestedUserId).single(),
             supabase
               .from('streamers')
@@ -82,6 +82,10 @@ export const useAuthStore = create<AuthState>()(
           // Ignore a response if another account entered while these requests
           // were running. This prevents permissions from leaking between sessions.
           if (get().user?.id !== requestedUserId) return
+          // A temporary connection failure must not erase the current account
+          // and unmount the dashboard during a background refresh.
+          if (profileError) throw profileError
+          if (streamerError) throw streamerError
 
           // A existência de um canal define o papel de streamer.
           // Novos usuários entram somente como viewers; canais são liberados por convite.

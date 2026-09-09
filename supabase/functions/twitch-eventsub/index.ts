@@ -156,8 +156,10 @@ async function processNotification(
     if (counterError) throw counterError
     const counter = personalCounter?.[0]
     if (counter) {
+      // Keep the login as the counter key, but display Twitch's original casing.
+      const targetDisplayName = event.chatter_user_name?.trim() || counter.target_display_name
       await sendChatMessage(admin, streamer.id, event.broadcaster_user_id, String(counter.response_template)
-        .replaceAll('{target}', counter.target_display_name).replaceAll('{count}', String(counter.count)))
+        .replaceAll('{target}', targetDisplayName).replaceAll('{count}', String(counter.count)))
       return new Response(null, { status: 204 })
     }
     const { data: customCommand, error: customCommandError } = await admin.rpc('claim_chat_custom_command', {

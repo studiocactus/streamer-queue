@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { CheckCircle, Settings, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -7,12 +7,15 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { useAuthStore } from '@/store/authStore'
 
 type Channel = { id: string; channel_name: string; slug: string; accepting_suggestions: boolean }
 type ChannelSettings = { require_approval: boolean; allow_votes: boolean; public_list: boolean; chat_command: string; chat_command_enabled: boolean }
 
 export default function ModeratorDashboard() {
   const { streamerId } = useParams()
+  const userId = useAuthStore((state) => state.user?.id)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [channel, setChannel] = useState<Channel | null>(null)
   const [settings, setSettings] = useState<ChannelSettings | null>(null)
   const [loading, setLoading] = useState(true)
@@ -23,6 +26,8 @@ export default function ModeratorDashboard() {
     async function load() {
       if (!streamerId) return
       setLoading(true)
+      const { data: admin } = await supabase.rpc('is_platform_admin', { p_user_id: userId })
+      if (active) setIsAdmin(Boolean(admin))
       const { data: channels, error: accessError } = await supabase.rpc('get_my_moderated_channels')
       if (accessError || !channels?.some((item: { id: string }) => item.id === streamerId)) { if (active) { setChannel(null); setSettings(null); setLoading(false) }; return }
       const [{ data: loadedChannel, error: channelError }, { data: loadedSettings, error: settingsError }] = await Promise.all([
@@ -35,7 +40,7 @@ export default function ModeratorDashboard() {
     }
     void load()
     return () => { active = false }
-  }, [streamerId])
+  }, [streamerId, userId])
 
   const save = async () => {
     if (!channel || !settings) return
@@ -53,6 +58,7 @@ export default function ModeratorDashboard() {
     } catch (error) { console.error(error); toast.error('Não foi possível salvar as configurações deste canal.') } finally { setSaving(false) }
   }
 
+  if (isAdmin) return <Navigate to={`/dashboard/admin/${streamerId}`} replace />
   if (loading) return <div className="page-section text-content-secondary">Carregando configurações…</div>
   if (!channel || !settings) return <div className="page-section"><EmptyState icon={<ShieldCheck size={24} />} title="Acesso de moderador não encontrado" description="Você só pode administrar os canais para os quais foi escolhido pelo streamer." action={<Link to="/dashboard"><Button>Voltar ao meu painel</Button></Link>} /></div>
 

@@ -19,6 +19,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { SkeletonSuggestion } from '@/components/ui/Skeleton'
 import { QRCode } from '@/components/ui/QRCode'
 import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
+import { SuggestionSourceLink } from '@/components/ui/SuggestionSourceLink'
 import { formatRelativeDate, categoryLabel, cn } from '@/lib/utils'
 import type { Suggestion, SuggestionCategory } from '@/types'
 
@@ -111,11 +112,7 @@ function SuggestionCard({
           </p>
         )}
 
-        {suggestion.source_url && (
-          <a href={suggestion.source_url} target="_blank" rel="noreferrer" className="mb-2 inline-flex items-center gap-1 text-xs text-brand-purple hover:underline">
-            <LinkIcon size={11} /> Abrir conteúdo
-          </a>
-        )}
+        <SuggestionSourceLink url={suggestion.source_url} title={suggestion.title} className="mb-2" />
 
         <div className="flex items-center justify-between">
           <span className="text-xs text-content-muted">

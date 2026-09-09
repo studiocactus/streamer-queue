@@ -74,10 +74,11 @@ async function handlerFor(file, client, fakeFetch) {
 }
 
 test('browser endpoint can only wake existing, authorized queue deliveries', async (t) => {
-  for (const scenario of ['pending', 'sent', 'skipped', 'missing', 'forbidden', 'unauthorized']) {
+  for (const scenario of ['pending', 'sent', 'skipped', 'missing', 'forbidden', 'unauthorized', 'platform-admin']) {
     await t.test(scenario, async () => {
       const wakes = []
       const client = {
+        rpc: async (name) => { assert.equal(name, 'is_platform_admin'); return { data: scenario === 'platform-admin', error: null } },
         auth: { getUser: async () => ({ data: { user: scenario === 'unauthorized' ? null : { id: 'viewer' } }, error: null }) },
         from(table) {
           const query = {
@@ -99,7 +100,7 @@ test('browser endpoint can only wake existing, authorized queue deliveries', asy
         return new Response('{}')
       })
       const response = await handler(new Request('https://example.invalid', { method: 'POST', headers: { Authorization: 'Bearer fake' }, body: JSON.stringify({
-        streamer_id: 'channel', suggestion_id: 'suggestion', event_type: scenario === 'forbidden' ? 'completed' : 'suggestion_received',
+        streamer_id: 'channel', suggestion_id: 'suggestion', event_type: ['forbidden', 'platform-admin'].includes(scenario) ? 'completed' : 'suggestion_received',
       }) }))
       assert.equal(response.status, scenario === 'missing' ? 404 : scenario === 'forbidden' ? 403 : scenario === 'unauthorized' ? 401 : 200)
       assert.equal(wakes.length, scenario === 'pending' ? 1 : 0)

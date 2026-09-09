@@ -18,6 +18,7 @@ import { streamerPath } from '@/lib/routes'
 import { useContentThumbnail } from '@/hooks/useContentThumbnail'
 import { normalizeProfileLink } from '@/lib/profileLinks'
 import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
+import { SuggestionSourceLink } from '@/components/ui/SuggestionSourceLink'
 
 interface ViewerStats {
   suggestions: Suggestion[]
@@ -39,6 +40,7 @@ function ViewerSuggestionRow({ suggestion }: { suggestion: Suggestion }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-medium text-content-primary">{suggestion.title}</p><Badge variant="status" status={suggestion.status} size="sm" /><Badge variant="category" category={suggestion.category as never} size="sm" /></div>
         <div className="mt-1 flex items-center gap-2">{joined.streamer && <Link to={streamerPath(joined.streamer.slug)} className="text-xs text-brand-purple hover:underline">{joined.streamer.channel_name}</Link>}<span className="text-xs text-content-muted">· {formatRelativeDate(suggestion.submitted_at)}</span></div>
+        <SuggestionSourceLink url={suggestion.source_url} title={suggestion.title} className="mt-2" />
         {suggestion.status === 'rejected' && suggestion.submitted_by === viewerId && (
           <div className="mt-3 rounded-xl border border-border bg-bg-tertiary/60 p-3 text-xs leading-relaxed text-content-secondary">
             <p className="mb-1 font-medium text-content-primary">Retorno do canal</p>

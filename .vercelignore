@@ -1,0 +1,7 @@
+.env
+.env.*
+.agents/
+.codex/
+skills-lock.json
+supabase/
+tests/

@@ -10,12 +10,16 @@ test('theme is restored before React renders and uses system preference on first
 })
 
 test('header exposes an accessible theme toggle and light palette', async () => {
-  const [header, styles] = await Promise.all([
+  const [header, styles, toggle] = await Promise.all([
     readFile(new URL('../src/components/layout/Header.tsx', import.meta.url), 'utf8'),
     readFile(new URL('../src/index.css', import.meta.url), 'utf8'),
+    readFile(new URL('../src/components/ui/ThemeToggle.tsx', import.meta.url), 'utf8'),
   ])
-  assert.match(header, /Ativar modo claro/)
-  assert.match(header, /Ativar modo escuro/)
+  assert.match(header, /<ThemeToggle/)
+  assert.match(toggle, /title="Modo claro"/)
+  assert.match(toggle, /title="Modo escuro"/)
+  assert.match(toggle, /aria-pressed=\{theme === 'light'\}/)
+  assert.match(toggle, /aria-pressed=\{theme === 'dark'\}/)
   assert.match(styles, /:root\[data-theme='light'\]/)
   assert.match(styles, /--color-bg-primary: 248 247 251/)
 })
@@ -48,6 +52,6 @@ test('footer credits idea and development without hiding authorship', async () =
   const source = await readFile(new URL('../src/components/layout/Footer.tsx', import.meta.url), 'utf8')
   assert.match(source, /Ideia e Desenvolvimento/)
   assert.match(source, /Thenees/)
-  assert.match(source, /Gatomipia/)
+  assert.match(source, /Gatomiopia/)
   assert.doesNotMatch(source, /Ideia e Desenvolvimento[\s\S]{0,500}shadow-\[0_12px_35px/)
 })

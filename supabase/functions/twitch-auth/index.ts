@@ -112,13 +112,10 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
       }
 
-      const { data: owner } = await adminClient
-        .from('streamers')
-        .select('id')
-        .eq('id', streamerId)
-        .eq('owner_id', authData.user.id)
-        .maybeSingle()
-      if (!owner) {
+      const { data: owner, error: permissionError } = await adminClient.rpc('is_streamer_owner', {
+        p_streamer_id: streamerId, p_user_id: authData.user.id,
+      })
+      if (permissionError || !owner) {
         return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: corsHeaders })
       }
 

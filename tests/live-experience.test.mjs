@@ -15,7 +15,8 @@ test('streamer dashboard follows live state without requiring a reload', async (
   assert.match(source, /Página do canal/)
   assert.match(source, /Ver overlay/)
   assert.match(source, /Mais ações/)
-  assert.match(source, /\[&::-webkit-details-marker\]:hidden/)
+  assert.match(source, /aria-expanded=\{expanded\}/)
+  assert.match(source, /<MoreSuggestionActions/)
   assert.match(source, /Marcar concluído/)
 })
 

@@ -24,14 +24,25 @@ export function useSuggestions(streamerId: string | undefined) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user, profile } = useAuthStore()
+  const contextKey = `${streamerId ?? ''}:${user?.id ?? ''}`
+  const activeContext = useRef(contextKey)
+  activeContext.current = contextKey
+  const loadedContext = useRef<string | null>(null)
+  const requestVersion = useRef(0)
 
   const fetchSuggestions = useCallback(async () => {
+    const version = ++requestVersion.current
+    const isCurrent = () => activeContext.current === contextKey && requestVersion.current === version
     if (!streamerId) {
       setIsLoading(false)
       setSuggestions([])
       return
     }
-    setIsLoading(true)
+    const initialLoad = loadedContext.current !== contextKey
+    if (initialLoad) {
+      setIsLoading(true)
+      setSuggestions([])
+    }
     setError(null)
 
     try {
@@ -56,14 +67,16 @@ export function useSuggestions(streamerId: string | undefined) {
           : false,
       }))
 
+      if (!isCurrent()) return
+      loadedContext.current = contextKey
       setSuggestions(enhanced)
     } catch (err) {
-      setError('Erro ao carregar sugestões')
+      if (isCurrent() && initialLoad) setError('Erro ao carregar sugestões')
       console.error(err)
     } finally {
-      setIsLoading(false)
+      if (isCurrent()) setIsLoading(false)
     }
-  }, [streamerId, user?.id]) // SEM dependência de objeto filters
+  }, [streamerId, user?.id, contextKey]) // SEM dependência de objeto filters
 
   useEffect(() => {
     fetchSuggestions()
@@ -74,6 +87,21 @@ export function useSuggestions(streamerId: string | undefined) {
   useEffect(() => {
     fetchRef.current = fetchSuggestions
   }, [fetchSuggestions])
+
+  useEffect(() => {
+    const refreshVisible = () => {
+      if (document.visibilityState === 'visible') void fetchRef.current()
+    }
+    document.addEventListener('visibilitychange', refreshVisible)
+    window.addEventListener('online', refreshVisible)
+    const interval = window.setInterval(refreshVisible, 60000)
+    return () => {
+      document.removeEventListener('visibilitychange', refreshVisible)
+      window.removeEventListener('online', refreshVisible)
+      window.clearInterval(interval)
+      requestVersion.current++
+    }
+  }, [streamerId, user?.id])
 
   useEffect(() => {
     const handleSuggestionChange = (event: Event) => {
@@ -104,7 +132,7 @@ export function useSuggestions(streamerId: string | undefined) {
         table: 'votes',
         filter: `streamer_id=eq.${streamerId}`,
       }, () => { fetchRef.current() })
-      .subscribe()
+      .subscribe((status) => { if (status === 'SUBSCRIBED') void fetchRef.current() })
 
     return () => {
       channel.unsubscribe()
