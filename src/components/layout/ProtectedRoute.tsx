@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import type { ReactNode } from 'react'
-import { Loader2 } from 'lucide-react'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -13,11 +13,7 @@ export function ProtectedRoute({ children, requireStreamer = false }: ProtectedR
   const location = useLocation()
 
   if (!isInitialized || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 size={32} className="text-brand-purple animate-spin" />
-      </div>
-    )
+    return <PageLoading />
   }
 
   if (!user) {

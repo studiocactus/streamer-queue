@@ -20,6 +20,7 @@ import { SkeletonSuggestion } from '@/components/ui/Skeleton'
 import { QRCode } from '@/components/ui/QRCode'
 import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
 import { SuggestionSourceLink } from '@/components/ui/SuggestionSourceLink'
+import { PageLoading } from '@/components/ui/PageLoading'
 import { formatRelativeDate, categoryLabel, cn } from '@/lib/utils'
 import type { Suggestion, SuggestionCategory } from '@/types'
 
@@ -353,18 +354,7 @@ export default function StreamerPage() {
     window.setTimeout(() => document.getElementById('channel-suggestions')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
 
-  if (streamerLoading) {
-    return (
-      <div className="min-h-screen">
-        <div className="h-48 bg-bg-secondary animate-pulse" />
-        <div className="app-shell -mt-12">
-          <div className="flex items-end gap-4 mb-8">
-            <div className="w-24 h-24 rounded-full bg-bg-tertiary animate-pulse ring-4 ring-bg-primary" />
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (streamerLoading || (streamer && suggestionsLoading)) return <PageLoading />
 
   if (streamerError || !streamer) {
     return (

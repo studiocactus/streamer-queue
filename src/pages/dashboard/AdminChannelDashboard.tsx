@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import type { Streamer } from '@/types'
 import StreamerDashboard from './StreamerDashboard'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 export default function AdminChannelDashboard() {
   const { streamerId } = useParams()
@@ -26,7 +27,7 @@ export default function AdminChannelDashboard() {
     return () => { active = false }
   }, [load])
   const refresh = useCallback(async () => { setChannel(await load()) }, [load])
-  if (loading) return <div className="page-section">Carregando canal…</div>
+  if (loading) return <PageLoading />
   if (!channel) return <div className="page-section">Canal indisponível ou acesso não autorizado. <Link to="/dashboard">Voltar</Link></div>
   return <><div className="app-shell pt-5 text-sm text-content-secondary">Administrando <strong>{channel.channel_name}</strong> · <Link className="text-brand-purple" to="/dashboard">Voltar ao meu painel</Link></div><StreamerDashboard key={channel.id} managedStreamer={channel} onManagedStreamerChange={setChannel} onManagedRefresh={refresh} /></>
 }

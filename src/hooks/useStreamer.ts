@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Streamer } from '@/types'
 
@@ -6,6 +6,7 @@ export function useStreamer(slug: string | undefined) {
   const [streamer, setStreamer] = useState<Streamer | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const loadedSlug = useRef<string | undefined>(undefined)
 
   const fetch = useCallback(async () => {
     if (!slug || !slug.trim()) {
@@ -13,7 +14,7 @@ export function useStreamer(slug: string | undefined) {
       setError('Canal não especificado.')
       return
     }
-    setIsLoading(true)
+    if (loadedSlug.current !== slug) setIsLoading(true)
     setError(null)
 
     try {
@@ -39,6 +40,7 @@ export function useStreamer(slug: string | undefined) {
         const { data: liveStatus } = await supabase.functions.invoke('twitch-status', {
           body: { login: loadedStreamer.slug },
         })
+        loadedSlug.current = slug
         setStreamer({ ...loadedStreamer, is_live: Boolean(liveStatus?.is_live) })
       }
     } catch (err) {

@@ -9,6 +9,7 @@ import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { streamerPath } from '@/lib/routes'
 import { Seo } from '@/components/Seo'
 import { useTheme } from '@/hooks/useTheme'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 // Error Boundary para capturar crashes e mostrar mensagem em vez de tela preta
 class ErrorBoundary extends Component<
@@ -63,10 +64,6 @@ const ModeratorDashboard = lazy(() => import('@/pages/dashboard/ModeratorDashboa
 const AdminChannelDashboard = lazy(() => import('@/pages/dashboard/AdminChannelDashboard'))
 const OverlayPage = lazy(() => import('@/pages/Overlay'))
 const ViewerProfile = lazy(() => import('@/pages/ViewerProfile'))
-
-function PageLoading() {
-  return <div role="status" className="flex min-h-[40vh] items-center justify-center px-4 text-content-secondary">Carregando…</div>
-}
 
 // Layout com header e footer
 function AppLayout() {

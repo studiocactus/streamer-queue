@@ -28,6 +28,7 @@ import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
 import { ChatAutomationManager } from '@/components/ChatAutomationManager'
 import { SuggestionSourceLink } from '@/components/ui/SuggestionSourceLink'
 import { IconAction } from '@/components/ui/IconAction'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 // ============================================================
 // Kanban Column
@@ -1117,6 +1118,8 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
       </div>
     )
   }
+
+  if (isLoading) return <PageLoading />
 
   const stats = [
     { label: 'Pendentes', value: pending.length, icon: Clock, color: 'text-status-pending' },

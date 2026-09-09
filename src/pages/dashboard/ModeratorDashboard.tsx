@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuthStore } from '@/store/authStore'
+import { PageLoading } from '@/components/ui/PageLoading'
 
 type Channel = { id: string; channel_name: string; slug: string; accepting_suggestions: boolean }
 type ChannelSettings = { require_approval: boolean; allow_votes: boolean; public_list: boolean; chat_command: string; chat_command_enabled: boolean }
@@ -59,7 +60,7 @@ export default function ModeratorDashboard() {
   }
 
   if (isAdmin) return <Navigate to={`/dashboard/admin/${streamerId}`} replace />
-  if (loading) return <div className="page-section text-content-secondary">Carregando configurações…</div>
+  if (loading) return <PageLoading />
   if (!channel || !settings) return <div className="page-section"><EmptyState icon={<ShieldCheck size={24} />} title="Acesso de moderador não encontrado" description="Você só pode administrar os canais para os quais foi escolhido pelo streamer." action={<Link to="/dashboard"><Button>Voltar ao meu painel</Button></Link>} /></div>
 
   return <div className="page-section"><div className="app-shell max-w-3xl space-y-6">
