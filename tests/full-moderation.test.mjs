@@ -26,12 +26,17 @@ test('full moderation follows channel membership and revocation without granting
     await db.exec(`create table ${table}(streamer_id uuid, value text); alter table ${table} enable row level security;`)
   }
   await db.exec(await readFile(new URL('../supabase/migrations/0064_full_channel_moderation.sql',import.meta.url),'utf8'))
+  // Production migration 0031 revoked the helper's default EXECUTE privilege.
+  await db.exec('revoke all on function can_manage_streamer(uuid) from public, authenticated')
+  await db.exec(await readFile(new URL('../supabase/migrations/0065_moderator_access_check_grant.sql',import.meta.url),'utf8'))
   await db.query('insert into streamers(id,owner_id) values ($1,$3),($2,$3)',[id(1),id(2),id(9)])
   await db.query("insert into streamer_members values ($1,$2,'moderator','{}')",[id(1),id(3)])
   await db.query("insert into chat_message_templates values ($1,'old'),($2,'other')",[id(1),id(2)])
   await db.exec('grant usage on schema auth,public to authenticated; grant all on all tables in schema public to authenticated;')
   await db.query("select set_config('test.uid',$1,false)",[id(3)])
   await db.exec('set role authenticated')
+  assert.equal((await db.query('select can_manage_streamer($1) as allowed',[id(1)])).rows[0].allowed,true)
+  assert.equal((await db.query('select can_manage_streamer($1) as allowed',[id(2)])).rows[0].allowed,false)
   assert.equal((await db.query("select has_streamer_permission($1,auth.uid(),'manage_settings') as allowed",[id(1)])).rows[0].allowed,true)
   assert.equal((await db.query("update chat_message_templates set value='custom bot message' where streamer_id=$1 returning value",[id(1)])).rows.length,1)
   assert.equal((await db.query("update chat_message_templates set value='forbidden' where streamer_id=$1 returning value",[id(2)])).rows.length,0)
