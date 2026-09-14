@@ -6,19 +6,21 @@ import type { Streamer } from '@/types'
 import StreamerDashboard from './StreamerDashboard'
 import { PageLoading } from '@/components/ui/PageLoading'
 
-export default function AdminChannelDashboard() {
+export default function AdminChannelDashboard({ moderatorAccess = false }: { moderatorAccess?: boolean } = {}) {
   const { streamerId } = useParams()
   const userId = useAuthStore((state) => state.user?.id)
   const [channel, setChannel] = useState<Streamer | null>(null)
   const [loading, setLoading] = useState(true)
   const load = useCallback(async () => {
     if (!userId || !streamerId) return null
-    const { data: allowed, error } = await supabase.rpc('is_platform_admin', { p_user_id: userId })
+    const { data: allowed, error } = moderatorAccess
+      ? await supabase.rpc('can_manage_streamer', { p_streamer_id: streamerId })
+      : await supabase.rpc('is_platform_admin', { p_user_id: userId })
     if (error || !allowed) return null
-    const result = await supabase.from('streamers').select('*').eq('id', streamerId).maybeSingle()
+    const result = await supabase.from('streamers').select('*, settings:streamer_settings(*)').eq('id', streamerId).maybeSingle()
     if (result.error) throw result.error
     return result.data as Streamer | null
-  }, [streamerId, userId])
+  }, [streamerId, userId, moderatorAccess])
   useEffect(() => {
     let active = true
     setLoading(true)
