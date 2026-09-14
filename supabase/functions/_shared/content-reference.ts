@@ -1,5 +1,5 @@
 const metadataHosts = new Set([
-  'youtube.com', 'www.youtube.com', 'youtu.be', 'music.youtube.com', 'open.spotify.com',
+  'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be', 'music.youtube.com', 'open.spotify.com',
 ])
 
 export type NormalizedContent = {
@@ -21,6 +21,7 @@ export async function normalizeContentReference(rawValue: string): Promise<Norma
     return { title: value, sourceUrl: null, thumbnailUrl: null }
   }
 
+  if (parsed.hostname.toLowerCase() === 'm.youtube.com') parsed.hostname = 'www.youtube.com'
   const sourceUrl = parsed.toString()
   const host = parsed.hostname.toLowerCase()
   const hostLabel = host.replace(/^www\./, '')
