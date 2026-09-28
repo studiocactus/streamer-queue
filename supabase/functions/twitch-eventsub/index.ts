@@ -134,7 +134,8 @@ async function processNotification(
     return new Response(null, { status: 204 })
   }
 
-  if (!['!fila', '!proximo', settings.chat_command.toLowerCase()].includes(command)) {
+  const isFilmSuggestion = command === '!filme'
+  if (!['!fila', '!proximo', '!filme', settings.chat_command.toLowerCase()].includes(command)) {
     // Poll commands are independent from the suggestion command and are resolved atomically in Postgres.
     const { data: pollVote, error: pollVoteError } = await admin.rpc('cast_film_poll_vote', {
       p_streamer_id: streamer.id, p_twitch_user_id: event.chatter_user_id, p_command: command,
@@ -150,6 +151,8 @@ async function processNotification(
       await sendChatMessage(admin, streamer.id, event.broadcaster_user_id, message)
       return new Response(null, { status: 204 })
     }
+    // A repeated poll vote must not fall through to a custom command.
+    if (vote) return new Response(null, { status: 204 })
     const { data: personalCounter, error: counterError } = await admin.rpc('increment_personal_chat_counter', {
       p_streamer_id: streamer.id, p_command: command, p_target: event.chatter_user_login,
     })
@@ -189,7 +192,7 @@ async function processNotification(
     await answerQueueCommand(admin, streamer.id, event.broadcaster_user_id, event.chatter_user_login, command)
     return new Response(null, { status: 204 })
   }
-  if (command !== settings.chat_command.toLowerCase()) return new Response(null, { status: 204 })
+  if (!isFilmSuggestion && command !== settings.chat_command.toLowerCase()) return new Response(null, { status: 204 })
   if (streamer.accepting_suggestions === false && event.chatter_user_id !== event.broadcaster_user_id) {
     await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
       `@${event.chatter_user_login}, as sugestões estão pausadas neste momento.`)
@@ -197,7 +200,7 @@ async function processNotification(
   }
   if (!title) {
     await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
-      `@${event.chatter_user_login}, use ${settings.chat_command} seguido do nome do conteúdo.`)
+      `@${event.chatter_user_login}, use ${isFilmSuggestion ? '!filme' : settings.chat_command} seguido do nome do conteúdo.`)
     return new Response(null, { status: 204 })
   }
 
@@ -235,7 +238,7 @@ async function processNotification(
       twitch_event_message_id: messageId,
       streamer_id: streamer.id,
       submitted_by: profile?.id ?? null,
-      category: 'other',
+      category: isFilmSuggestion ? 'movie' : 'other',
       title: content.title,
       description: `Enviado pelo chat da Twitch por @${event.chatter_user_login}.`,
       source_url: content.sourceUrl,

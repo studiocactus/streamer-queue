@@ -24,6 +24,7 @@ import { getTwitchChatConnectUrl } from '@/lib/supabase'
 import { streamerPath } from '@/lib/routes'
 import { PlatformFeedback } from '@/components/PlatformFeedback'
 import { FilmPollManager } from '@/components/FilmPollManager'
+import { BulkSuggestionCleanup } from '@/components/BulkSuggestionCleanup'
 import { ContentThumbnail } from '@/components/ui/ContentThumbnail'
 import { ChatAutomationManager } from '@/components/ChatAutomationManager'
 import { SuggestionSourceLink } from '@/components/ui/SuggestionSourceLink'
@@ -1376,6 +1377,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
         )}
 
         {/* Kanban */}
+        {activeTab === 'kanban' && <BulkSuggestionCleanup streamerId={streamerProfile.id} suggestions={suggestions} onDeleted={refetch} />}
         {activeTab === 'kanban' && (
           <div>
             <div className="grid grid-cols-1 gap-4">
@@ -1725,7 +1727,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
         )}
 
         {activeTab === 'feedback' && isPlatformAdmin && <PlatformFeedback />}
-        {activeTab === 'poll' && streamerProfile && <FilmPollManager streamerId={streamerProfile.id} />}
+        {activeTab === 'poll' && streamerProfile && <FilmPollManager streamerId={streamerProfile.id} suggestions={suggestions} />}
         {activeTab === 'favorites' && (
           <Card>
             <CardHeader><div><h2 className="font-semibold text-content-primary">Sugestões favoritas</h2>

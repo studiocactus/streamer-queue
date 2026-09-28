@@ -68,7 +68,7 @@ const ViewerProfile = lazy(() => import('@/pages/ViewerProfile'))
 // Layout com header e footer
 function AppLayout() {
   return (
-    <div className="flex flex-col min-h-screen" data-app-release="2026-09-02">
+    <div className="flex flex-col min-h-screen" data-app-release="0.2.0">
       <Header />
       <main className="flex-1">
         <Suspense fallback={<PageLoading />}><Outlet /></Suspense>

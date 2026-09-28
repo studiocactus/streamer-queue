@@ -47,6 +47,11 @@ Deno.serve(async (req) => {
   }
   // A poll announcement must never delay or fail the established delivery queue.
   try {
+    await announceStartedFilmPolls()
+  } catch (error) {
+    console.error('[chat-delivery-worker] Poll opening announcement failed', error)
+  }
+  try {
     await announceEndedFilmPolls()
     await sendTimedMessages()
   } catch (error) {
@@ -61,10 +66,39 @@ Deno.serve(async (req) => {
   return json({ processed: results.length, results })
 })
 
+async function announceStartedFilmPolls() {
+  for (let index = 0; index < 8; index++) {
+    const { data, error } = await admin.rpc('claim_film_poll_announcement')
+    if (error) throw error
+    const item = data?.[0]
+    if (!item) return
+    let sent = false
+    let failure: string | null = null
+    try {
+      const { data: connection, error: connectionError } = await admin.from('twitch_connections').select('broadcaster_id').eq('streamer_id', item.streamer_id).maybeSingle()
+      const { data: credential, error: credentialError } = await admin.from('twitch_chat_credentials').select('*').eq('streamer_id', item.streamer_id).maybeSingle()
+      if (connectionError || credentialError || !connection?.broadcaster_id || !credential) throw new Error('Conexão Twitch indisponível')
+      const token = await validAccessToken(credential, item.streamer_id)
+      if (!token) throw new Error('Token Twitch indisponível')
+      const response = await fetch('https://api.twitch.tv/helix/chat/messages', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Client-Id': TWITCH_CLIENT_ID, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message: item.message }),
+      })
+      const body = await response.json().catch(() => null)
+      if (!response.ok || !body?.data?.[0]?.is_sent) throw new Error(body?.data?.[0]?.drop_reason?.message ?? `Twitch HTTP ${response.status}`)
+      sent = true
+    } catch (error) {
+      failure = error instanceof Error ? error.message : 'Falha ao anunciar votação'
+    }
+    const { error: settleError } = await admin.rpc('settle_film_poll_announcement', { p_id: item.id, p_attempt: item.attempt, p_sent: sent, p_error: failure })
+    if (settleError) throw settleError
+  }
+}
+
 async function announceEndedFilmPolls() {
   const { data: polls, error } = await admin.from('film_polls')
     .select('id, streamer_id, result_message_template, film_poll_options(id, title, command, film_poll_votes(count))')
-    .lte('ends_at', new Date().toISOString()).is('result_announced_at', null).limit(10)
+    .lte('ends_at', new Date().toISOString()).neq('status', 'archived').is('result_announced_at', null).limit(10)
   if (error) throw error
   for (const poll of polls ?? []) {
     // The vote window ends at its scheduled time. If Twitch rejects the result
