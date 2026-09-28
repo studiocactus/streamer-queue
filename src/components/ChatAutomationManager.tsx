@@ -64,6 +64,8 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
   const [timers, setTimers] = useState<Timer[]>([])
   const [commands, setCommands] = useState<ChatCommand[]>([])
   const [counters, setCounters] = useState<Counter[]>([])
+  const [countersLoading, setCountersLoading] = useState(true)
+  const [countersError, setCountersError] = useState(false)
   const [counterValues, setCounterValues] = useState<Record<string, CounterValue[]>>({})
   const [expandedCounterId, setExpandedCounterId] = useState<string | null>(null)
   const [loadingCounterValues, setLoadingCounterValues] = useState<string | null>(null)
@@ -79,15 +81,23 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
   const [editingCounter, setEditingCounter] = useState<Counter | null>(null)
 
   const loadAutomations = async () => {
-    const [timersResult, commandsResult, countersResult] = await Promise.all([
-      db.from('chat_timed_messages').select('*').eq('streamer_id', streamerId).order('created_at'),
-      db.from('chat_custom_commands').select('*').eq('streamer_id', streamerId).order('created_at'),
-      db.from('chat_command_counters').select('*').eq('streamer_id', streamerId).order('created_at'),
-    ])
+    setCountersLoading(true)
+    try {
+      const [timersResult, commandsResult, countersResult] = await Promise.all([
+        db.from('chat_timed_messages').select('*').eq('streamer_id', streamerId).order('created_at'),
+        db.from('chat_custom_commands').select('*').eq('streamer_id', streamerId).order('created_at'),
+        db.from('chat_command_counters').select('*').eq('streamer_id', streamerId).order('created_at'),
+      ])
 
-    setTimers(timersResult.data ?? [])
-    setCommands(commandsResult.data ?? [])
-    setCounters(countersResult.data ?? [])
+      setTimers(timersResult.data ?? [])
+      setCommands(commandsResult.data ?? [])
+      setCountersError(Boolean(countersResult.error))
+      if (!countersResult.error) setCounters(countersResult.data ?? [])
+    } catch {
+      setCountersError(true)
+    } finally {
+      setCountersLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -293,7 +303,7 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
                         selected ? 'bg-white/15 text-white' : 'bg-bg-secondary text-content-muted'
                       }`}
                     >
-                      {tabCount(tab.id)}
+                      {tab.id === 'counters' && countersLoading ? '…' : tab.id === 'counters' && countersError ? '!' : tabCount(tab.id)}
                     </span>
                   </button>
                 )
@@ -442,6 +452,10 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
 
             {activeTab === 'counters' && (
               <section className="space-y-5" aria-labelledby="counters-title">
+                {countersError && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-status-rejected/30 p-3">
+                  <p className="text-sm text-content-secondary">Não foi possível atualizar os contadores. As contagens salvas foram preservadas.</p>
+                  <Button size="sm" variant="secondary" loading={countersLoading} onClick={() => void loadAutomations()}>Tentar novamente</Button>
+                </div>}
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
