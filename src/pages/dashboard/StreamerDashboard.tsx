@@ -1721,7 +1721,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
                   </div>
                 ))}
               </div>
-              <ChatAutomationManager key={streamerProfile.id} streamerId={streamerProfile.id} channelName={streamerProfile.channel_name} />
+              <ChatAutomationManager streamerId={streamerProfile.id} />
             </CardContent>
           </Card>
         )}
