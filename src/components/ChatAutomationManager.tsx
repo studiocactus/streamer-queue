@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Bot,
   ChevronDown,
@@ -59,11 +59,15 @@ const tabs: Array<{ id: AutomationTab; label: string; icon: typeof Clock3 }> = [
   { id: 'counters', label: 'Contadores', icon: Hash },
 ]
 
-export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
+export function ChatAutomationManager({ streamerId, channelName }: { streamerId: string; channelName?: string }) {
   const [activeTab, setActiveTab] = useState<AutomationTab>('timers')
   const [timers, setTimers] = useState<Timer[]>([])
   const [commands, setCommands] = useState<ChatCommand[]>([])
   const [counters, setCounters] = useState<Counter[]>([])
+  const [countersLoading, setCountersLoading] = useState(true)
+  const [countersError, setCountersError] = useState(false)
+  const [counterValuesError, setCounterValuesError] = useState<Record<string, boolean>>({})
+  const openedLurk = useRef(false)
   const [counterValues, setCounterValues] = useState<Record<string, CounterValue[]>>({})
   const [expandedCounterId, setExpandedCounterId] = useState<string | null>(null)
   const [loadingCounterValues, setLoadingCounterValues] = useState<string | null>(null)
@@ -87,7 +91,18 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
 
     setTimers(timersResult.data ?? [])
     setCommands(commandsResult.data ?? [])
-    setCounters(countersResult.data ?? [])
+    setCountersLoading(false)
+    setCountersError(Boolean(countersResult.error))
+    if (!countersResult.error) {
+      const rows = (countersResult.data ?? []) as Counter[]
+      setCounters(rows)
+      const lurk = rows.find(counter => ['!lurk', '!lurker', '!lurkers'].includes(counter.command))
+      if (lurk && !openedLurk.current) {
+        openedLurk.current = true
+        setExpandedCounterId(lurk.id)
+        void loadCounterValues(lurk.id)
+      }
+    }
   }
 
   useEffect(() => {
@@ -104,6 +119,7 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
       .order('updated_at', { ascending: false })
 
     setLoadingCounterValues(null)
+    setCounterValuesError(current => ({ ...current, [counterId]: Boolean(error) }))
     if (error) {
       toast.error('Não foi possível carregar as contagens individuais.')
       return
@@ -257,7 +273,7 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
             <Bot size={17} />
           </span>
           <div>
-            <h2 className="font-semibold text-content-primary">Automações do chat</h2>
+            <h2 className="font-semibold text-content-primary">Automações do chat{channelName ? ` de ${channelName}` : ''}</h2>
             <p className="mt-0.5 text-xs text-content-muted">
               Configure respostas, mensagens recorrentes e contadores do seu canal.
             </p>
@@ -293,7 +309,7 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
                         selected ? 'bg-white/15 text-white' : 'bg-bg-secondary text-content-muted'
                       }`}
                     >
-                      {tabCount(tab.id)}
+                      {tab.id === 'counters' && countersLoading ? '…' : tab.id === 'counters' && countersError ? '!' : tabCount(tab.id)}
                     </span>
                   </button>
                 )
@@ -442,6 +458,12 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
 
             {activeTab === 'counters' && (
               <section className="space-y-5" aria-labelledby="counters-title">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p role={countersError ? 'alert' : 'status'} className="text-sm text-content-secondary">
+                    {countersLoading ? 'Carregando contadores…' : countersError ? 'Não foi possível carregar os contadores. As contagens salvas não foram apagadas.' : !counters.length ? `Nenhum contador cadastrado${channelName ? ` no canal ${channelName}` : ' neste canal'}.` : `${counters.length} contador(es) neste canal. Abra a contagem por pessoa para consultar os participantes.`}
+                  </p>
+                  <Button size="sm" variant="secondary" loading={countersLoading} leftIcon={<RefreshCw size={14} />} onClick={() => { setCountersLoading(true); void loadAutomations(); if (expandedCounterId) void loadCounterValues(expandedCounterId) }}>Atualizar contadores</Button>
+                </div>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
@@ -572,6 +594,8 @@ export function ChatAutomationManager({ streamerId }: { streamerId: string }) {
                               </div>
                               {loadingCounterValues === counter.id ? (
                                 <p className="px-3 py-4 text-sm text-content-muted">Atualizando contagens…</p>
+                              ) : counterValuesError[counter.id] ? (
+                                <p role="alert" className="px-3 py-4 text-sm text-content-secondary">Não foi possível carregar os participantes. Clique em Atualizar para tentar novamente.</p>
                               ) : (counterValues[counter.id] ?? []).length > 0 ? (
                                 <div className="divide-y divide-border/70">
                                   {(counterValues[counter.id] ?? []).map((value, index) => (
