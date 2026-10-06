@@ -5,56 +5,50 @@ import { useStreamer } from '@/hooks/useStreamer'
 import { useSuggestions } from '@/hooks/useSuggestions'
 import { QRCode } from '@/components/ui/QRCode'
 import { categoryLabel } from '@/lib/utils'
-import type { SuggestionCategory } from '@/types'
+import { normalizeOverlayConfig } from '@/lib/overlay'
 
 export default function OverlayPage() {
   const { slug } = useParams<{ slug: string }>()
   const { streamer, isLoading } = useStreamer(slug)
-  const { watching, queued, approved } = useSuggestions(streamer?.id)
-  const next = queued[0] ?? approved[0]
+  const { watching, queued } = useSuggestions(streamer?.id)
+  const next = queued.slice(0, 3)
+  const config = normalizeOverlayConfig(streamer?.overlay_config)
+  const vertical = config.orientation === 'vertical'
   const channelUrl = `${window.location.origin}/${streamer?.slug ?? slug ?? ''}`
-
   useEffect(() => {
-    const previousBodyBackground = document.body.style.background
-    const previousRootBackground = document.getElementById('root')?.style.background ?? ''
+    const root = document.getElementById('root')
+    const bodyBackground = document.body.style.background
+    const rootBackground = root?.style.background ?? ''
     document.body.style.background = 'transparent'
-    if (document.getElementById('root')) document.getElementById('root')!.style.background = 'transparent'
+    if (root) root.style.background = 'transparent'
     return () => {
-      document.body.style.background = previousBodyBackground
-      if (document.getElementById('root')) document.getElementById('root')!.style.background = previousRootBackground
+      document.body.style.background = bodyBackground
+      if (root) root.style.background = rootBackground
     }
   }, [])
-
   if (isLoading) return null
   if (!streamer) return <div className="fixed bottom-6 left-6 rounded-2xl bg-bg-secondary/95 px-5 py-4 text-white">Canal indisponível</div>
-
-  return (
-    <main className="fixed inset-0 overflow-hidden bg-transparent p-[clamp(18px,3vw,56px)] text-white">
-      <section className="absolute bottom-[clamp(18px,3vw,56px)] left-[clamp(18px,3vw,56px)] flex max-w-[min(920px,calc(100vw-36px))] items-stretch overflow-hidden rounded-3xl border border-white/15 bg-[#111119]/90 shadow-[0_30px_100px_rgba(0,0,0,.55),0_0_70px_rgba(145,70,255,.22)] backdrop-blur-xl">
-        <div className="min-w-0 flex-1 p-[clamp(18px,2.3vw,30px)]">
-          <div className="mb-5 flex items-center gap-2 text-[clamp(11px,1.1vw,14px)] font-semibold uppercase tracking-[.16em] text-brand-green">
-            <Radio size={16} className="animate-pulse" /> Fila da comunidade
+  return <main className="fixed inset-0 overflow-hidden bg-transparent">
+    <section style={{ color: config.text, backgroundColor: config.background, width: vertical ? 400 : 1180, maxWidth: 'calc(100vw - 36px)', maxHeight: 'calc(100vh - 36px)' }} className={`absolute bottom-[18px] left-[18px] flex overflow-auto rounded-3xl border border-current/20 shadow-2xl ${vertical ? 'flex-col' : 'flex-row'}`}>
+      <div className="min-w-0 flex-1 p-5">
+        <h1 className="mb-4 flex items-center gap-2 text-base font-semibold"><Radio size={18} className="shrink-0" />Fila do Streamer — {streamer.channel_name}</h1>
+        <div className={`grid gap-3 ${vertical ? '' : 'grid-cols-2'}`}>
+          <div className="min-w-0 rounded-2xl border border-current/30 p-4">
+            <p className="mb-3 flex items-center gap-2 text-sm opacity-80"><Play size={16} className="fill-current" />Assistindo agora</p>
+            <p className="break-words text-xl font-bold">{watching?.title ?? 'Nenhum conteúdo em reprodução'}</p>
+            {watching && <p className="mt-2 text-xs opacity-70">{categoryLabel(watching.category)}</p>}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <OverlayItem icon={<Play size={18} className="fill-current" />} label="Assistindo agora" title={watching?.title ?? 'A live vai começar'} category={watching?.category} active />
-            <OverlayItem icon={<SkipForward size={18} />} label="Próximo da fila" title={next?.title ?? 'Envie sua sugestão'} category={next?.category} />
+          <div className="min-w-0">
+            <p className="mb-2 flex items-center gap-2 text-sm"><SkipForward size={16} />A seguir</p>
+            <ol className="space-y-2">{next.map((item, index) => <li key={item.id} className="flex items-start gap-3 rounded-xl border border-current/15 p-3"><span className="text-sm opacity-70">{index + 1}</span><div className="min-w-0"><p className="break-words text-sm font-semibold">{item.title}</p><p className="mt-1 text-xs opacity-70">{categoryLabel(item.category)}</p></div></li>)}</ol>
+            {next.length === 0 && <p className="py-3 text-sm opacity-70">Nenhum conteúdo na fila.</p>}
           </div>
         </div>
-        <div className="hidden w-[clamp(150px,17vw,210px)] shrink-0 flex-col items-center justify-center border-l border-white/10 bg-brand-purple/10 p-5 sm:flex">
-          <QRCode value={channelUrl} size={150} className="h-auto w-full" />
-          <p className="mt-2 text-center text-[11px] font-medium text-content-secondary">Aponte a câmera e participe</p>
-        </div>
-      </section>
-    </main>
-  )
-}
-
-function OverlayItem({ icon, label, title, category, active = false }: { icon: React.ReactNode; label: string; title: string; category?: SuggestionCategory; active?: boolean }) {
-  return (
-    <div className={`min-w-0 rounded-2xl border p-4 ${active ? 'border-brand-purple/35 bg-brand-purple/15' : 'border-white/10 bg-white/[.035]'}`}>
-      <p className="mb-2 flex items-center gap-2 text-[clamp(11px,1vw,13px)] text-content-secondary">{icon}{label}</p>
-      <p className="truncate text-[clamp(17px,1.7vw,24px)] font-bold">{title}</p>
-      {category && <p className="mt-1 text-xs text-content-muted">{categoryLabel(category)}</p>}
-    </div>
-  )
+      </div>
+      <a href={channelUrl} target="_blank" rel="noopener noreferrer" className={`flex shrink-0 items-center justify-center gap-3 border-current/15 p-5 ${vertical ? 'border-t' : 'w-[180px] flex-col border-l'}`}>
+        <QRCode value={channelUrl} size={140} className="h-[140px] w-[140px] shrink-0" />
+        <span className="text-center text-xs font-medium">Verificar lista completa</span>
+      </a>
+    </section>
+  </main>
 }

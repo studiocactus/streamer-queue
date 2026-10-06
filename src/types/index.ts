@@ -28,6 +28,7 @@ export interface Profile {
 // Streamers
 // ============================================================
 export interface Streamer {
+  overlay_config?: import('@/lib/overlay').OverlayConfig
   id: string
   owner_id: string
   twitch_broadcaster_id: string | null

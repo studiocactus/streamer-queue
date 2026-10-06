@@ -1,3 +1,4 @@
+import { OverlaySettings } from '@/components/OverlaySettings'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -1624,7 +1625,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-content-primary">Overlay para a live</p>
-                    <p className="mt-1 text-xs leading-relaxed text-content-secondary">Mostra o conteúdo atual, o próximo da fila e o QR Code da comunidade.</p>
+                    <p className="mt-1 text-xs leading-relaxed text-content-secondary">Mostra o conteúdo atual, os três próximos da fila e o QR Code para a lista completa.</p>
                   </div>
                   <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex">
                     <Button size="sm" variant="secondary" onClick={handleCopyOverlayLink} leftIcon={<Copy size={14} />}>Copiar link</Button>
@@ -1633,7 +1634,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
                     </a>
                   </div>
                 </div>
-                <p className="mt-3 text-[11px] text-content-muted">No OBS: Fontes → Navegador → cole o link. Tamanho recomendado: 1280 × 720.</p>
+                <OverlaySettings key={streamerProfile.id} streamer={streamerProfile} />
               </div>
 
               <div id="chat-command-settings" className="scroll-mt-24 space-y-3 rounded-xl border border-brand-purple/20 bg-brand-purple/5 p-4">
