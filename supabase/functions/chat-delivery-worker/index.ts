@@ -1,3 +1,4 @@
+import { SYSTEM_BOT_MESSAGES, renderBotMessage } from '../_shared/bot-messages.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -75,6 +76,15 @@ async function announceStartedFilmPolls() {
     let sent = false
     let failure: string | null = null
     try {
+      const { data: opening, error: openingError } = await admin.from('chat_message_templates').select('template,enabled').eq('streamer_id', item.streamer_id).eq('event_type', 'poll_opening').maybeSingle()
+      if (openingError) throw openingError
+      if (opening?.enabled === false) {
+        const { error: skippedError } = await admin.rpc('settle_film_poll_announcement', { p_id: item.id, p_attempt: item.attempt, p_sent: true, p_error: null })
+        if (skippedError) throw skippedError
+        continue
+      }
+      const films = String(item.message).replace(/^🎬 Votação aberta! Vote com o comando do filme: /, '')
+      const message = renderBotMessage(opening?.template ?? SYSTEM_BOT_MESSAGES.poll_opening.template, { filmes: films })
       const { data: connection, error: connectionError } = await admin.from('twitch_connections').select('broadcaster_id').eq('streamer_id', item.streamer_id).maybeSingle()
       const { data: credential, error: credentialError } = await admin.from('twitch_chat_credentials').select('*').eq('streamer_id', item.streamer_id).maybeSingle()
       if (connectionError || credentialError || !connection?.broadcaster_id || !credential) throw new Error('Conexão Twitch indisponível')
@@ -82,7 +92,7 @@ async function announceStartedFilmPolls() {
       if (!token) throw new Error('Token Twitch indisponível')
       const response = await fetch('https://api.twitch.tv/helix/chat/messages', {
         method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Client-Id': TWITCH_CLIENT_ID, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message: item.message }),
+        body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message }),
       })
       const body = await response.json().catch(() => null)
       if (!response.ok || !body?.data?.[0]?.is_sent) throw new Error(body?.data?.[0]?.drop_reason?.message ?? `Twitch HTTP ${response.status}`)
@@ -114,12 +124,17 @@ async function announceEndedFilmPolls() {
     })).sort((a: { votes: number; title: string }, b: { votes: number; title: string }) => b.votes - a.votes || a.title.localeCompare(b.title))
     const winner = options[0]
     if (!winner) continue
+    if (!poll.result_message_template.trim()) {
+      const { error: silentError } = await admin.from('film_polls').update({ result_announced_at: new Date().toISOString() }).eq('id', poll.id).is('result_announced_at', null)
+      if (silentError) throw silentError
+      continue
+    }
     const { data: connection } = await admin.from('twitch_connections').select('broadcaster_id').eq('streamer_id', poll.streamer_id).maybeSingle()
     const { data: credential } = await admin.from('twitch_chat_credentials').select('*').eq('streamer_id', poll.streamer_id).maybeSingle()
     if (!connection?.broadcaster_id || !credential) continue
     const token = await validAccessToken(credential, poll.streamer_id)
     if (!token) continue
-    const message = poll.result_message_template.replaceAll('{titulo}', winner.title).replaceAll('{votos}', String(winner.votes)).slice(0, 500)
+    const message = poll.result_message_template.replaceAll('{titulo}', winner.title).replaceAll('{votos}', String(winner.votes)).replaceAll('{comando}', String(winner.command ?? '')).slice(0, 500)
     const response = await fetch('https://api.twitch.tv/helix/chat/messages', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Client-Id': TWITCH_CLIENT_ID, 'Content-Type': 'application/json' }, body: JSON.stringify({ broadcaster_id: connection.broadcaster_id, sender_id: connection.broadcaster_id, message }) })
     const body = await response.json().catch(() => null)
     if (response.ok && body?.data?.[0]?.is_sent) await admin.from('film_polls').update({ result_announced_at: new Date().toISOString() }).eq('id', poll.id).is('result_announced_at', null)
@@ -202,7 +217,6 @@ async function processDelivery(item: QueueItem): Promise<{ sent: boolean; skippe
     if (viewerError) throw viewerError
     const viewerName = viewer?.display_name ?? suggestion.chat_display_name ?? 'Viewer da Twitch'
     let messageTemplate = template?.template || defaultTemplate(item.event_type)
-    if (!messageTemplate.includes('{viewer}')) messageTemplate += ' — sugestão de {viewer}'
     const message = messageTemplate
       .replaceAll('{viewer}', viewerName)
       .replaceAll('{titulo}', suggestion.title)

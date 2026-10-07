@@ -1,3 +1,4 @@
+import { SYSTEM_BOT_MESSAGES, renderBotMessage } from '../supabase/functions/_shared/bot-messages.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
@@ -63,7 +64,7 @@ test('signed handler retries failed confirmations without creating another sugge
     from(table) {
       let value, operation = 'select'
       const query = {
-        select() { return query }, eq() { return query }, limit() { return query },
+        select() { return query }, eq() { return query }, in() { return query }, limit() { return query },
         maybeSingle() { return query }, single() { return query },
         insert(input) { operation='insert'; value=input; return query },
         then(resolve,reject) {
@@ -90,8 +91,8 @@ test('signed handler retries failed confirmations without creating another sugge
   const source=(await readFile(new URL('../supabase/functions/twitch-eventsub/index.ts',import.meta.url),'utf8')).replace(/^import .* from .*\r?\n/gm,'')
   const js=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText
   const deno={env:{get:()=> 'test-secret'},serve:fn=>{handler=fn}}
-  new Function('createClient','Deno','fetch','normalizeContentReference','console',js)(
-    ()=>client,deno,async()=>{
+  new Function('SYSTEM_BOT_MESSAGES','renderBotMessage','createClient','Deno','fetch','normalizeContentReference','console',js)(
+    SYSTEM_BOT_MESSAGES,renderBotMessage,()=>client,deno,async()=>{
       sends++
       if(sends===1) throw new Error('Network failure')
       return new Response(JSON.stringify({data:[{is_sent:true}]}))

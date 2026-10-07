@@ -1,3 +1,4 @@
+import { SYSTEM_BOT_MESSAGES, renderBotMessage, type SystemBotEvent } from '../_shared/bot-messages.ts'
 // Receives signed Twitch EventSub chat messages and creates pending suggestions.
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { normalizeContentReference } from '../_shared/content-reference.ts'
@@ -195,18 +196,18 @@ async function processNotification(
   if (!isFilmSuggestion && command !== settings.chat_command.toLowerCase()) return new Response(null, { status: 204 })
   if (streamer.accepting_suggestions === false && event.chatter_user_id !== event.broadcaster_user_id) {
     await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
-      `@${event.chatter_user_login}, as sugestões estão pausadas neste momento.`)
+      await botReply(admin, streamer.id, 'suggestions_paused', { viewer: `@${event.chatter_user_login}` }))
     return new Response(null, { status: 204 })
   }
   if (!title) {
     await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
-      `@${event.chatter_user_login}, use ${isFilmSuggestion ? '!filme' : settings.chat_command} seguido do nome do conteúdo.`)
+      await botReply(admin, streamer.id, 'suggestion_usage', { viewer: `@${event.chatter_user_login}`, comando: isFilmSuggestion ? '!filme' : settings.chat_command }))
     return new Response(null, { status: 204 })
   }
 
   if (title.length > 200) {
     await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
-      `@${event.chatter_user_login}, use no máximo 200 caracteres no nome do conteúdo.`)
+      await botReply(admin, streamer.id, 'suggestion_too_long', { viewer: `@${event.chatter_user_login}` }))
     return new Response(null, { status: 204 })
   }
 
@@ -260,7 +261,7 @@ async function processNotification(
     if (!suggestion) {
       if (insertError?.message?.includes('SUGGESTION_ALREADY_ACTIVE')) {
         await sendChatMessage(admin, streamer.id, event.broadcaster_user_id,
-          `@${event.chatter_user_login}, você já enviou essa sugestão e ela continua na lista. Não precisa enviar novamente.`)
+          await botReply(admin, streamer.id, 'suggestion_duplicate', { viewer: `@${event.chatter_user_login}` }))
         return new Response(null, { status: 204 })
       }
       if (insertError) throw insertError
@@ -270,18 +271,18 @@ async function processNotification(
 
   const { data: alreadySent, error: logLookupError } = await admin.from('chat_message_logs')
     .select('id').eq('suggestion_id', suggestion.id).eq('event_type', 'chat_suggestion_received')
-    .eq('status', 'sent').limit(1).maybeSingle()
+    .in('status', ['sent', 'skipped']).limit(1).maybeSingle()
   if (logLookupError) throw logLookupError
   if (alreadySent) return new Response(null, { status: 204 })
 
-  const confirmation = `@${event.chatter_user_login}, “${content.title}” foi enviado. O streamer irá revisar o conteúdo e visualizar quando puder. Usuários da plataforma têm prioridade.`
+  const confirmation = await botReply(admin, streamer.id, 'chat_suggestion_received', { viewer: `@${event.chatter_user_login}`, titulo: content.title })
   const sendResult = await sendChatMessage(admin, streamer.id, event.broadcaster_user_id, confirmation)
   const { error: logError } = await admin.from('chat_message_logs').insert({
     streamer_id: streamer.id,
     suggestion_id: suggestion.id,
     event_type: 'chat_suggestion_received',
     message: confirmation,
-    status: sendResult.sent ? 'sent' : 'failed',
+    status: !confirmation ? 'skipped' : sendResult.sent ? 'sent' : 'failed',
     error_message: sendResult.error,
   })
   if (logError) throw logError
@@ -307,11 +308,11 @@ async function handleChatCommandManagement(
   const response = responseParts.join(' ')
   if (!action || !target || ((normalizedAction === 'add' || normalizedAction === 'edit' || normalizedAction === 'update') && !response)) {
     await sendChatMessage(admin, streamerId, event.broadcaster_user_id,
-      `@${event.chatter_user_login}, use !command add !nome resposta, !command edit !nome nova resposta, !command remove !nome ou !command show !nome.`)
+      await botReply(admin, streamerId, 'command_usage', { viewer: `@${event.chatter_user_login}` }))
     return
   }
 
-  const { data, error } = await admin.rpc('manage_chat_command_from_twitch', {
+  const { data, error } = await admin.rpc('manage_chat_command_from_twitch_v2', {
     p_streamer_id: streamerId,
     p_twitch_user_id: event.chatter_user_id,
     p_action: normalizedAction,
@@ -320,8 +321,8 @@ async function handleChatCommandManagement(
   })
   if (error) throw error
   const result = data?.[0]
-  if (result?.message) {
-    await sendChatMessage(admin, streamerId, event.broadcaster_user_id, `@${event.chatter_user_login}, ${result.message}`)
+  if (result?.event_type && result.event_type in SYSTEM_BOT_MESSAGES) {
+    await sendChatMessage(admin, streamerId, event.broadcaster_user_id, await botReply(admin, streamerId, result.event_type, { viewer: `@${event.chatter_user_login}`, comando: target.toLowerCase(), resposta: result.command_response ?? '' }))
   }
 }
 
@@ -426,20 +427,24 @@ async function answerQueueCommand(
   for (const result of queries) if (result.error) throw result.error
   const [{ data: streamer }, { data: watching }, { data: queued }] = queries
   const link = `${APP_URL.replace(/\/$/, '')}/${streamer?.slug ?? ''}`
-  let message: string
-  if (command === '!proximo') {
-    message = queued?.[0]
-      ? `@${chatterLogin}, o próximo da fila é “${queued[0].title}”. Veja a fila: ${link}`
-      : `@${chatterLogin}, a fila está vazia. Envie uma sugestão: ${link}`
-  } else {
-    const now = watching?.title ? `Agora: “${watching.title}”. ` : ''
-    const list = queued?.length ? `Fila: ${queued.map((item, index) => `${index + 1}. ${item.title}`).join(' • ')}.` : 'A fila está vazia.'
-    message = `@${chatterLogin}, ${now}${list} ${link}`
-  }
+  const values = { viewer: '@' + chatterLogin, link, titulo: queued?.[0]?.title ?? '', atual: watching?.title ?? await botReply(admin, streamerId, 'queue_idle', {}), fila: '' }
+  const items = await Promise.all((queued ?? []).map((item, index) => botReply(admin, streamerId, 'queue_item', { posicao: String(index + 1), titulo: item.title })))
+  values.fila = items.filter(Boolean).join(' • ')
+  const eventType = command === '!proximo' ? (queued?.length ? 'queue_next' : 'queue_next_empty') : (queued?.length ? 'queue_list' : 'queue_empty')
+  const message = await botReply(admin, streamerId, eventType, values)
   await sendChatMessage(admin, streamerId, broadcasterId, message)
 }
 
+async function botReply(admin: SupabaseClient, streamerId: string, event: SystemBotEvent, values: Record<string, string>) {
+  const { data, error } = await admin.from('chat_message_templates').select('template,enabled').eq('streamer_id', streamerId).eq('event_type', event).maybeSingle()
+  if (error) throw error
+  if (data?.enabled === false) return ''
+  return renderBotMessage(data?.template ?? SYSTEM_BOT_MESSAGES[event].template, values)
+}
+
 async function sendChatMessage(admin: SupabaseClient, streamerId: string, broadcasterId: string, message: string) {
+  if (!message.trim()) return { sent: false, error: null }
+
   try {
     const { data: credential, error: credentialError } = await admin.from('twitch_chat_credentials').select('*').eq('streamer_id', streamerId).maybeSingle()
     if (credentialError) throw credentialError

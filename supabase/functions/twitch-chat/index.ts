@@ -37,9 +37,16 @@ Deno.serve(async (req) => {
         if (!platformAdmin) return json({ error: 'Forbidden' }, 403)
       }
     }
-    const { data: delivery, error } = await admin.from('chat_delivery_queue').select('id,status,last_error')
+    let { data: delivery, error } = await admin.from('chat_delivery_queue').select('id,status,last_error')
       .eq('streamer_id', streamer_id).eq('suggestion_id', suggestion_id).eq('event_type', event_type).maybeSingle()
     if (error) throw error
+    // Older open dashboards still request the retired approval event.
+    if (!error && !delivery && event_type === 'suggestion_approved') {
+      const fallback = await admin.from('chat_delivery_queue').select('id,status,last_error')
+        .eq('streamer_id', streamer_id).eq('suggestion_id', suggestion_id).eq('event_type', 'queued').maybeSingle()
+      if (fallback.error) throw fallback.error
+      delivery = fallback.data
+    }
     // Only events actually produced by database transitions can be announced.
     if (!delivery) return json({ error: 'Delivery not found' }, 404)
     if (delivery.status === 'pending' && WORKER_SECRET) {

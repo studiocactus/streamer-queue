@@ -1,3 +1,4 @@
+import { SYSTEM_BOT_MESSAGES, type SystemBotEvent } from '../../../supabase/functions/_shared/bot-messages'
 import { OverlaySettings } from '@/components/OverlaySettings'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -131,7 +132,7 @@ function KanbanColumn({
                 {status === 'pending' && (
                   <>
                     <IconAction label="Aprovar"
-                      onClick={() => onAction?.(s.id, 'approved')}
+                      onClick={() => onAction?.(s.id, 'queued')}
                       className="inline-flex items-center justify-center rounded-full border border-status-completed/25 bg-status-completed/10 text-xs font-semibold text-status-completed transition-colors hover:bg-status-completed/15"
                     ><CheckCircle size={15} /></IconAction>
                     <IconAction label="Rejeitar"
@@ -139,12 +140,6 @@ function KanbanColumn({
                       className="inline-flex items-center justify-center rounded-full border border-status-rejected/20 text-xs font-semibold text-status-rejected transition-colors hover:bg-status-rejected/10"
                     ><XCircle size={15} /></IconAction>
                   </>
-                )}
-                {status === 'approved' && (
-                  <IconAction label="Adicionar à fila"
-                    onClick={() => onAction?.(s.id, 'queued')}
-                    className="inline-flex items-center justify-center rounded-full border border-brand-purple/25 bg-brand-purple/10 text-xs font-semibold text-brand-purple transition-colors hover:bg-brand-purple/15"
-                  ><List size={15} /></IconAction>
                 )}
                 {status === 'queued' && (
                   <>
@@ -273,7 +268,7 @@ function RejectModal({
 // Dashboard do Streamer
 // ============================================================
 type DashTab = 'live' | 'favorites' | 'poll' | 'feedback' | 'kanban' | 'settings' | 'moderators' | 'twitch' | 'platform'
-type ChatEventType = 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
+type ChatEventType = SystemBotEvent | 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
 type ModeratorMember = {
   id: string
   user_id: string
@@ -300,6 +295,7 @@ type IntegrationCheck = {
 }
 
 const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
+  ...Object.fromEntries(Object.entries(SYSTEM_BOT_MESSAGES).map(([key, value]) => [key, value.template])) as Record<SystemBotEvent, string>,
   suggestion_received: '🎬 {viewer} adicionou “{titulo}” à lista do canal! Envie sua sugestão também no WatchQueue.',
   suggestion_approved: '✅ A sugestão “{titulo}”, enviada por {viewer}, foi aprovada! Participe também pelo WatchQueue.',
   queued: '📋 “{titulo}”, ideia de {viewer}, entrou na fila do canal!',
@@ -310,9 +306,10 @@ const DEFAULT_CHAT_TEMPLATES: Record<ChatEventType, string> = {
 }
 
 const CHAT_TEMPLATE_LABELS: Record<ChatEventType, string> = {
+  ...Object.fromEntries(Object.entries(SYSTEM_BOT_MESSAGES).map(([key, value]) => [key, value.label])) as Record<SystemBotEvent, string>,
   suggestion_received: 'Nova sugestão',
-  suggestion_approved: 'Aprovação',
-  queued: 'Adicionado à fila',
+  suggestion_approved: 'Aprovação antiga (somente entregas anteriores)',
+  queued: 'Aprovado e adicionado à fila',
   watching_now: 'Assistindo agora',
   completed: 'Concluído',
   rejected: 'Rejeitado',
@@ -372,6 +369,9 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
   const [chatCommand, setChatCommand] = useState('!sugerir')
   const [chatCommandEnabled, setChatCommandEnabled] = useState(true)
   const [chatCommandSaving, setChatCommandSaving] = useState(false)
+  const [templateChannelId, setTemplateChannelId] = useState<string | null>(null)
+  const [templateLoadFailed, setTemplateLoadFailed] = useState(false)
+  const [templateReload, setTemplateReload] = useState(0)
   const [chatTemplates, setChatTemplates] = useState<Record<ChatEventType, string>>(DEFAULT_CHAT_TEMPLATES)
   const [chatTemplateEnabled, setChatTemplateEnabled] = useState<Record<ChatEventType, boolean>>(DEFAULT_CHAT_TEMPLATE_ENABLED)
   const [templatesSaving, setTemplatesSaving] = useState(false)
@@ -396,7 +396,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
   const [suggestionsToggleLoading, setSuggestionsToggleLoading] = useState(false)
 
   const {
-    suggestions, watching, queued, pending, approved,
+    suggestions, watching, queued, pending,
     completed, rejected, isLoading, updateStatus, toggleFavorite, remove, refetch
   } = useSuggestions(streamerProfile?.id)
 
@@ -692,10 +692,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
       let viewerVariableAdded = false
       const rows = (Object.keys(chatTemplates) as ChatEventType[]).map((eventType) => {
         let template = chatTemplates[eventType].trim() || DEFAULT_CHAT_TEMPLATES[eventType]
-        if (!template.includes('{viewer}')) {
-          template += ' — sugestão de {viewer}'
-          viewerVariableAdded = true
-        }
+
         return { streamer_id: streamerProfile.id, event_type: eventType, template, enabled: chatTemplateEnabled[eventType] }
       })
       const { error } = await supabase
@@ -841,7 +838,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
         description: newContentDescription.trim() || null,
         source_url: newContentUrl.trim() || null,
         poster_url: posterUrl,
-        status: 'approved',
+        status: 'queued',
         approved_at: new Date().toISOString(),
       } as never).select('id').single()
       if (error) throw error
@@ -1125,7 +1122,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
 
   const stats = [
     { label: 'Pendentes', value: pending.length, icon: Clock, color: 'text-status-pending' },
-    { label: 'Aprovadas', value: approved.length, icon: CheckCircle, color: 'text-status-approved' },
+    { label: 'Assistindo', value: watching ? 1 : 0, icon: Play, color: 'text-status-watching' },
     { label: 'Na fila', value: queued.length, icon: List, color: 'text-status-queued' },
     { label: 'Concluídas', value: completed.length, icon: CheckCircle, color: 'text-status-completed' },
   ]
@@ -1421,9 +1418,8 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
                 ownerId={streamerProfile.owner_id}
               />
               <details className="rounded-2xl border border-border bg-bg-secondary/45">
-                <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-content-secondary">Histórico e aprovadas — {approved.length + completed.length + rejected.length}</summary>
+                <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-content-secondary">Histórico — {completed.length + rejected.length}</summary>
                 <div className="grid gap-4 border-t border-border p-4">
-                  <KanbanColumn title="Aprovadas" status="approved" suggestions={approved} color="bg-status-approved" onAction={handleAction} onReject={setRejectTarget} onToggleFavorite={toggleFavorite} onDelete={handleDelete} onBan={setBanTarget} ownerId={streamerProfile.owner_id} />
                   <KanbanColumn title="Concluídas" status="completed" suggestions={completed.slice(0, 10)} color="bg-status-completed" onAction={handleAction} onReject={setRejectTarget} onToggleFavorite={toggleFavorite} onDelete={handleDelete} onBan={setBanTarget} ownerId={streamerProfile.owner_id} />
                   <KanbanColumn title="Rejeitadas" status="rejected" suggestions={rejected.slice(0, 5)} color="bg-status-rejected" onAction={handleAction} onReject={setRejectTarget} onToggleFavorite={toggleFavorite} onDelete={handleDelete} onBan={setBanTarget} ownerId={streamerProfile.owner_id} />
                 </div>
@@ -1688,14 +1684,15 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="ghost" onClick={() => setChatTemplateEnabled(DEFAULT_CHAT_TEMPLATE_ENABLED)}>Ativar todas</Button>
                     <Button size="sm" variant="ghost" onClick={() => setChatTemplateEnabled(Object.fromEntries((Object.keys(DEFAULT_CHAT_TEMPLATES) as ChatEventType[]).map((eventType) => [eventType, false])) as Record<ChatEventType, boolean>)}>Desativar todas</Button>
-                    <Button size="sm" loading={templatesSaving} onClick={handleSaveChatTemplates} leftIcon={<Save size={14} />}>
+                    <Button size="sm" loading={templatesSaving} disabled={templateChannelId !== streamerProfile.id} onClick={handleSaveChatTemplates} leftIcon={<Save size={14} />}>
                       Salvar escolhas
                     </Button>
                   </div>
                 </div>
                 <p className="text-[11px] text-content-muted">
-                  {(Object.values(chatTemplateEnabled).filter(Boolean).length)} de {Object.keys(chatTemplateEnabled).length} mensagens ativas. Use {'{viewer}'} para o usuário e {'{titulo}'} para o conteúdo.
+                  {(Object.values(chatTemplateEnabled).filter(Boolean).length)} de {Object.keys(chatTemplateEnabled).length} mensagens ativas. Todas as variáveis são opcionais. Use {'{viewer}'}, {'{titulo}'}, {'{categoria}'}, {'{comando}'}, {'{resposta}'}, {'{atual}'}, {'{fila}'}, {'{posicao}'}, {'{link}'} ou {'{filmes}'} conforme a mensagem. Respostas de votos e resultados ficam em Votações; timers, contadores e comandos em Automações do chat.
                 </p>
+                {templateLoadFailed && <p role="alert" className="text-sm text-status-rejected">Não foi possível carregar as mensagens. <button type="button" className="underline" onClick={() => setTemplateReload(value => value + 1)}>Tentar novamente</button></p>}
                 {(Object.keys(CHAT_TEMPLATE_LABELS) as ChatEventType[]).map((eventType) => (
                   <div key={eventType} className={cn('space-y-2 rounded-xl border p-3 transition-colors', chatTemplateEnabled[eventType] ? 'border-border bg-bg-tertiary' : 'border-border/70 bg-bg-tertiary/40')}>
                     <div className="flex items-center justify-between gap-3">
@@ -1714,7 +1711,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
                       aria-label={`Mensagem de ${CHAT_TEMPLATE_LABELS[eventType]}`}
                       value={chatTemplates[eventType]}
                       onChange={(event) => setChatTemplates((current) => ({ ...current, [eventType]: event.target.value }))}
-                      disabled={!chatTemplateEnabled[eventType]}
+                      disabled={templateChannelId !== streamerProfile.id || !chatTemplateEnabled[eventType]}
                       rows={2}
                       maxLength={450}
                     />

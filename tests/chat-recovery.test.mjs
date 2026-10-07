@@ -110,7 +110,7 @@ test('browser endpoint can only wake existing, authorized queue deliveries', asy
 })
 
 test('actual delivery worker handles completion, skips and failures without real Twitch access', async (t) => {
-  for (const scenario of ['sent', 'disabled', 'template-disabled', 'settings-error', 'previous-error', 'dropped', 'already-sent']) {
+  for (const scenario of ['sent', 'custom-short', 'disabled', 'template-disabled', 'settings-error', 'previous-error', 'dropped', 'already-sent']) {
     await t.test(scenario, async () => {
       const logs = [], settlements = [], requests = []
       const item = { id: 'delivery', streamer_id: 'channel', suggestion_id: 'suggestion', event_type: 'completed', attempts: 1 }
@@ -134,6 +134,7 @@ test('actual delivery worker handles completion, skips and failures without real
                 if (table === 'twitch_connections') data = { broadcaster_id: 'channel', token_status: 'active' }
                 if (table === 'twitch_chat_credentials') data = { access_token: 'fake', expires_at: '2099-01-01' }
                 if (table === 'streamer_settings') data = { chat_notifications_enabled: scenario !== 'disabled' }
+                if (table === 'chat_message_templates' && scenario === 'custom-short') data = { enabled: true, template: 'Fim!' }
                 if (table === 'chat_message_templates' && scenario === 'template-disabled') data = { enabled: false }
                 if (table === 'chat_message_logs' && scenario === 'already-sent') data = { id: 'previous' }
                 if ((table === 'streamer_settings' && scenario === 'settings-error') || (table === 'chat_message_logs' && scenario === 'previous-error')) error = new Error('Database unavailable')
@@ -153,7 +154,8 @@ test('actual delivery worker handles completion, skips and failures without real
       const expected = ['disabled', 'template-disabled'].includes(scenario) ? 'skipped'
         : ['settings-error', 'previous-error', 'dropped'].includes(scenario) ? 'failed' : 'sent'
       assert.equal(settlements[0].p_status, expected)
-      assert.equal(requests.length, ['sent', 'dropped'].includes(scenario) ? 1 : 0)
+      assert.equal(requests.length, ['sent', 'custom-short', 'dropped'].includes(scenario) ? 1 : 0)
+      if (scenario === 'custom-short') assert.equal(requests[0].message, 'Fim!')
       if (scenario === 'sent') {
         assert.match(requests[0].message, /Filme concluído/)
         assert.match(requests[0].message, /Viewer Teste/)

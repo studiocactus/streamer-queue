@@ -1,3 +1,4 @@
+import { SYSTEM_BOT_MESSAGES, renderBotMessage } from '../supabase/functions/_shared/bot-messages.ts'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
@@ -13,14 +14,15 @@ test('film submissions are categorized separately; votes and ordinary messages a
     rpc: async name => ({ data: name === 'claim_twitch_event_command' ? true : [], error:null }),
     from(table) {
       let row
-      const query = { select(){return query},eq(){return query},limit(){return query},maybeSingle(){return query},single(){return query},insert(value){row=value;return query},then(resolve){
+      const query = { select(){return query},eq(){return query},in(){return query},limit(){return query},maybeSingle(){return query},single(){return query},insert(value){row=value;return query},then(resolve){
         if(table === 'suggestions' && row) inserted.push(row)
         return Promise.resolve({error:null,data:table === 'streamers' ? {id:'channel',is_active:true,settings:{chat_command:'!sugerir',chat_command_enabled:true}} : table === 'suggestions' && row ? {id:'saved'} : null}).then(resolve)
       }}
       return query
     },
   }
-  const run = new Function('normalizeContentReference','sendChatMessage',compile(body)+';return processNotification')(
+  const run = new Function('botReply','normalizeContentReference','sendChatMessage',compile(body)+';return processNotification')(
+    async (_admin,_channel,event,values)=>renderBotMessage(SYSTEM_BOT_MESSAGES[event].template,values),
     async title=>({title,sourceUrl:null,thumbnailUrl:null}), async(...args)=>{sent.push(args[3]);return {sent:true}},
   )
   for (const text of ['!filme Matrix','!sugerir A video','hello there','!filme2','!filme']) {
@@ -43,8 +45,8 @@ test('opening announcements settle only after Twitch accepts and retain failed c
       },
       from(table){const q={select(){return q},eq(){return q},maybeSingle:async()=>({data:table==='twitch_connections'?{broadcaster_id:'owner'}:{access_token:'token'}})};return q},
     }
-    const run = new Function('admin','validAccessToken','fetch','TWITCH_CLIENT_ID',compile(body)+';return announceStartedFilmPolls')(
-      admin,async()=> 'token',async(_url,options)=>{messages.push(JSON.parse(options.body).message);return {ok:true,status:200,json:async()=>({data:[{is_sent:accepted}]})}},'client',
+    const run = new Function('SYSTEM_BOT_MESSAGES','renderBotMessage','admin','validAccessToken','fetch','TWITCH_CLIENT_ID',compile(body)+';return announceStartedFilmPolls')(
+      SYSTEM_BOT_MESSAGES,renderBotMessage,admin,async()=> 'token',async(_url,options)=>{messages.push(JSON.parse(options.body).message);return {ok:true,status:200,json:async()=>({data:[{is_sent:accepted}]})}},'client',
     )
     await run()
     assert.equal(messages.length,1);assert.ok(messages[0].includes('!filme2 — Alien'))

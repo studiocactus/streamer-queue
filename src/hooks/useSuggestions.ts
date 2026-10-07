@@ -262,10 +262,11 @@ export function useSuggestions(streamerId: string | undefined) {
       status: SuggestionStatus,
       extra?: { rejection_reason?: string; queue_position?: number }
     ) => {
+      if (status === 'approved') status = 'queued'
       const now = new Date().toISOString()
       const updates: AnyRecord = { status }
 
-      if (status === 'approved') updates.approved_at = now
+      if (status === 'queued') updates.approved_at = now
       if (status === 'watching') updates.started_at = now
       if (status === 'completed') updates.completed_at = now
       if (status === 'rejected' && extra?.rejection_reason) {
@@ -291,9 +292,7 @@ export function useSuggestions(streamerId: string | undefined) {
       )))
       void fetchSuggestions()
 
-      const eventType = status === 'approved'
-        ? 'suggestion_approved'
-        : status === 'queued'
+      const eventType = status === 'queued'
           ? 'queued'
         : status === 'watching'
           ? 'watching_now'
