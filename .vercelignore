@@ -3,5 +3,10 @@
 .agents/
 .codex/
 skills-lock.json
-supabase/
+supabase/*
+!supabase/functions/
+supabase/functions/*
+!supabase/functions/_shared/
+supabase/functions/_shared/*
+!supabase/functions/_shared/bot-messages.ts
 tests/
