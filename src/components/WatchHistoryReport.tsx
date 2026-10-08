@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Clock, Download, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { useWatchReport, type WatchEntry } from '@/hooks/useWatchReport'
+import { useWatchReport, type WatchEntry, type WatchReport } from '@/hooks/useWatchReport'
 import { csvCell, formatWatchDuration, parseWatchDuration, REPORT_TIMEZONE, reportToday, shiftReportDate, watchDurationInput } from '@/lib/watch-report'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -13,13 +13,24 @@ export function WatchTimeCard({ streamerId, onOpen }: { streamerId: string; onOp
   const [today, setToday] = useState(reportToday)
   useEffect(() => { const timer = window.setInterval(() => setToday(reportToday()), 30000); return () => clearInterval(timer) }, [])
   const { data, error, refresh } = useWatchReport(streamerId, today, today)
-  return <Card><CardContent className="py-4">
-    <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 text-left rounded-lg focus-visible:outline focus-visible:outline-brand-purple">
-      <Clock size={18} className="shrink-0 text-brand-purple" />
-      <div><p className="text-xl font-bold text-content-primary">{error ? '—' : data ? data.known || !data.unknown ? formatWatchDuration(data.seconds) : '—' : '…'}</p><p className="text-xs text-content-muted">Tempo assistido hoje</p></div>
-    </button>
-    {error ? <button onClick={() => void refresh()} className="mt-2 text-xs text-status-rejected underline">Não foi possível carregar. Tentar novamente</button> : <p className="mt-2 text-[11px] text-content-muted">Duração dos concluídos{data?.unknown ? ` · ${data.unknown} sem duração` : ' · Brasília'}</p>}
-  </CardContent></Card>
+  return <WatchTodaySummary data={data} error={error} onOpen={onOpen} onRetry={() => void refresh()} />
+}
+
+export function WatchTodaySummary({ data, error, onOpen, onRetry }: { data: WatchReport | null; error: boolean; onOpen: () => void; onRetry: () => void }) {
+  const duration = error ? '—' : data ? data.known || !data.unknown ? formatWatchDuration(data.seconds) : 'Não disponível' : '…'
+  return <section aria-label="Resultados de hoje" className="overflow-hidden rounded-2xl border border-brand-purple/20 bg-bg-secondary/90">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+      <div className="flex items-center gap-2"><Clock size={16} className="text-brand-purple" /><h3 className="text-sm font-semibold text-content-primary">Hoje no canal</h3><span className="text-xs text-content-secondary">Brasília</span></div>
+      <button type="button" onClick={onOpen} className="min-h-9 rounded-lg px-2 text-xs font-semibold text-brand-purple hover:bg-brand-purple/10 focus-visible:outline focus-visible:outline-brand-purple">Ver histórico e relatório →</button>
+    </div>
+    <div className="grid gap-5 p-5 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1.2fr]">
+      <div><p className="text-xs text-content-secondary">Tempo assistido hoje</p><p className="mt-2 text-2xl font-bold tabular-nums leading-tight text-content-primary">{duration}</p><p className="mt-1 text-xs text-content-secondary">Duração original dos concluídos</p></div>
+      <div><p className="text-xs text-content-secondary">Conteúdos concluídos hoje</p><p className="mt-2 text-2xl font-bold tabular-nums text-content-primary">{error ? '—' : data?.completed ?? '…'}</p><p className="mt-1 text-xs text-content-secondary">Inclui novas exibições do mesmo conteúdo</p></div>
+      <div className="self-center text-sm text-content-secondary sm:col-span-2 xl:col-span-1">
+        {error ? <p role="alert">Não foi possível atualizar os dados. <button onClick={onRetry} className="min-h-9 text-brand-purple underline">Tentar novamente</button></p> : !data ? <p role="status">Carregando resultados do dia…</p> : data.unknown ? <><p className="font-medium text-status-pending">{data.unknown} {data.unknown === 1 ? 'conteúdo sem duração' : 'conteúdos sem duração'}</p><p className="mt-1 text-xs leading-relaxed">O tempo é parcial: {data.known} de {data.completed} conclusões entram na soma.</p><button onClick={onOpen} className="mt-1 min-h-9 text-xs font-semibold text-brand-purple underline">Conferir durações no histórico</button></> : <p className="text-xs leading-relaxed">{data.completed ? 'Todas as conclusões de hoje têm duração registrada.' : 'Ao concluir conteúdos, a quantidade e a duração aparecem aqui.'} O histórico é preservado ao limpar a fila.</p>}
+      </div>
+    </div>
+  </section>
 }
 
 const displayDate = (value: string) => new Intl.DateTimeFormat('pt-BR', { timeZone: REPORT_TIMEZONE, dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
