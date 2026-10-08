@@ -1,3 +1,4 @@
+import { WatchTimeCard, WatchHistoryReport } from '@/components/WatchHistoryReport'
 import { SYSTEM_BOT_MESSAGES, type SystemBotEvent } from '../../../supabase/functions/_shared/bot-messages'
 import { OverlaySettings } from '@/components/OverlaySettings'
 import { useEffect, useRef, useState } from 'react'
@@ -267,7 +268,7 @@ function RejectModal({
 // ============================================================
 // Dashboard do Streamer
 // ============================================================
-type DashTab = 'live' | 'favorites' | 'poll' | 'feedback' | 'kanban' | 'settings' | 'moderators' | 'twitch' | 'platform'
+type DashTab = 'watch-report' | 'live' | 'favorites' | 'poll' | 'feedback' | 'kanban' | 'settings' | 'moderators' | 'twitch' | 'platform'
 type ChatEventType = SystemBotEvent | 'suggestion_received' | 'suggestion_approved' | 'queued' | 'watching_now' | 'completed' | 'rejected' | 'streamer_added'
 type ModeratorMember = {
   id: string
@@ -1129,7 +1130,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
 
   const navigationGroups: { label: string; tabs: { id: DashTab; label: string; icon: typeof LayoutGrid }[] }[] = [
     { label: 'Ao vivo', tabs: [{ id: 'live', label: 'Central', icon: Radio }, { id: 'poll', label: 'Votação', icon: Play }] },
-    { label: 'Conteúdo', tabs: [{ id: 'kanban', label: 'Sugestões', icon: LayoutGrid }, { id: 'favorites', label: 'Favoritos', icon: Star }] },
+    { label: 'Conteúdo', tabs: [{ id: 'kanban', label: 'Sugestões', icon: LayoutGrid }, { id: 'favorites', label: 'Favoritos', icon: Star }, { id: 'watch-report', label: 'Histórico assistido', icon: Clock }] },
     { label: 'Canal', tabs: [{ id: 'twitch', label: 'Twitch e overlay', icon: Zap }] },
     { label: 'Gestão', tabs: [{ id: 'moderators', label: 'Moderadores', icon: Users }, { id: 'settings', label: 'Configurações', icon: Settings }] },
     ...(isPlatformAdmin ? [{ label: 'Plataforma', tabs: [{ id: 'feedback' as DashTab, label: 'Melhorias', icon: Send }, { id: 'platform' as DashTab, label: 'Administração', icon: Crown }] }] : []),
@@ -1331,7 +1332,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-1 min-[430px]:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        <div className="grid grid-cols-1 min-[430px]:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
           {stats.map(({ label, value, icon: Icon, color }) => (
             <Card key={label}>
               <CardContent className="py-4">
@@ -1345,6 +1346,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
               </CardContent>
             </Card>
           ))}
+          <WatchTimeCard key={streamerProfile.id} streamerId={streamerProfile.id} onOpen={() => setActiveTab('watch-report')} />
         </div>
 
         {/* A grade permite que todos os destinos permaneçam visíveis em qualquer largura. */}
@@ -1724,6 +1726,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
           </Card>
         )}
 
+        {activeTab === 'watch-report' && <WatchHistoryReport key={streamerProfile.id} streamerId={streamerProfile.id} isPlatformAdmin={isPlatformAdmin} />}
         {activeTab === 'feedback' && isPlatformAdmin && <PlatformFeedback />}
         {activeTab === 'poll' && streamerProfile && <FilmPollManager streamerId={streamerProfile.id} suggestions={suggestions} />}
         {activeTab === 'favorites' && (

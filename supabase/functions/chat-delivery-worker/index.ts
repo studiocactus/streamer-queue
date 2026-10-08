@@ -1,3 +1,4 @@
+import { fetchOriginalDuration } from '../_shared/video-duration.ts'
 import { SYSTEM_BOT_MESSAGES, renderBotMessage } from '../_shared/bot-messages.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -58,6 +59,8 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('[chat-delivery-worker] Film poll announcement failed', error)
   }
+
+  try { await refreshVideoDurations() } catch (error) { console.warn('[chat-delivery-worker] Duration metadata unavailable', error) }
 
   const { error: heartbeatError } = await admin.rpc('record_system_heartbeat', {
     p_component: 'chat-delivery-worker',
@@ -306,4 +309,23 @@ function categoryLabel(category: string) {
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+async function refreshVideoDurations() {
+  const retryBefore = new Date(Date.now() - 86400000).toISOString()
+  // Small independent batches never block chat delivery when a provider is unavailable.
+  for (const table of ['suggestions', 'watch_history']) {
+    let query = admin.from(table).select('id,source_url').is('duration_seconds', null).not('source_url', 'is', null)
+      .or('duration_checked_at.is.null,duration_checked_at.lt.' + retryBefore)
+      .order('completed_at', { ascending: false, nullsFirst: false }).limit(3)
+    if (table === 'watch_history') query = query.is('suggestion_id', null)
+    const { data, error } = await query
+    if (error) throw error
+    await Promise.all((data ?? []).map(async item => {
+      const seconds = await fetchOriginalDuration(item.source_url)
+      const update = { duration_checked_at: new Date().toISOString(), ...(seconds ? { duration_seconds: seconds, duration_source: 'youtube' } : {}) }
+      const { error: updateError } = await admin.from(table).update(update).eq('id', item.id).eq('source_url', item.source_url).is('duration_seconds', null)
+      if (updateError) throw updateError
+    }))
+  }
 }
