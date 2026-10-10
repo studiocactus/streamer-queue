@@ -105,7 +105,7 @@ export default function ObsPlayer() {
      <p className="mt-1 text-[clamp(13px,1.05vw,22px)] tabular-nums text-white/70">{duration ? 'Restam ' + obsTime(Math.max(0, duration - position)) : 'Duração indisponível'}</p>
     </div>
    </div>
-   <p className="mt-2 flex items-center gap-2 text-[clamp(14px,1.2vw,24px)] text-white/70"><Radio aria-hidden="true" className="h-[1em] w-[1em] shrink-0"/>{failure || state?.error || (state ? obsLabels[state.state] : 'Conectando…')}</p>
+   {(failure || state?.error || state?.state !== 'playing') && <p className="mt-2 flex items-center gap-2 text-[clamp(14px,1.2vw,24px)] text-white/70"><Radio aria-hidden="true" className="h-[1em] w-[1em] shrink-0"/>{failure || state?.error || (state ? obsLabels[state.state] : 'Conectando…')}</p>}
    {state?.state === 'blocked' && <button onClick={() => playRef.current()} className="mt-2 rounded-lg bg-brand-purple px-5 py-2">Ativar reprodução com áudio</button>}
   </footer>
  </main>
