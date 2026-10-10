@@ -1268,7 +1268,7 @@ export default function StreamerDashboard({ managedStreamer, onManagedStreamerCh
           ))}
         </div>
             <WatchTimeCard key={streamerProfile.id} streamerId={streamerProfile.id} onOpen={() => setActiveTab('watch-report')} />
-        {activeTab === 'live' && new URLSearchParams(window.location.search).get('obs_test') === '1' && <ObsPlayerControls key={streamerProfile.id} streamerId={streamerProfile.id} />}
+        {activeTab === 'live' && <ObsPlayerControls key={streamerProfile.id} streamerId={streamerProfile.id} />}
         {activeTab === 'live' && (streamerProfile.is_live || watching || queued.length > 0) && (
           <Card glow={streamerProfile.is_live} aria-label="Central da live">
             <CardContent className="space-y-4">

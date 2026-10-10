@@ -1,3 +1,4 @@
+import { Film, UserRound, Clock3, Radio } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { supabaseUrl } from '@/lib/supabase'
@@ -84,14 +85,27 @@ export default function ObsPlayer() {
   const clockTimer = window.setInterval(() => { if (ready && player) setClock({ position: player.getCurrentTime(), duration: player.getDuration() }) }, 250)
   return () => { stopped = true; requestSequence++; window.clearTimeout(timeout); window.clearInterval(clockTimer); destroy() }
  }, [])
+ const duration = Number.isFinite(clock.duration) ? Math.max(0, clock.duration) : 0
+ const position = Number.isFinite(clock.position) ? Math.max(0, clock.position) : 0
+ const progress = duration > 0 ? Math.min(100, position / duration * 100) : 0
  return <main className="fixed inset-0 flex flex-col overflow-hidden bg-black text-white">
   <div className="relative min-h-0 flex-1">
    <div ref={host} className="h-full w-full [&_iframe]:h-full [&_iframe]:w-full" />
    {(!state?.video_id || ['idle','ended','countdown'].includes(state.state)) && <div className="absolute inset-0 flex items-center justify-center bg-[#0d0d12] p-8 text-center"><div><p className="text-[clamp(24px,3vw,64px)] font-bold">{state?.state === 'countdown' ? `Próximo vídeo em ${state.countdown}…` : state?.state === 'ended' ? 'Vídeo concluído' : 'Player para OBS'}</p><p className="mt-4 text-[clamp(16px,1.5vw,32px)] text-white/70">{state?.state === 'countdown' ? 'A sequência pode ser cancelada no painel.' : 'Controle a reprodução pela Central do canal.'}</p></div></div>}
   </div>
   <footer className="shrink-0 border-t border-white/15 bg-[#17171f] px-[3vw] py-[1.5vh]">
-   <div className="flex items-center justify-between gap-6"><p className="min-w-0 truncate text-[clamp(18px,2vw,40px)] font-semibold">{state?.title ?? 'Aguardando vídeo'}</p><span className="shrink-0 text-[clamp(18px,2vw,40px)] tabular-nums">{obsTime(clock.position)} / {clock.duration ? obsTime(clock.duration) : '—'}</span></div>
-   <p className="mt-1 text-[clamp(14px,1.2vw,24px)] text-white/70">{failure || state?.error || (state ? obsLabels[state.state] : 'Conectando…')}</p>
+   <div className="grid items-center gap-x-8 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(240px,32%)]">
+    <div className="min-w-0">
+     <div className="flex items-center gap-3"><Film aria-hidden="true" className="h-[1em] w-[1em] shrink-0 text-brand-purple text-[clamp(22px,2vw,40px)]"/><p className="min-w-0 truncate text-[clamp(18px,2vw,40px)] font-semibold">{state?.title ?? 'Aguardando vídeo'}</p></div>
+     <div className="mt-2 flex items-center gap-2 text-[clamp(14px,1.25vw,26px)] text-white/80"><UserRound aria-hidden="true" className="h-[1em] w-[1em] shrink-0"/><p className="truncate">{state?.submitted_by_name ? 'Enviado por ' + state.submitted_by_name : 'Remetente não informado'}</p></div>
+    </div>
+    <div className="min-w-0">
+     <div className="flex items-center gap-2 text-[clamp(18px,1.7vw,34px)] tabular-nums"><Clock3 aria-hidden="true" className="h-[1em] w-[1em] shrink-0 text-brand-purple"/><span>{obsTime(position)} / {duration ? obsTime(duration) : '—'}</span></div>
+     <div role="progressbar" aria-label="Progresso do vídeo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={duration ? Math.round(progress) : undefined} className="mt-2 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-brand-purple" style={{ width: progress + '%' }}/></div>
+     <p className="mt-1 text-[clamp(13px,1.05vw,22px)] tabular-nums text-white/70">{duration ? 'Restam ' + obsTime(Math.max(0, duration - position)) : 'Duração indisponível'}</p>
+    </div>
+   </div>
+   <p className="mt-2 flex items-center gap-2 text-[clamp(14px,1.2vw,24px)] text-white/70"><Radio aria-hidden="true" className="h-[1em] w-[1em] shrink-0"/>{failure || state?.error || (state ? obsLabels[state.state] : 'Conectando…')}</p>
    {state?.state === 'blocked' && <button onClick={() => playRef.current()} className="mt-2 rounded-lg bg-brand-purple px-5 py-2">Ativar reprodução com áudio</button>}
   </footer>
  </main>

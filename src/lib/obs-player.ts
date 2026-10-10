@@ -1,6 +1,6 @@
 export type ObsState = {
  streamer_id: string; revision: number; generation: number; suggestion_id: string | null; video_id: string | null;
- source_url: string | null; title: string | null; desired: string; state: string; automatic: boolean;
+ submitted_by_name?: string | null; source_url: string | null; title: string | null; desired: string; state: string; automatic: boolean;
  gap_seconds: number; volume: number; position_seconds: number; duration_seconds: number;
  connected: boolean; countdown: number; error: string | null; token?: string;
 }

@@ -1,6 +1,6 @@
-# Player OBS — piloto opcional
+# Player OBS — versão liberada
 
-A interface do piloto aparece ao acessar `/dashboard/streamer?obs_test=1` (também funciona adicionando `?obs_test=1` ao painel de moderação). Não altera a experiência normal nem o overlay da fila. Esse parâmetro é apenas uma opção de apresentação: toda autorização é validada no servidor.
+O player está disponível na Central do dashboard normal para streamers e moderadores autorizados. A ativação continua opcional por canal. O usuário confirmou o funcionamento no OBS e aprovou a versão final após os ajustes de apresentação.
 
 ## Teste no OBS antes da liberação geral
 1. Fora de uma live, entre na Central pelo endereço de teste e configure o player. O link é privado e revogável: não publique em capturas nem envie para viewers.
@@ -27,4 +27,4 @@ A interface do piloto aparece ao acessar `/dashboard/streamer?obs_test=1` (tamb�
 ## Validação executada
 Testes em PostgreSQL isolado: escopo por canal, token inválido/revogado, leitura privada, fonte única, confirmação de início, fim único, revisão antiga, intervalo, fila vazia, pausa/cancelamento, falha, reconexão e URLs inválidas. Suíte de regressão: 90 testes passaram. Simulação no navegador com o componente real confirmou criação do player, contador e troca após intervalo; ela não verifica codec, áudio, cookies ou autoplay do OBS.
 
-Pendente: execução do roteiro em OBS real. Manter acesso opcional de teste até concluir essa etapa.
+Validação no OBS confirmada pelo usuário. Versão final: ícones na faixa inferior, nome público do remetente, progresso e tempo restante. A consulta retorna somente o nome de apresentação, sem dados privados do perfil.

@@ -7,9 +7,9 @@ async function setup(t){
  const db=await PGlite.create();t.after(()=>db.close())
  await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('app.user',true),'')::uuid$$;
- create table streamers(id uuid primary key);
+ create table streamers(id uuid primary key); create table profiles(id uuid primary key,display_name text,twitch_login text);
  create function can_manage_streamer(uuid) returns boolean language sql stable as $$ select coalesce(auth.uid()='${id(10)}'::uuid and $1='${id(1)}'::uuid,false) $$;
- create table suggestions(id uuid primary key,streamer_id uuid references streamers(id),title text,source_url text,status text,queue_position integer,submitted_at timestamptz default now(),started_at timestamptz,completed_at timestamptz);
+ create table suggestions(id uuid primary key,streamer_id uuid references streamers(id),title text,submitted_by uuid,source_url text,status text,queue_position integer,submitted_at timestamptz default now(),started_at timestamptz,completed_at timestamptz);
  create table completions(id uuid);
  create function record_end() returns trigger language plpgsql as $$begin if new.status='completed' and old.status<>'completed' then insert into completions values(new.id);end if;return new;end;$$;
  create trigger record_end after update on suggestions for each row execute function record_end();
@@ -20,6 +20,7 @@ async function setup(t){
  grant usage on schema public,auth to anon,authenticated;`)
  await db.exec(await readFile(new URL('../supabase/migrations/0071_obs_player.sql',import.meta.url),'utf8'))
  await db.exec(await readFile(new URL('../supabase/migrations/0072_obs_deleted_item.sql',import.meta.url),'utf8'))
+ await db.exec(await readFile(new URL('../supabase/migrations/0073_obs_submitter.sql',import.meta.url),'utf8'))
  const manage=async(action='get',value=null,channel=id(1))=>(await db.query('select obs_manage($1,$2,$3) r',[channel,action,value])).rows[0].r
  const receive=async(token,revision=-1,event='tick',position=0,duration=0,client=id(30))=>(await db.query('select obs_receiver($1,$2,$3,$4,$5,$6) r',[token,client,revision,event,position,duration])).rows[0].r
  const staff=()=>db.exec(`set "app.user"='${id(10)}';set role authenticated`)
@@ -87,4 +88,8 @@ test('deleting or requeueing a playing item stops the receiver without a complet
  await db.exec('reset role');await db.query("update suggestions set status='queued' where id=$1",[id(20)]);await anonymous();r=await receive(p.token,r.revision,'playing',11,100);assert.equal(r.state,'idle');
  await staff();r=await manage('start');await anonymous();r=await receive(p.token,r.revision,'playing',10,100);await db.exec('reset role');await db.query('delete from suggestions where id=$1',[id(20)]);await anonymous();r=await receive(p.token,r.revision,'ended',100,100);assert.equal(r.state,'idle');
  await db.exec('reset role');assert.equal((await db.query('select count(*) n from completions')).rows[0].n,0);
+})
+
+test('receiver exposes only the display name of the selected submitter',async t=>{
+ const{db,manage,receive,staff,anonymous}=await setup(t);const p=await manage('enable');await db.exec('reset role');await db.query('insert into profiles values($1,$2,$3)',[id(50),'Viewer de teste','viewer']);await db.query('update suggestions set submitted_by=$1 where id=$2',[id(50),id(20)]);await anonymous();await receive(p.token);await staff();const r=await manage('start');assert.equal(r.submitted_by_name,'Viewer de teste');assert.equal(r.submitted_by,undefined);await anonymous();assert.equal((await receive(p.token)).submitted_by_name,'Viewer de teste');
 })
