@@ -29,7 +29,7 @@ export function Seo() {
 
   useEffect(() => {
     const isOverlay = pathname.startsWith('/overlay/')
-    const isPrivate = pathname.startsWith('/dashboard') || pathname.startsWith('/auth/') || isOverlay
+    const isPrivate = pathname.startsWith('/dashboard') || pathname.startsWith('/auth/') || isOverlay || pathname === '/obs-player'
     const isExplore = pathname === '/explore'
     const isHome = pathname === '/'
     const isLegacyStreamer = pathname.startsWith('/streamer/')

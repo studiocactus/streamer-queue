@@ -62,6 +62,7 @@ const ViewerDashboard = lazy(() => import('@/pages/dashboard/ViewerDashboard'))
 const StreamerDashboard = lazy(() => import('@/pages/dashboard/StreamerDashboard'))
 const ModeratorDashboard = lazy(() => import('@/pages/dashboard/ModeratorDashboard'))
 const AdminChannelDashboard = lazy(() => import('@/pages/dashboard/AdminChannelDashboard'))
+const ObsPlayer = lazy(() => import('@/pages/ObsPlayer'))
 const OverlayPage = lazy(() => import('@/pages/Overlay'))
 const ViewerProfile = lazy(() => import('@/pages/ViewerProfile'))
 
@@ -189,6 +190,7 @@ export default function App() {
 
         <ErrorBoundary>
         <Routes>
+          <Route path="/obs-player" element={<Suspense fallback={null}><ObsPlayer /></Suspense>} />
           <Route path="/overlay/:slug" element={<Suspense fallback={null}><OverlayPage /></Suspense>} />
           {/* Public routes with header+footer */}
           <Route element={<AppLayout />}>
